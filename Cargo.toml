@@ -1,0 +1,8 @@
+[package]
+name = "assault"
+version = "0.1.0"
+authors = ["Expenses <expenses@airmail.cc>"]
+
+[dependencies]
+ggez = { git = "https://github.com/ggez/ggez.git" }
+rand = "0.3.15"
