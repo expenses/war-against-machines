@@ -43,7 +43,8 @@ impl Resources {
                 load_image(ctx, "/skull.png")?,
                 load_image(ctx, "/mud_pool.png")?,
                 load_image(ctx, "/cursor.png")?,
-                load_image(ctx, "/cursor_selected.png")?,
+                load_image(ctx, "/cursor_unit.png")?,
+                load_image(ctx, "/cursor_unwalkable.png")?,
                 load_image(ctx, "/title.png")?,
                 load_image(ctx, "/friendly.png")?,
                 load_image(ctx, "/enemy.png")?,
@@ -51,7 +52,12 @@ impl Resources {
                 load_image(ctx, "/pit_left.png")?,
                 load_image(ctx, "/pit_top.png")?,
                 load_image(ctx, "/pit_right.png")?,
-                load_image(ctx, "/pit_bottom.png")?
+                load_image(ctx, "/pit_bottom.png")?,
+                load_image(ctx, "/pit_tl.png")?,
+                load_image(ctx, "/pit_tr.png")?,
+                load_image(ctx, "/pit_br.png")?,
+                load_image(ctx, "/pit_bl.png")?,
+                load_image(ctx, "/pit_center.png")?
             ],
             font: Font::default_font().unwrap()
         })

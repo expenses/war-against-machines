@@ -37,8 +37,8 @@ impl Squaddie {
         let last_name = LAST_NAMES[rng.gen_range(0, LAST_NAMES.len())];
 
         Squaddie {
-            x: x,
-            y: y,
+            x,
+            y,
             image: images::FRIENDLY,
             name: format!("{} {}", first_name, last_name),
             moves: MOVES,
@@ -57,8 +57,8 @@ pub struct Enemy {
 impl Enemy {
     pub fn new(x: usize, y: usize) -> Enemy {
         Enemy {
-            x: x,
-            y: y,
+            x,
+            y,
             image: images::ENEMY,
             name: String::from("S122")
         }

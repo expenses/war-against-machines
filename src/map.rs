@@ -38,22 +38,15 @@ struct Tile {
 impl Tile {
     fn new(image: usize) -> Tile {
         Tile {
-            image: image,
+            image,
             decoration: None,
             walkable: true
         }
     }
 
-    fn set_decoration(&mut self, decoration: usize) -> &mut Tile {
+    fn set_pit(&mut self, decoration: usize) {
         self.decoration = Some(decoration);
-        
-        self
-    }
-
-    fn set_walkable(&mut self, walkable: bool) -> &mut Tile {
-        self.walkable = walkable;
-
-        self
+        self.walkable = false;        
     }
 }
 
@@ -101,7 +94,7 @@ impl Map {
     pub fn new() -> Map {
         Map {
             camera: Camera::new(),
-            cursor: Cursor {position: None},
+            cursor: Cursor { position: None },
             keys: [false; 6],
             tiles: [[Tile::new(images::MUD); TILE_ROWS]; TILE_COLS],
             squaddies: Vec::new(),
@@ -123,20 +116,41 @@ impl Map {
             }
         }
 
+        // Generate pit position and size
         let mut rng = rand::thread_rng();
+        let pit_width = rng.gen_range(1, 4);
+        let pit_height = rng.gen_range(1, 4);
+        let pit_x = rng.gen_range(1, TILE_COLS - 1 - pit_width);
+        let pit_y = rng.gen_range(1, TILE_ROWS - 1 - pit_height);
 
-        let pit_x = rng.gen_range(1, TILE_COLS - 1);
-        let pit_y = rng.gen_range(1, TILE_ROWS - 1);
+        // Add pit corners
+        self.tiles[pit_x][pit_y].set_pit(images::PIT_TOP);
+        self.tiles[pit_x][pit_y + pit_height].set_pit(images::PIT_LEFT);
+        self.tiles[pit_x + pit_width][pit_y].set_pit(images::PIT_RIGHT);
+        self.tiles[pit_x + pit_width][pit_y + pit_height].set_pit(images::PIT_BOTTOM);
 
-        self.tiles[pit_x][pit_y].set_decoration(images::PIT_TOP).set_walkable(false);
-        self.tiles[pit_x][pit_y + 1].set_decoration(images::PIT_LEFT).set_walkable(false);
-        self.tiles[pit_x + 1][pit_y].set_decoration(images::PIT_RIGHT).set_walkable(false);
-        self.tiles[pit_x + 1][pit_y + 1].set_decoration(images::PIT_BOTTOM).set_walkable(false);
+        // Add pit edges and center
 
+        for x in pit_x + 1 .. pit_x + pit_width {
+            self.tiles[x][pit_y].set_pit(images::PIT_TR);
+            self.tiles[x][pit_y + pit_height].set_pit(images::PIT_BL);
+
+            for y in pit_y + 1 .. pit_y + pit_height {
+                self.tiles[x][y].set_pit(images::PIT_CENTER);
+            }
+        }
+
+        for y in pit_y + 1 .. pit_y + pit_height {
+             self.tiles[pit_x][y].set_pit(images::PIT_TL);
+             self.tiles[pit_x + pit_width][y].set_pit(images::PIT_BR);
+        }
+
+        // Add squaddies
         for x in 0..3 {
             self.squaddies.push(Squaddie::new(x, 0));
         }
 
+        // Add enemies
         for y in TILE_ROWS - 3 .. TILE_ROWS {
             self.enemies.push(Enemy::new(TILE_ROWS - 1, y));
         }
@@ -198,8 +212,7 @@ impl Map {
         for x in 0..TILE_COLS {
             for y in 0..TILE_ROWS {
                 let tile = self.tiles[x][y];
-                let x = x as f32;
-                let y = y as f32;
+                let (x, y) = (x as f32, y as f32);
 
                 self.draw_image(ctx, &resources.images[tile.image], x, y);
 
@@ -227,9 +240,18 @@ impl Map {
         // Draw cursor
         match self.cursor.position {
             Some((x, y)) => {
-                let image = if self.tiles[x][y].decoration.is_some() {images::CURSOR_SELECTED} else {images::CURSOR};
+                let tile = self.tiles[x][y];
+
+                let image = if !tile.walkable {
+                    images::CURSOR_UNWALKABLE
+                } else if self.squaddie_at(x, y) {
+                    images::CURSOR_UNIT
+                } else {
+                    images::CURSOR
+                };
+
                 self.draw_image(ctx, &resources.images[image], x as f32, y as f32);
-            },
+            }
             None => {}
         }
 
@@ -258,7 +280,7 @@ impl Map {
         let selected = match self.selected {
             Some(i) => {
                 let squaddie = &self.squaddies[i];
-                format!("(Name: {} ID: {}, Moves: {})", squaddie.name, i, squaddie.moves)
+                format!("(Name: {}, ID: {}, X: {}, Y: {}, Moves: {})", squaddie.name, i, squaddie.x, squaddie.y, squaddie.moves)
             },
             None => String::from("~")
         };
@@ -310,19 +332,23 @@ impl Map {
                 },
                 None => {}
             },
-            MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|sel| (x, y, sel))) {
+            MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
                     if self.taken(x, y) { return; }
 
                     let start = PathPoint::from(&self.squaddies[selected]);
                     let end = PathPoint::new(x, y);
 
-                    let (points, cost) = pathfinding::astar(
+                    let path = pathfinding::astar(
                         &start,
                         |point| point.neighbours(&self),
                         |point| point.cost(&end),
                         |point| *point == end
-                    ).unwrap();
+                    );
+
+                    if path.is_none() { return; }
+
+                    let (points, cost) = path.unwrap();
 
                     let same_path = match self.path {
                         Some(ref path) => {
@@ -349,9 +375,13 @@ impl Map {
         }
     }
 
+    fn squaddie_at(&self, x: usize, y: usize) -> bool {
+        self.squaddies.iter().any(|squaddie| squaddie.x == x && squaddie.y == y)
+    }
+
     fn taken(&self, x: usize, y: usize) -> bool {
         !self.tiles[x][y].walkable ||
-        self.squaddies.iter().any(|squaddie| squaddie.x == x && squaddie.y == y) ||
+        self.squaddie_at(x, y) ||
         self.enemies.iter().any(|enemy| enemy.x == x && enemy.y == y)
     }
 }
@@ -365,8 +395,8 @@ struct PathPoint {
 impl PathPoint {
     fn new(x: usize, y: usize) -> PathPoint {
         PathPoint {
-            x: x,
-            y: y
+            x,
+            y
         }
     }
 
