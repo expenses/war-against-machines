@@ -1,7 +1,9 @@
-extern crate rand;
-
+use rand;
 use rand::Rng;
+
 use images;
+
+const MOVES: usize = 30;
 
 const FIRST_NAMES: [&str; 6] = [
     "David",
@@ -21,8 +23,10 @@ const LAST_NAMES: [&str; 3] = [
 pub struct Squaddie {
     pub x: usize,
     pub y: usize,
-    pub sprite: usize,
+    pub image: usize,
     pub name: String,
+    pub moves: usize,
+    pub max_moves: usize
 }
 
 impl Squaddie {
@@ -35,8 +39,10 @@ impl Squaddie {
         Squaddie {
             x: x,
             y: y,
-            sprite: images::FRIENDLY,
+            image: images::FRIENDLY,
             name: format!("{} {}", first_name, last_name),
+            moves: MOVES,
+            max_moves: MOVES
         }
     }
 }
@@ -44,7 +50,8 @@ impl Squaddie {
 pub struct Enemy {
     pub x: usize,
     pub y: usize,
-    pub sprite: usize
+    pub image: usize,
+    pub name: String
 }
 
 impl Enemy {
@@ -52,7 +59,8 @@ impl Enemy {
         Enemy {
             x: x,
             y: y,
-            sprite: images::ENEMY
+            image: images::ENEMY,
+            name: String::from("S122")
         }
     }
 }

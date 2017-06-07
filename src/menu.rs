@@ -1,9 +1,10 @@
 use ggez::Context;
 use ggez::graphics;
 use ggez::event::Keycode;
-use ggez::graphics::{Font, Image, Point, Text};
+use ggez::graphics::{Point, Text};
 
 use images;
+use Resources;
 use WINDOW_WIDTH;
 
 const OPTIONS: [&str; 2] = [
@@ -22,8 +23,8 @@ impl Menu {
         }
     }
 
-    pub fn draw(&self, ctx: &mut Context, images: &Vec<Image>, font: &Font) {
-        let ref title = images[images::TITLE];
+    pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
+        let title = &resources.images[images::TITLE];
 
         let title_x = WINDOW_WIDTH as f32 / 2.0;
         let title_y = title.height() as f32 / 2.0;
@@ -39,7 +40,7 @@ impl Menu {
 
             string.push_str(option);
 
-            let rendered = Text::new(ctx, string.as_str(), font).unwrap();
+            let rendered = Text::new(ctx, string.as_str(), &resources.font).unwrap();
 
             let point = Point {
                 x: title_x,

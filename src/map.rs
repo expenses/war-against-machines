@@ -1,13 +1,17 @@
 use rand;
+use rand::Rng;
+use pathfinding;
+
+use std::cmp::{min, max};
 
 use ggez::graphics;
-use ggez::graphics::{Point, Image, DrawParam, Font, Text};
+use ggez::graphics::{Point, Image, DrawParam, Text};
 use ggez::Context;
 use ggez::event::{Keycode, MouseButton};
 
 use images;
+use Resources;
 use {WINDOW_WIDTH, WINDOW_HEIGHT};
-
 use units::{Squaddie, Enemy};
 
 const CAMERA_SPEED: f32 = 0.2;
@@ -21,24 +25,35 @@ const TILE_WIDTH: f32 = 48.0;
 const TILE_HEIGHT: f32 = 24.0;
 const TILE_IMAGE_SIZE: f32 = 48.0;
 
+const WALK_COST: usize = 2;
+const WALK_DIAGONAL_COST: usize = 3;
+
+#[derive(Copy, Clone)]
 struct Tile {
     image: usize,
-    decoration: Option<usize>
+    decoration: Option<usize>,
+    walkable: bool
 }
 
 impl Tile {
     fn new(image: usize) -> Tile {
         Tile {
             image: image,
-            decoration: None
+            decoration: None,
+            walkable: true
         }
     }
-}
 
-impl Copy for Tile {}
-impl Clone for Tile {
-    fn clone(&self) -> Tile {
-        *self
+    fn set_decoration(&mut self, decoration: usize) -> &mut Tile {
+        self.decoration = Some(decoration);
+        
+        self
+    }
+
+    fn set_walkable(&mut self, walkable: bool) -> &mut Tile {
+        self.walkable = walkable;
+
+        self
     }
 }
 
@@ -56,10 +71,6 @@ struct Camera {
     zoom: f32
 }
 
-struct Cursor {
-    position: Option<(usize, usize)>
-}
-
 impl Camera {
     fn new() -> Camera {
         Camera {
@@ -70,6 +81,10 @@ impl Camera {
     }
 }
 
+struct Cursor {
+    position: Option<(usize, usize)>
+}
+
 pub struct Map {
     camera: Camera,
     cursor: Cursor,
@@ -77,7 +92,9 @@ pub struct Map {
     tiles: [[Tile; TILE_ROWS]; TILE_COLS],
     squaddies: Vec<Squaddie>,
     enemies: Vec<Enemy>,
-    selected: Option<usize>
+    selected: Option<usize>,
+    path: Option<Vec<PathPoint>>,
+    turn: u16
 }
 
 impl Map {
@@ -89,7 +106,9 @@ impl Map {
             tiles: [[Tile::new(images::MUD); TILE_ROWS]; TILE_COLS],
             squaddies: Vec::new(),
             enemies: Vec::new(),
-            selected: None
+            selected: None,
+            path: None,
+            turn: 1
         }
     }
 
@@ -104,23 +123,33 @@ impl Map {
             }
         }
 
+        let mut rng = rand::thread_rng();
+
+        let pit_x = rng.gen_range(1, TILE_COLS - 1);
+        let pit_y = rng.gen_range(1, TILE_ROWS - 1);
+
+        self.tiles[pit_x][pit_y].set_decoration(images::PIT_TOP).set_walkable(false);
+        self.tiles[pit_x][pit_y + 1].set_decoration(images::PIT_LEFT).set_walkable(false);
+        self.tiles[pit_x + 1][pit_y].set_decoration(images::PIT_RIGHT).set_walkable(false);
+        self.tiles[pit_x + 1][pit_y + 1].set_decoration(images::PIT_BOTTOM).set_walkable(false);
+
         for x in 0..3 {
             self.squaddies.push(Squaddie::new(x, 0));
         }
 
-        for y in (TILE_ROWS - 3).. TILE_ROWS {
-            self.enemies.push(Enemy::new(TILE_ROWS, y));
+        for y in TILE_ROWS - 3 .. TILE_ROWS {
+            self.enemies.push(Enemy::new(TILE_ROWS - 1, y));
         }
     }
 
     pub fn handle_key(&mut self, key: Keycode, pressed: bool) {
         match key {
-            Keycode::Up =>      self.keys[0] = pressed,
-            Keycode::Down =>    self.keys[1] = pressed,
-            Keycode::Left =>    self.keys[2] = pressed,
-            Keycode::Right =>   self.keys[3] = pressed,
-            Keycode::O =>       self.keys[4] = pressed,
-            Keycode::P =>       self.keys[5] = pressed,
+            Keycode::Up     => self.keys[0] = pressed,
+            Keycode::Down   => self.keys[1] = pressed,
+            Keycode::Left   => self.keys[2] = pressed,
+            Keycode::Right  => self.keys[3] = pressed,
+            Keycode::O      => self.keys[4] = pressed,
+            Keycode::P      => self.keys[5] = pressed,
             _ => {}
         };
     }
@@ -130,8 +159,8 @@ impl Map {
         if self.keys[1] { self.camera.y += CAMERA_SPEED; }
         if self.keys[2] { self.camera.x -= CAMERA_SPEED; }
         if self.keys[3] { self.camera.x += CAMERA_SPEED; }
-        if self.keys[4] { self.camera.zoom -= CAMERA_ZOOM_SPEED * self.camera.zoom}
-        if self.keys[5] { self.camera.zoom += CAMERA_ZOOM_SPEED * self.camera.zoom}
+        if self.keys[4] { self.camera.zoom -= CAMERA_ZOOM_SPEED * self.camera.zoom }
+        if self.keys[5] { self.camera.zoom += CAMERA_ZOOM_SPEED * self.camera.zoom }
 
         if self.camera.zoom > 10.0 { self.camera.zoom = 10.0; }
         if self.camera.zoom < 1.0 { self.camera.zoom = 1.0; }
@@ -165,63 +194,87 @@ impl Map {
         }   
     }
 
-    pub fn draw(&mut self, ctx: &mut Context, images: &Vec<Image>, font: &Font) {
+    pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
         for x in 0..TILE_COLS {
             for y in 0..TILE_ROWS {
                 let tile = self.tiles[x][y];
                 let x = x as f32;
                 let y = y as f32;
 
-                self.draw_image(ctx, &images[tile.image], x, y);
+                self.draw_image(ctx, &resources.images[tile.image], x, y);
 
                 match tile.decoration {
-                    Some(decoration) => self.draw_image(ctx, &images[decoration], x, y),
+                    Some(decoration) => self.draw_image(ctx, &resources.images[decoration], x, y),
                     _ => {}
                 }
             }
         }
 
-        self.draw_image(ctx, &images[images::EDGE_LEFT_CORNER], 0.0, TILE_ROWS as f32);
+        // Draw the edges
+
+        self.draw_image(ctx, &resources.images[images::EDGE_LEFT_CORNER], 0.0, TILE_ROWS as f32);
+        self.draw_image(ctx, &resources.images[images::EDGE_CORNER], TILE_COLS as f32, TILE_ROWS as f32);
+        self.draw_image(ctx, &resources.images[images::EDGE_RIGHT_CORNER], TILE_COLS as f32, 0.0);
 
         for x in 1..TILE_COLS {
-            self.draw_image(ctx, &images[images::EDGE_LEFT], x as f32, TILE_ROWS as f32);
+            self.draw_image(ctx, &resources.images[images::EDGE_LEFT], x as f32, TILE_ROWS as f32);
         }
-
-        self.draw_image(ctx, &images[images::EDGE_CORNER], TILE_COLS as f32, TILE_ROWS as f32);
 
         for y in 1..TILE_ROWS {
-            self.draw_image(ctx, &images[images::EDGE_RIGHT], TILE_COLS as f32, y as f32);
+            self.draw_image(ctx, &resources.images[images::EDGE_RIGHT], TILE_COLS as f32, y as f32);
         }
 
-        self.draw_image(ctx, &images[images::EDGE_RIGHT_CORNER], TILE_COLS as f32, 0.0);
-
+        // Draw cursor
         match self.cursor.position {
             Some((x, y)) => {
                 let image = if self.tiles[x][y].decoration.is_some() {images::CURSOR_SELECTED} else {images::CURSOR};
-                self.draw_image(ctx, &images[image], x as f32, y as f32);
+                self.draw_image(ctx, &resources.images[image], x as f32, y as f32);
             },
             None => {}
         }
 
+        // Draw path
+        match self.path {
+            Some(ref points) => {
+                for point in points {
+                    self.draw_image(ctx, &resources.images[images::PATH], point.x as f32, point.y as f32);
+                }
+            }
+            None => {}
+        }
+
+        // Draw squaddies
         for squaddie in &self.squaddies {
-            self.draw_image(ctx, &images[squaddie.sprite], squaddie.x as f32, squaddie.y as f32);
+            self.draw_image(ctx, &resources.images[squaddie.image], squaddie.x as f32, squaddie.y as f32);
         }
 
+        // Draw enemies
         for enemy in &self.enemies {
-            self.draw_image(ctx, &images[enemy.sprite], enemy.x as f32, enemy.y as f32);
+            self.draw_image(ctx, &resources.images[enemy.image], enemy.x as f32, enemy.y as f32);
         }
 
-        let text = match self.selected {
-            Some(i) => &self.squaddies[i].name,
-            None => "None"
+        // Print info
+
+        let selected = match self.selected {
+            Some(i) => {
+                let squaddie = &self.squaddies[i];
+                format!("(Name: {} ID: {}, Moves: {})", squaddie.name, i, squaddie.moves)
+            },
+            None => String::from("~")
         };
 
-        let rendered = Text::new(ctx, format!("Selected: {}", text).as_str(), font).unwrap();
+        let rendered = Text::new(ctx, format!("Turn: {}, Selected: {}", self.turn, selected).as_str(), &resources.font).unwrap();
 
-        graphics::draw(ctx, &rendered, Point{x: rendered.width() as f32, y: rendered.height() as f32}, 0.0).unwrap();
+        let point = Point {
+            x: rendered.width() as f32 / 2.0 + 5.0,
+            y: rendered.height() as f32
+        };
+
+        graphics::draw(ctx, &rendered, point, 0.0).unwrap();
     }
 
-    pub fn move_cursor(&mut self, x: f32, y: f32) {
+    pub fn move_cursor(&mut self, x: i32, y: i32) {
+        let (x, y) = (x as f32, y as f32);
         let center_x = WINDOW_WIDTH  as f32 / 2.0;
         let center_y = WINDOW_HEIGHT as f32 / 2.0;
 
@@ -257,15 +310,96 @@ impl Map {
                 },
                 None => {}
             },
-            MouseButton::Right => {
-                if self.cursor.position.is_some() && self.selected.is_some() {
-                    let (x, y) = self.cursor.position.unwrap();
-                    let ref mut squaddie = self.squaddies[self.selected.unwrap()];
-                    squaddie.x = x;
-                    squaddie.y = y;
+            MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|sel| (x, y, sel))) {
+                Some((x, y, selected)) => {
+                    if self.taken(x, y) { return; }
+
+                    let start = PathPoint::from(&self.squaddies[selected]);
+                    let end = PathPoint::new(x, y);
+
+                    let (points, cost) = pathfinding::astar(
+                        &start,
+                        |point| point.neighbours(&self),
+                        |point| point.cost(&end),
+                        |point| *point == end
+                    ).unwrap();
+
+                    let same_path = match self.path {
+                        Some(ref path) => {
+                            let path_end = &path[path.len() - 1];
+                            *path_end == end
+                        }
+                        None => false
+                    };
+
+                    let squaddie = &mut self.squaddies[selected];
+
+                    if same_path && squaddie.moves >= cost {
+                        squaddie.x = x;
+                        squaddie.y = y;
+                        squaddie.moves -= cost;
+                        self.path = None;
+                    } else {
+                        self.path = Some(points);
+                    }
                 }
-            }
+                None => {}
+            },
             _ => {}
         }
+    }
+
+    fn taken(&self, x: usize, y: usize) -> bool {
+        !self.tiles[x][y].walkable ||
+        self.squaddies.iter().any(|squaddie| squaddie.x == x && squaddie.y == y) ||
+        self.enemies.iter().any(|enemy| enemy.x == x && enemy.y == y)
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+struct PathPoint {
+    x: usize,
+    y: usize
+}
+
+impl PathPoint {
+    fn new(x: usize, y: usize) -> PathPoint {
+        PathPoint {
+            x: x,
+            y: y
+        }
+    }
+
+    fn from(squaddie: &Squaddie) -> PathPoint {
+        PathPoint {
+            x: squaddie.x,
+            y: squaddie.y
+        }
+    }
+
+    fn cost(&self, point: &PathPoint) -> usize {
+        if self.x == point.x || self.y == point.y { WALK_COST } else { WALK_DIAGONAL_COST }
+    }
+
+    fn neighbours(&self, map: &Map) -> Vec<(PathPoint, usize)> {
+        let mut neighbours = Vec::new();
+
+        let min_x = max(0, self.x as i32 - 1) as usize;
+        let min_y = max(0, self.y as i32 - 1) as usize;
+
+        let max_x = min(TILE_COLS - 1, self.x + 1);
+        let max_y = min(TILE_ROWS - 1, self.y + 1);
+
+        for x in min_x .. max_x + 1 {
+            for y in min_y .. max_y + 1 {
+                if !map.taken(x, y) {
+                    let point = PathPoint::new(x, y);
+                    let cost = self.cost(&point);
+                    neighbours.push((point, cost));
+                }
+            }
+        }
+
+        return neighbours;
     }
 }

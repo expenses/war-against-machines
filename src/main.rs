@@ -1,5 +1,6 @@
 extern crate ggez;
 extern crate rand;
+extern crate pathfinding;
 
 mod map;
 mod menu;
@@ -7,6 +8,7 @@ mod images;
 mod units;
 
 use std::time::Duration;
+
 use ggez::conf;
 use ggez::event;
 use ggez::event::{Mod, Keycode, MouseState, MouseButton};
@@ -23,14 +25,37 @@ const TITLE: &str = "Assault";
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
 
-struct MainState {
+pub struct Resources {
     images: Vec<Image>,
-    font: Font,
-    mode: Mode,
-    map: map::Map,
-    menu: menu::Menu,
-    // The state of the game, used to trigger ctx.quit() when ctx might not be avaliable (event listeners)
-    running: bool
+    font: Font
+}
+
+impl Resources {
+    fn new(ctx: &mut Context) -> GameResult<Resources> {
+        Ok(Resources {
+            images: vec![
+                load_image(ctx, "/mud.png")?,
+                load_image(ctx, "/edge_left_corner.png")?,
+                load_image(ctx, "/edge_left.png")?,
+                load_image(ctx, "/edge_corner.png")?,
+                load_image(ctx, "/edge_right.png")?,
+                load_image(ctx, "/edge_right_corner.png")?,
+                load_image(ctx, "/skull.png")?,
+                load_image(ctx, "/mud_pool.png")?,
+                load_image(ctx, "/cursor.png")?,
+                load_image(ctx, "/cursor_selected.png")?,
+                load_image(ctx, "/title.png")?,
+                load_image(ctx, "/friendly.png")?,
+                load_image(ctx, "/enemy.png")?,
+                load_image(ctx, "/path.png")?,
+                load_image(ctx, "/pit_left.png")?,
+                load_image(ctx, "/pit_top.png")?,
+                load_image(ctx, "/pit_right.png")?,
+                load_image(ctx, "/pit_bottom.png")?
+            ],
+            font: Font::default_font().unwrap()
+        })
+    }
 }
 
 fn load_image(ctx: &mut Context, image: &str) -> GameResult<Image> {
@@ -40,36 +65,26 @@ fn load_image(ctx: &mut Context, image: &str) -> GameResult<Image> {
     Ok(image)
 }
 
+struct MainState {
+    resources: Resources,
+    mode: Mode,
+    map: map::Map,
+    menu: menu::Menu,
+    // The state of the game, used to trigger ctx.quit() when ctx might not be avaliable (event listeners)
+    running: bool
+}
+
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let mut images: Vec<Image> = Vec::new();
-
-        images.push(load_image(ctx, "/mud.png")?);
-        images.push(load_image(ctx, "/edge_left_corner.png")?);
-        images.push(load_image(ctx, "/edge_left.png")?);
-        images.push(load_image(ctx, "/edge_corner.png")?);
-        images.push(load_image(ctx, "/edge_right.png")?);
-        images.push(load_image(ctx, "/edge_right_corner.png")?);
-        images.push(load_image(ctx, "/skull.png")?);
-        images.push(load_image(ctx, "/mud_pool.png")?);
-        images.push(load_image(ctx, "/cursor.png")?);
-        images.push(load_image(ctx, "/cursor_selected.png")?);
-        images.push(load_image(ctx, "/title.png")?);
-        images.push(load_image(ctx, "/friendly.png")?);
-        images.push(load_image(ctx, "/enemy.png")?);
-
         graphics::set_background_color(ctx, Color::new(0.0, 0.0, 0.0, 0.0));
 
-        let state = MainState {
-            images: images,
-            font: Font::default_font().unwrap(),
+        Ok(MainState {
+            resources: Resources::new(ctx)?,
             map: map::Map::new(),
             menu: menu::Menu::new(), 
             mode: Mode::Menu,
             running: true
-        };
-
-        Ok(state)
+        })
     }
 }
 
@@ -89,8 +104,8 @@ impl event::EventHandler for MainState {
         graphics::clear(ctx);
 
         match self.mode {
-            Mode::Game => self.map.draw(ctx, &self.images, &self.font),
-            Mode::Menu => self.menu.draw(ctx, &self.images, &self.font)
+            Mode::Game => self.map.draw(ctx, &self.resources),
+            Mode::Menu => self.menu.draw(ctx, &self.resources)
         };
 
         graphics::present(ctx);
@@ -103,7 +118,10 @@ impl event::EventHandler for MainState {
             Mode::Game => self.map.handle_key(key, true),
             Mode::Menu => match self.menu.handle_key(key) {
                 Some(value) => match value {
-                    0 => { self.mode = Mode::Game; self.map.generate(); },
+                    0 => {
+                        self.mode = Mode::Game;
+                        self.map.generate();
+                    },
                     1 => self.running = false,
                     _ => {}
                 },
@@ -121,7 +139,7 @@ impl event::EventHandler for MainState {
 
     fn mouse_motion_event(&mut self, _state: MouseState, x: i32, y: i32, _xrel: i32, _yrel: i32) {
         match self.mode {
-            Mode::Game => self.map.move_cursor(x as f32, y as f32),
+            Mode::Game => self.map.move_cursor(x, y),
             _ => {}
         }
     }
