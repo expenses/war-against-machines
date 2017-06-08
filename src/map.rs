@@ -1,18 +1,18 @@
-use rand;
-use rand::Rng;
 use pathfinding;
 
 use std::cmp::{min, max};
 
 use ggez::graphics;
-use ggez::graphics::{Point, Image, DrawParam, Text};
+use ggez::graphics::{Point, Image, DrawParam};
 use ggez::Context;
 use ggez::event::{Keycode, MouseButton};
 
+use tiles::Tiles;
 use images;
 use Resources;
 use {WINDOW_WIDTH, WINDOW_HEIGHT};
 use units::{Squaddie, Enemy};
+use ui::{UI, Button, TextDisplay};
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
@@ -27,28 +27,6 @@ const TILE_IMAGE_SIZE: f32 = 48.0;
 
 const WALK_COST: usize = 2;
 const WALK_DIAGONAL_COST: usize = 3;
-
-#[derive(Copy, Clone)]
-struct Tile {
-    image: usize,
-    decoration: Option<usize>,
-    walkable: bool
-}
-
-impl Tile {
-    fn new(image: usize) -> Tile {
-        Tile {
-            image,
-            decoration: None,
-            walkable: true
-        }
-    }
-
-    fn set_pit(&mut self, decoration: usize) {
-        self.decoration = Some(decoration);
-        self.walkable = false;        
-    }
-}
 
 fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
     (x - y, x + y)
@@ -75,75 +53,72 @@ impl Camera {
 }
 
 struct Cursor {
-    position: Option<(usize, usize)>
+    position: Option<(usize, usize)>,
+    fire: bool
+}
+
+impl Cursor {
+    fn new() -> Cursor {
+        Cursor {
+            position: None,
+            fire: false
+        }
+    }
 }
 
 pub struct Map {
     camera: Camera,
     cursor: Cursor,
     keys: [bool; 6],
-    tiles: [[Tile; TILE_ROWS]; TILE_COLS],
+    tiles: Tiles,
     squaddies: Vec<Squaddie>,
     enemies: Vec<Enemy>,
     selected: Option<usize>,
     path: Option<Vec<PathPoint>>,
-    turn: u16
+    turn: u16,
+    ui: UI
 }
 
 impl Map {
-    pub fn new() -> Map {
+    pub fn new(resources: &Resources) -> Map {
+        let scale = 2.0;
+
+        let mut ui = UI::new();
+        let end_turn_image = &resources.images[images::END_TURN_BUTTON];
+        ui.add_button(Button::new(
+            images::END_TURN_BUTTON,
+            WINDOW_WIDTH as f32 - end_turn_image.width() as f32 * scale,
+            WINDOW_HEIGHT as f32 - end_turn_image.height() as f32 * scale,
+            scale,
+            resources
+        ));
+        ui.add_button(Button::new(
+            images::FIRE_BUTTON,
+            WINDOW_WIDTH as f32 - end_turn_image.width() as f32 * scale * 2.0,
+            WINDOW_HEIGHT as f32 - end_turn_image.height() as f32 * scale,
+            scale,
+            resources
+        ));
+        ui.add_text_display(TextDisplay::new(0.0, 0.0));
+
+
         Map {
             camera: Camera::new(),
-            cursor: Cursor { position: None },
+            cursor: Cursor::new(),
             keys: [false; 6],
-            tiles: [[Tile::new(images::MUD); TILE_ROWS]; TILE_COLS],
+            tiles: Tiles::new(TILE_COLS, TILE_ROWS),
             squaddies: Vec::new(),
             enemies: Vec::new(),
             selected: None,
             path: None,
-            turn: 1
+            turn: 1,
+            ui
         }
     }
 
-    pub fn generate(&mut self) {
-        for x in 0..TILE_COLS {
-            for y in 0..TILE_ROWS {
-                if rand::random::<f32>() > 0.975 {
-                    self.tiles[x][y].decoration = Some(images::SKULL);
-                } else if rand::random::<f32>() > 0.975 {
-                    self.tiles[x][y].decoration = Some(images::MUD_POOL);
-                }
-            }
-        }
-
-        // Generate pit position and size
-        let mut rng = rand::thread_rng();
-        let pit_width = rng.gen_range(1, 4);
-        let pit_height = rng.gen_range(1, 4);
-        let pit_x = rng.gen_range(1, TILE_COLS - 1 - pit_width);
-        let pit_y = rng.gen_range(1, TILE_ROWS - 1 - pit_height);
-
-        // Add pit corners
-        self.tiles[pit_x][pit_y].set_pit(images::PIT_TOP);
-        self.tiles[pit_x][pit_y + pit_height].set_pit(images::PIT_LEFT);
-        self.tiles[pit_x + pit_width][pit_y].set_pit(images::PIT_RIGHT);
-        self.tiles[pit_x + pit_width][pit_y + pit_height].set_pit(images::PIT_BOTTOM);
-
-        // Add pit edges and center
-
-        for x in pit_x + 1 .. pit_x + pit_width {
-            self.tiles[x][pit_y].set_pit(images::PIT_TR);
-            self.tiles[x][pit_y + pit_height].set_pit(images::PIT_BL);
-
-            for y in pit_y + 1 .. pit_y + pit_height {
-                self.tiles[x][y].set_pit(images::PIT_CENTER);
-            }
-        }
-
-        for y in pit_y + 1 .. pit_y + pit_height {
-             self.tiles[pit_x][y].set_pit(images::PIT_TL);
-             self.tiles[pit_x + pit_width][y].set_pit(images::PIT_BR);
-        }
+    pub fn start(&mut self) {
+        // Generate tiles
+        self.tiles.generate();
 
         // Add squaddies
         for x in 0..3 {
@@ -158,12 +133,12 @@ impl Map {
 
     pub fn handle_key(&mut self, key: Keycode, pressed: bool) {
         match key {
-            Keycode::Up     => self.keys[0] = pressed,
-            Keycode::Down   => self.keys[1] = pressed,
-            Keycode::Left   => self.keys[2] = pressed,
-            Keycode::Right  => self.keys[3] = pressed,
-            Keycode::O      => self.keys[4] = pressed,
-            Keycode::P      => self.keys[5] = pressed,
+            Keycode::Up    | Keycode::W => self.keys[0] = pressed,
+            Keycode::Down  | Keycode::S => self.keys[1] = pressed,
+            Keycode::Left  | Keycode::A => self.keys[2] = pressed,
+            Keycode::Right | Keycode::D => self.keys[3] = pressed,
+            Keycode::O                  => self.keys[4] = pressed,
+            Keycode::P                  => self.keys[5] = pressed,
             _ => {}
         };
     }
@@ -180,38 +155,40 @@ impl Map {
         if self.camera.zoom < 1.0 { self.camera.zoom = 1.0; }
     }
 
-    pub fn draw_image(&self, ctx: &mut Context, image: &Image, x: f32, y: f32) {
+    fn draw_at_scale(&self, ctx: &mut Context, image: &Image, x: f32, y: f32, scale: f32) {
+        graphics::draw_ex(
+            ctx,
+            image,
+            DrawParam {
+                dest: Point::new(x, y),
+                scale: Point::new(scale, scale),
+                ..Default::default()
+            }
+        ).unwrap();
+    }
+
+    fn draw_image(&self, ctx: &mut Context, image: &Image, x: f32, y: f32) {
         let (x, y) = from_map_coords(x, y);
         let width = WINDOW_WIDTH as f32;
         let height = WINDOW_HEIGHT as f32;
 
-        let point = Point {
-            x: (x - self.camera.x) * TILE_WIDTH  / 2.0 * self.camera.zoom + (width  / 2.0 - self.camera.x * self.camera.zoom),
-            y: (y - self.camera.y) * TILE_HEIGHT / 2.0 * self.camera.zoom + (height / 2.0 - self.camera.y * self.camera.zoom)
-        };
+        let x = (x - self.camera.x) * TILE_WIDTH  / 2.0 * self.camera.zoom + (width  / 2.0 - self.camera.x * self.camera.zoom);
+        let y = (y - self.camera.y) * TILE_HEIGHT / 2.0 * self.camera.zoom + (height / 2.0 - self.camera.y * self.camera.zoom);
 
         let min_x = -TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
         let min_y = -TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
         let max_x = width  + TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
         let max_y = height + TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
 
-        if point.x > min_x && point.x < max_x && point.y > min_y && point.y < max_y {
-            graphics::draw_ex(
-                ctx,
-                image,
-                DrawParam {
-                    dest: point,
-                    scale: Point {x: self.camera.zoom, y: self.camera.zoom},
-                    ..Default::default()
-                }
-            ).unwrap();
+        if x > min_x && x < max_x && y > min_y && y < max_y {
+            self.draw_at_scale(ctx, image, x, y, self.camera.zoom);
         }   
     }
 
     pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
-        for x in 0..TILE_COLS {
-            for y in 0..TILE_ROWS {
-                let tile = self.tiles[x][y];
+        for x in 0 .. self.tiles.cols {
+            for y in 0 .. self.tiles.rows {
+                let tile = self.tiles.tile_at(x, y);
                 let (x, y) = (x as f32, y as f32);
 
                 self.draw_image(ctx, &resources.images[tile.image], x, y);
@@ -240,11 +217,11 @@ impl Map {
         // Draw cursor
         match self.cursor.position {
             Some((x, y)) => {
-                let tile = self.tiles[x][y];
+                let tile = self.tiles.tile_at(x, y);
 
                 let image = if !tile.walkable {
                     images::CURSOR_UNWALKABLE
-                } else if self.squaddie_at(x, y) {
+                } else if self.squaddie_at(x, y).is_some() {
                     images::CURSOR_UNIT
                 } else {
                     images::CURSOR
@@ -275,8 +252,17 @@ impl Map {
             self.draw_image(ctx, &resources.images[enemy.image], enemy.x as f32, enemy.y as f32);
         }
 
-        // Print info
+        if self.cursor.fire {
+            match self.cursor.position {
+                Some((x, y)) => self.draw_image(ctx, &resources.images[images::CROSSHAIR], x as f32, y as f32),
+                None => {}
+            }
+        }
 
+        self.draw_ui(ctx, resources);
+    }
+
+    pub fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
         let selected = match self.selected {
             Some(i) => {
                 let squaddie = &self.squaddies[i];
@@ -285,18 +271,12 @@ impl Map {
             None => String::from("~")
         };
 
-        let rendered = Text::new(ctx, format!("Turn: {}, Selected: {}", self.turn, selected).as_str(), &resources.font).unwrap();
+        self.ui.set_text(0, format!("Turn: {}, Selected: {}", self.turn, selected));
 
-        let point = Point {
-            x: rendered.width() as f32 / 2.0 + 5.0,
-            y: rendered.height() as f32
-        };
-
-        graphics::draw(ctx, &rendered, point, 0.0).unwrap();
+        self.ui.draw(ctx, resources);
     }
 
-    pub fn move_cursor(&mut self, x: i32, y: i32) {
-        let (x, y) = (x as f32, y as f32);
+    pub fn move_cursor(&mut self, x: f32, y: f32) {
         let center_x = WINDOW_WIDTH  as f32 / 2.0;
         let center_y = WINDOW_HEIGHT as f32 / 2.0;
 
@@ -318,19 +298,28 @@ impl Map {
         }
     }
 
-    pub fn mouse_button(&mut self, button: MouseButton, _x: i32, _y: i32) {
+    pub fn mouse_button(&mut self, button: MouseButton, x: f32, y: f32) {
         match button {
-            MouseButton::Left => match self.cursor.position {
-                Some((x, y)) => {
-                     for (i, squaddie) in self.squaddies.iter().enumerate() {
-                        if squaddie.x == x && squaddie.y == y {
-                            self.selected = Some(i);
-                            break;
+            MouseButton::Left => match self.ui.clicked(x, y) {
+                Some(0) => self.end_turn(),
+                Some(1) => self.cursor.fire = !self.cursor.fire,
+                None => match self.cursor.position {
+                    Some((x, y)) => {
+                        if self.cursor.fire && self.selected.is_some() {
+                            match self.enemy_at(x, y) {
+                                Some(enemy) => {
+                                    let squaddie = &self.squaddies[self.selected.unwrap()];
+                                    squaddie.fire_at(enemy);
+                                },
+                                None => {}
+                            }
+                        } else {
+                            self.selected = self.squaddie_at(x, y);
                         }
-                        self.selected = None;
-                    }
+                    },
+                    None => {}
                 },
-                None => {}
+                _ => {}
             },
             MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
@@ -346,7 +335,10 @@ impl Map {
                         |point| *point == end
                     );
 
-                    if path.is_none() { return; }
+                    if path.is_none() {
+                        self.path = None;
+                        return;
+                    }
 
                     let (points, cost) = path.unwrap();
 
@@ -375,14 +367,31 @@ impl Map {
         }
     }
 
-    fn squaddie_at(&self, x: usize, y: usize) -> bool {
-        self.squaddies.iter().any(|squaddie| squaddie.x == x && squaddie.y == y)
+    fn squaddie_at(&self, x: usize, y: usize) -> Option<usize> {
+        for (i, squaddie) in self.squaddies.iter().enumerate() {
+            if squaddie.x == x && squaddie.y == y {
+                return Some(i);
+            }
+        }
+
+        None
+    }
+
+    fn enemy_at(&self, x: usize, y: usize) -> Option<&Enemy> {
+        self.enemies.iter().find(|enemy| enemy.x == x && enemy.y == y)
     }
 
     fn taken(&self, x: usize, y: usize) -> bool {
-        !self.tiles[x][y].walkable ||
-        self.squaddie_at(x, y) ||
+        !self.tiles.tile_at(x, y).walkable ||
+        self.squaddie_at(x, y).is_some() ||
         self.enemies.iter().any(|enemy| enemy.x == x && enemy.y == y)
+    }
+
+    /// End the current turn
+    fn end_turn(&mut self) {
+        for squaddie in &mut self.squaddies {
+            squaddie.moves = squaddie.max_moves;
+        }
     }
 }
 
@@ -417,8 +426,8 @@ impl PathPoint {
         let min_x = max(0, self.x as i32 - 1) as usize;
         let min_y = max(0, self.y as i32 - 1) as usize;
 
-        let max_x = min(TILE_COLS - 1, self.x + 1);
-        let max_y = min(TILE_ROWS - 1, self.y + 1);
+        let max_x = min(map.tiles.cols - 1, self.x + 1);
+        let max_y = min(map.tiles.rows - 1, self.y + 1);
 
         for x in min_x .. max_x + 1 {
             for y in min_y .. max_y + 1 {

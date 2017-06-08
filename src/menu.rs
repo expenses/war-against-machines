@@ -29,7 +29,7 @@ impl Menu {
         let title_x = WINDOW_WIDTH as f32 / 2.0;
         let title_y = title.height() as f32 / 2.0;
 
-        graphics::draw(ctx, title, Point{x: title_x, y: title_y}, 0.0).unwrap();
+        graphics::draw(ctx, title, Point::new(title_x, title_y), 0.0).unwrap();
 
         for (i, option) in OPTIONS.iter().enumerate() {
             let mut string = String::new();
@@ -42,10 +42,7 @@ impl Menu {
 
             let rendered = Text::new(ctx, string.as_str(), &resources.font).unwrap();
 
-            let point = Point {
-                x: title_x,
-                y: title_y + 50.0 + i as f32 * 20.0
-            };
+            let point = Point::new(title_x, title_y + 50.0 + i as f32 * 20.0);
 
             graphics::draw(ctx, &rendered, point, 0.0).unwrap();
         }

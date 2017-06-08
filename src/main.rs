@@ -6,6 +6,8 @@ mod map;
 mod menu;
 mod images;
 mod units;
+mod tiles;
+mod ui;
 
 use std::time::Duration;
 
@@ -57,7 +59,10 @@ impl Resources {
                 load_image(ctx, "/pit_tr.png")?,
                 load_image(ctx, "/pit_br.png")?,
                 load_image(ctx, "/pit_bl.png")?,
-                load_image(ctx, "/pit_center.png")?
+                load_image(ctx, "/pit_center.png")?,
+                load_image(ctx, "/end_turn_button.png")?,
+                load_image(ctx, "/fire_button.png")?,
+                load_image(ctx, "/crosshair.png")?
             ],
             font: Font::default_font().unwrap()
         })
@@ -84,9 +89,11 @@ impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
         graphics::set_background_color(ctx, Color::new(0.0, 0.0, 0.0, 0.0));
 
+        let resources = Resources::new(ctx)?;
+
         Ok(MainState {
-            resources: Resources::new(ctx)?,
-            map: map::Map::new(),
+            map: map::Map::new(&resources),
+            resources,
             menu: menu::Menu::new(), 
             mode: Mode::Menu,
             running: true
@@ -126,7 +133,7 @@ impl event::EventHandler for MainState {
                 Some(value) => match value {
                     0 => {
                         self.mode = Mode::Game;
-                        self.map.generate();
+                        self.map.start();
                     },
                     1 => self.running = false,
                     _ => {}
@@ -145,14 +152,14 @@ impl event::EventHandler for MainState {
 
     fn mouse_motion_event(&mut self, _state: MouseState, x: i32, y: i32, _xrel: i32, _yrel: i32) {
         match self.mode {
-            Mode::Game => self.map.move_cursor(x, y),
+            Mode::Game => self.map.move_cursor(x as f32, y as f32),
             _ => {}
         }
     }
 
     fn mouse_button_down_event(&mut self, button: MouseButton, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.mouse_button(button, x, y),
+            Mode::Game => self.map.mouse_button(button, x as f32, y as f32),
             _ => {}
         }
     }

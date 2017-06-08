@@ -22,3 +22,6 @@ pub const PIT_TR:               usize = 20;
 pub const PIT_BR:               usize = 21;
 pub const PIT_BL:               usize = 22;
 pub const PIT_CENTER:           usize = 23;
+pub const END_TURN_BUTTON:      usize = 24;
+pub const FIRE_BUTTON:          usize = 25;
+pub const CROSSHAIR:            usize = 26;

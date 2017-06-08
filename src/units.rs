@@ -26,7 +26,8 @@ pub struct Squaddie {
     pub image: usize,
     pub name: String,
     pub moves: usize,
-    pub max_moves: usize
+    pub max_moves: usize,
+    pub health: u8
 }
 
 impl Squaddie {
@@ -42,8 +43,13 @@ impl Squaddie {
             image: images::FRIENDLY,
             name: format!("{} {}", first_name, last_name),
             moves: MOVES,
-            max_moves: MOVES
+            max_moves: MOVES,
+            health: 100
         }
+    }
+
+    pub fn fire_at(&self, enemy: &Enemy) {
+        println!("{}", (self.x as f32 - enemy.x as f32).hypot(self.y as f32 - enemy.y as f32));
     }
 }
 
@@ -51,7 +57,8 @@ pub struct Enemy {
     pub x: usize,
     pub y: usize,
     pub image: usize,
-    pub name: String
+    pub name: String,
+    pub health: u8
 }
 
 impl Enemy {
@@ -60,7 +67,8 @@ impl Enemy {
             x,
             y,
             image: images::ENEMY,
-            name: String::from("S122")
+            name: String::from("S122"),
+            health: 100
         }
     }
 }
