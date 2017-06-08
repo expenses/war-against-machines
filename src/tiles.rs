@@ -2,20 +2,22 @@ use rand;
 use rand::Rng;
 
 use images;
+// use items::{Item, ItemType};
 
-#[derive(Copy, Clone)]
 pub struct Tile {
-    pub image: usize,
+    pub base: usize,
     pub decoration: Option<usize>,
-    pub walkable: bool
+    pub walkable: bool,
+    // pub items: Vec<Item>
 }
 
 impl Tile {
-    fn new() -> Tile {
+    fn new(base: usize) -> Tile {
         Tile {
-            image: images::MUD,
+            base,
             decoration: None,
-            walkable: true
+            walkable: true,
+            // items: Vec::new()
         }
     }
 
@@ -42,13 +44,23 @@ impl Tiles {
 
     pub fn generate(&mut self) {
         for _ in 0 .. self.cols * self.rows {
-            let mut tile = Tile::new();
+            let mut tile = Tile::new(if rand::random::<bool>() {
+                images::BASE_1
+            } else {
+                images::BASE_2
+            });
 
             if rand::random::<f32>() > 0.975 {
                 tile.decoration = Some(images::SKULL);
-            } else if rand::random::<f32>() > 0.975 {
-                tile.decoration = Some(images::MUD_POOL);
             }
+
+            /* if rand::random::<f32>() > 0.99 {
+                tile.items.push(Item::new(ItemType::Scrap))
+            }
+
+            if rand::random::<f32>() > 0.99 {
+                tile.items.push(Item::new(ItemType::Weapon))
+            } */
 
             self.tiles.push(tile);
         }

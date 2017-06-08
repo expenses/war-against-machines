@@ -1,7 +1,3 @@
-use pathfinding;
-
-use std::cmp::{min, max};
-
 use ggez::graphics;
 use ggez::graphics::{Point, Image, DrawParam};
 use ggez::Context;
@@ -13,20 +9,16 @@ use Resources;
 use {WINDOW_WIDTH, WINDOW_HEIGHT};
 use units::{Squaddie, Enemy};
 use ui::{UI, Button, TextDisplay};
+use paths::{pathfind, PathPoint};
+// use items::ItemType;
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
 const DEFAULT_ZOOM: f32 = 2.0;
 
-const TILE_ROWS: usize = 20;
-const TILE_COLS: usize = 20;
-
 const TILE_WIDTH: f32 = 48.0;
 const TILE_HEIGHT: f32 = 24.0;
 const TILE_IMAGE_SIZE: f32 = 48.0;
-
-const WALK_COST: usize = 2;
-const WALK_DIAGONAL_COST: usize = 3;
 
 fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
     (x - y, x + y)
@@ -67,10 +59,10 @@ impl Cursor {
 }
 
 pub struct Map {
+    pub tiles: Tiles,
     camera: Camera,
     cursor: Cursor,
     keys: [bool; 6],
-    tiles: Tiles,
     squaddies: Vec<Squaddie>,
     enemies: Vec<Enemy>,
     selected: Option<usize>,
@@ -82,31 +74,37 @@ pub struct Map {
 impl Map {
     pub fn new(resources: &Resources) -> Map {
         let scale = 2.0;
+        let button_image = &resources.images[images::END_TURN_BUTTON];
+        let (width, height) = (button_image.width() as f32 * scale, button_image.height() as f32 * scale);
 
         let mut ui = UI::new();
-        let end_turn_image = &resources.images[images::END_TURN_BUTTON];
-        ui.add_button(Button::new(
-            images::END_TURN_BUTTON,
-            WINDOW_WIDTH as f32 - end_turn_image.width() as f32 * scale,
-            WINDOW_HEIGHT as f32 - end_turn_image.height() as f32 * scale,
-            scale,
-            resources
-        ));
-        ui.add_button(Button::new(
-            images::FIRE_BUTTON,
-            WINDOW_WIDTH as f32 - end_turn_image.width() as f32 * scale * 2.0,
-            WINDOW_HEIGHT as f32 - end_turn_image.height() as f32 * scale,
-            scale,
-            resources
-        ));
-        ui.add_text_display(TextDisplay::new(0.0, 0.0));
+
+        ui.buttons = vec![
+            Button::new(
+                images::END_TURN_BUTTON,
+                WINDOW_WIDTH as f32 - width,
+                WINDOW_HEIGHT as f32 - height,
+                scale,
+                resources
+            ),
+            Button::new(
+                images::FIRE_BUTTON,
+                WINDOW_WIDTH as f32 - width * 2.0,
+                WINDOW_HEIGHT as f32 - height,
+                scale,
+                resources
+            )
+        ];
+        ui.text_displays = vec![
+            TextDisplay::new(5.0, 5.0)
+        ];
 
 
         Map {
+            tiles: Tiles::new(20, 20),
             camera: Camera::new(),
             cursor: Cursor::new(),
             keys: [false; 6],
-            tiles: Tiles::new(TILE_COLS, TILE_ROWS),
             squaddies: Vec::new(),
             enemies: Vec::new(),
             selected: None,
@@ -126,8 +124,8 @@ impl Map {
         }
 
         // Add enemies
-        for y in TILE_ROWS - 3 .. TILE_ROWS {
-            self.enemies.push(Enemy::new(TILE_ROWS - 1, y));
+        for y in self.tiles.cols - 3 .. self.tiles.cols {
+            self.enemies.push(Enemy::new(y, self.tiles.rows - 1));
         }
     }
 
@@ -191,45 +189,56 @@ impl Map {
                 let tile = self.tiles.tile_at(x, y);
                 let (x, y) = (x as f32, y as f32);
 
-                self.draw_image(ctx, &resources.images[tile.image], x, y);
+                self.draw_image(ctx, &resources.images[tile.base], x, y);
 
                 match tile.decoration {
                     Some(decoration) => self.draw_image(ctx, &resources.images[decoration], x, y),
                     _ => {}
                 }
+
+                /* for item in &tile.items {
+                    let image = match item.item_type {
+                        ItemType::Scrap => images::SCRAP_METAL,
+                        ItemType::Weapon => images::WEAPON
+                    };
+
+                    self.draw_image(ctx, &resources.images[image], x, y);
+                } */
             }
         }
 
         // Draw the edges
 
-        self.draw_image(ctx, &resources.images[images::EDGE_LEFT_CORNER], 0.0, TILE_ROWS as f32);
-        self.draw_image(ctx, &resources.images[images::EDGE_CORNER], TILE_COLS as f32, TILE_ROWS as f32);
-        self.draw_image(ctx, &resources.images[images::EDGE_RIGHT_CORNER], TILE_COLS as f32, 0.0);
+        self.draw_image(ctx, &resources.images[images::EDGE_LEFT_CORNER], 0.0, self.tiles.rows as f32);
+        self.draw_image(ctx, &resources.images[images::EDGE_CORNER], self.tiles.cols as f32, self.tiles.rows as f32);
+        self.draw_image(ctx, &resources.images[images::EDGE_RIGHT_CORNER], self.tiles.cols as f32, 0.0);
 
-        for x in 1..TILE_COLS {
-            self.draw_image(ctx, &resources.images[images::EDGE_LEFT], x as f32, TILE_ROWS as f32);
+        for x in 1..self.tiles.cols {
+            self.draw_image(ctx, &resources.images[images::EDGE_LEFT], x as f32, self.tiles.rows as f32);
         }
 
-        for y in 1..TILE_ROWS {
-            self.draw_image(ctx, &resources.images[images::EDGE_RIGHT], TILE_COLS as f32, y as f32);
+        for y in 1..self.tiles.rows {
+            self.draw_image(ctx, &resources.images[images::EDGE_RIGHT], self.tiles.cols as f32, y as f32);
         }
 
         // Draw cursor
-        match self.cursor.position {
-            Some((x, y)) => {
-                let tile = self.tiles.tile_at(x, y);
+        if !self.cursor.fire {
+            match self.cursor.position {
+                Some((x, y)) => {
+                    let tile = self.tiles.tile_at(x, y);
 
-                let image = if !tile.walkable {
-                    images::CURSOR_UNWALKABLE
-                } else if self.squaddie_at(x, y).is_some() {
-                    images::CURSOR_UNIT
-                } else {
-                    images::CURSOR
-                };
+                    let image = if !tile.walkable {
+                        images::CURSOR_UNWALKABLE
+                    } else if self.squaddie_at(x, y).is_some() {
+                        images::CURSOR_UNIT
+                    } else {
+                        images::CURSOR
+                    };
 
-                self.draw_image(ctx, &resources.images[image], x as f32, y as f32);
+                    self.draw_image(ctx, &resources.images[image], x as f32, y as f32);
+                }
+                None => {}
             }
-            None => {}
         }
 
         // Draw path
@@ -244,17 +253,27 @@ impl Map {
 
         // Draw squaddies
         for squaddie in &self.squaddies {
-            self.draw_image(ctx, &resources.images[squaddie.image], squaddie.x as f32, squaddie.y as f32);
+            let (x, y) = (squaddie.x as f32, squaddie.y as f32);
+            if squaddie.alive() {
+                self.draw_image(ctx, &resources.images[squaddie.image], x, y);
+            } else {
+                self.draw_image(ctx, &resources.images[images::DEAD_FRIENDLY], x, y);
+            }
         }
 
         // Draw enemies
         for enemy in &self.enemies {
-            self.draw_image(ctx, &resources.images[enemy.image], enemy.x as f32, enemy.y as f32);
+            let (x, y) = (enemy.x as f32, enemy.y as f32);
+            if enemy.alive() {
+                self.draw_image(ctx, &resources.images[enemy.image], x, y);
+            } else {
+                self.draw_image(ctx, &resources.images[images::DEAD_ENEMY], x, y);
+            }
         }
 
         if self.cursor.fire {
             match self.cursor.position {
-                Some((x, y)) => self.draw_image(ctx, &resources.images[images::CROSSHAIR], x as f32, y as f32),
+                Some((x, y)) => self.draw_image(ctx, &resources.images[images::CURSOR_CROSSHAIR], x as f32, y as f32),
                 None => {}
             }
         }
@@ -277,24 +296,30 @@ impl Map {
     }
 
     pub fn move_cursor(&mut self, x: f32, y: f32) {
+        // Get the center of the window
         let center_x = WINDOW_WIDTH  as f32 / 2.0;
         let center_y = WINDOW_HEIGHT as f32 / 2.0;
 
+        // Convert the points to their locations on the map
+        // This involves finding the points relative to the center of the screen and the camera
+        // Then scaling them down to the proper locations and finally offsetting by half the camera position
         let x = (x - center_x + self.camera.x * self.camera.zoom) / TILE_WIDTH  / self.camera.zoom + self.camera.x / 2.0;
         let y = (y - center_y + self.camera.y * self.camera.zoom) / TILE_HEIGHT / self.camera.zoom + self.camera.y / 2.0;
 
         // Account for the images being square
         let y = y - 0.5;
 
+        // Convert to map coordinates
         let (x, y) = to_map_coords(x, y);
 
-        let x = x.round() as usize;
-        let y = y.round() as usize;
+        // And then to usize
+        let (x, y) = (x.round() as usize, y.round() as usize);
 
-        if x < TILE_COLS && y < TILE_ROWS {
-            self.cursor.position = Some((x, y));
+        // Set cursor position
+        self.cursor.position = if x < self.tiles.cols && y < self.tiles.rows {
+            Some((x, y))
         } else {
-            self.cursor.position = None;
+            None
         }
     }
 
@@ -306,14 +331,14 @@ impl Map {
                 None => match self.cursor.position {
                     Some((x, y)) => {
                         if self.cursor.fire && self.selected.is_some() {
-                            match self.enemy_at(x, y) {
+                            match self.enemies.iter_mut().find(|enemy| enemy.x == x && enemy.y == y) {
                                 Some(enemy) => {
-                                    let squaddie = &self.squaddies[self.selected.unwrap()];
+                                    let squaddie = &mut self.squaddies[self.selected.unwrap()];
                                     squaddie.fire_at(enemy);
-                                },
+                                }
                                 None => {}
                             }
-                        } else {
+                        } else if !self.cursor.fire {
                             self.selected = self.squaddie_at(x, y);
                         }
                     },
@@ -328,37 +353,25 @@ impl Map {
                     let start = PathPoint::from(&self.squaddies[selected]);
                     let end = PathPoint::new(x, y);
 
-                    let path = pathfinding::astar(
-                        &start,
-                        |point| point.neighbours(&self),
-                        |point| point.cost(&end),
-                        |point| *point == end
-                    );
-
-                    if path.is_none() {
-                        self.path = None;
-                        return;
-                    }
-
-                    let (points, cost) = path.unwrap();
+                    let (points, cost) = match pathfind(&start, &end, &self) {
+                        Some((points, cost)) => (points, cost),
+                        None => {
+                            self.path = None;
+                            return;
+                        }
+                    };
 
                     let same_path = match self.path {
-                        Some(ref path) => {
-                            let path_end = &path[path.len() - 1];
-                            *path_end == end
-                        }
+                        Some(ref path) => path[path.len() - 1] == end,
                         None => false
                     };
 
                     let squaddie = &mut self.squaddies[selected];
 
-                    if same_path && squaddie.moves >= cost {
-                        squaddie.x = x;
-                        squaddie.y = y;
-                        squaddie.moves -= cost;
-                        self.path = None;
+                    self.path = if same_path && squaddie.move_to(x, y, cost) {
+                        None
                     } else {
-                        self.path = Some(points);
+                        Some(points)
                     }
                 }
                 None => {}
@@ -377,11 +390,7 @@ impl Map {
         None
     }
 
-    fn enemy_at(&self, x: usize, y: usize) -> Option<&Enemy> {
-        self.enemies.iter().find(|enemy| enemy.x == x && enemy.y == y)
-    }
-
-    fn taken(&self, x: usize, y: usize) -> bool {
+    pub fn taken(&self, x: usize, y: usize) -> bool {
         !self.tiles.tile_at(x, y).walkable ||
         self.squaddie_at(x, y).is_some() ||
         self.enemies.iter().any(|enemy| enemy.x == x && enemy.y == y)
@@ -392,53 +401,6 @@ impl Map {
         for squaddie in &mut self.squaddies {
             squaddie.moves = squaddie.max_moves;
         }
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-struct PathPoint {
-    x: usize,
-    y: usize
-}
-
-impl PathPoint {
-    fn new(x: usize, y: usize) -> PathPoint {
-        PathPoint {
-            x,
-            y
-        }
-    }
-
-    fn from(squaddie: &Squaddie) -> PathPoint {
-        PathPoint {
-            x: squaddie.x,
-            y: squaddie.y
-        }
-    }
-
-    fn cost(&self, point: &PathPoint) -> usize {
-        if self.x == point.x || self.y == point.y { WALK_COST } else { WALK_DIAGONAL_COST }
-    }
-
-    fn neighbours(&self, map: &Map) -> Vec<(PathPoint, usize)> {
-        let mut neighbours = Vec::new();
-
-        let min_x = max(0, self.x as i32 - 1) as usize;
-        let min_y = max(0, self.y as i32 - 1) as usize;
-
-        let max_x = min(map.tiles.cols - 1, self.x + 1);
-        let max_y = min(map.tiles.rows - 1, self.y + 1);
-
-        for x in min_x .. max_x + 1 {
-            for y in min_y .. max_y + 1 {
-                if !map.taken(x, y) {
-                    let point = PathPoint::new(x, y);
-                    let cost = self.cost(&point);
-                    neighbours.push((point, cost));
-                }
-            }
-        }
-
-        return neighbours;
+        self.turn += 1;
     }
 }

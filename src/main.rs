@@ -8,6 +8,9 @@ mod images;
 mod units;
 mod tiles;
 mod ui;
+mod weapons;
+mod paths;
+// mod items;
 
 use std::time::Duration;
 
@@ -34,46 +37,45 @@ pub struct Resources {
 
 impl Resources {
     fn new(ctx: &mut Context) -> GameResult<Resources> {
+        graphics::set_default_filter(ctx, FilterMode::Nearest);
+
         Ok(Resources {
             images: vec![
-                load_image(ctx, "/mud.png")?,
-                load_image(ctx, "/edge_left_corner.png")?,
-                load_image(ctx, "/edge_left.png")?,
-                load_image(ctx, "/edge_corner.png")?,
-                load_image(ctx, "/edge_right.png")?,
-                load_image(ctx, "/edge_right_corner.png")?,
-                load_image(ctx, "/skull.png")?,
-                load_image(ctx, "/mud_pool.png")?,
-                load_image(ctx, "/cursor.png")?,
-                load_image(ctx, "/cursor_unit.png")?,
-                load_image(ctx, "/cursor_unwalkable.png")?,
-                load_image(ctx, "/title.png")?,
-                load_image(ctx, "/friendly.png")?,
-                load_image(ctx, "/enemy.png")?,
-                load_image(ctx, "/path.png")?,
-                load_image(ctx, "/pit_left.png")?,
-                load_image(ctx, "/pit_top.png")?,
-                load_image(ctx, "/pit_right.png")?,
-                load_image(ctx, "/pit_bottom.png")?,
-                load_image(ctx, "/pit_tl.png")?,
-                load_image(ctx, "/pit_tr.png")?,
-                load_image(ctx, "/pit_br.png")?,
-                load_image(ctx, "/pit_bl.png")?,
-                load_image(ctx, "/pit_center.png")?,
-                load_image(ctx, "/end_turn_button.png")?,
-                load_image(ctx, "/fire_button.png")?,
-                load_image(ctx, "/crosshair.png")?
+                Image::new(ctx, "/base_1.png")?,
+                Image::new(ctx, "/base_2.png")?,
+                Image::new(ctx, "/edge_left_corner.png")?,
+                Image::new(ctx, "/edge_left.png")?,
+                Image::new(ctx, "/edge_corner.png")?,
+                Image::new(ctx, "/edge_right.png")?,
+                Image::new(ctx, "/edge_right_corner.png")?,
+                Image::new(ctx, "/skull.png")?,
+                Image::new(ctx, "/cursor.png")?,
+                Image::new(ctx, "/cursor_unit.png")?,
+                Image::new(ctx, "/cursor_unwalkable.png")?,
+                Image::new(ctx, "/cursor_crosshair.png")?,
+                Image::new(ctx, "/title.png")?,
+                Image::new(ctx, "/friendly.png")?,
+                Image::new(ctx, "/enemy.png")?,
+                Image::new(ctx, "/dead_friendly.png")?,
+                Image::new(ctx, "/dead_enemy.png")?,
+                Image::new(ctx, "/path.png")?,
+                Image::new(ctx, "/pit_left.png")?,
+                Image::new(ctx, "/pit_top.png")?,
+                Image::new(ctx, "/pit_right.png")?,
+                Image::new(ctx, "/pit_bottom.png")?,
+                Image::new(ctx, "/pit_tl.png")?,
+                Image::new(ctx, "/pit_tr.png")?,
+                Image::new(ctx, "/pit_br.png")?,
+                Image::new(ctx, "/pit_bl.png")?,
+                Image::new(ctx, "/pit_center.png")?,
+                Image::new(ctx, "/end_turn_button.png")?,
+                Image::new(ctx, "/fire_button.png")?
+                // Image::new(ctx, "/scrap_metal.png")?,
+                // Image::new(ctx, "/weapon.png")?
             ],
             font: Font::default_font().unwrap()
         })
     }
-}
-
-fn load_image(ctx: &mut Context, image: &str) -> GameResult<Image> {
-    let mut image = Image::new(ctx, image)?;
-    image.set_filter(FilterMode::Nearest);
-
-    Ok(image)
 }
 
 struct MainState {

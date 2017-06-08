@@ -1,2 +1,5 @@
 target/
 **/*.rs.bk
+
+# Autosaves for ipython notebooks (used for graphing e.g. chance-to-hit)
+.ipynb_checkpoints

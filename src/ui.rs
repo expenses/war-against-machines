@@ -10,7 +10,8 @@ pub struct Button {
     y: f32,
     width: f32,
     height: f32,
-    scale: f32
+    scale: f32,
+    active: bool,
 }
 
 impl Button {
@@ -20,7 +21,8 @@ impl Button {
         let height = image_resource.height() as f32 * scale;
 
         Button {
-            image, x, y, width, height, scale
+            image, x, y, width, height, scale,
+            active: true
         }
     }
 
@@ -45,15 +47,16 @@ impl Button {
 pub struct TextDisplay {
     x: f32,
     y: f32,
-    text: String
+    text: String,
+    active: bool
 }
 
 impl TextDisplay {
     pub fn new(x: f32, y: f32) -> TextDisplay {
         TextDisplay {
-            x,
-            y,
-            text: String::new()
+            x, y,
+            text: String::new(),
+            active: true
         }
     }
 
@@ -69,8 +72,8 @@ impl TextDisplay {
 }
 
 pub struct UI {
-    buttons: Vec<Button>,
-    text_displays: Vec<TextDisplay>
+    pub buttons: Vec<Button>,
+    pub text_displays: Vec<TextDisplay>
 }
 
 impl UI {
@@ -81,31 +84,27 @@ impl UI {
         }
     }
 
-    pub fn add_button(&mut self, button: Button) {
-        self.buttons.push(button);
-    }
-
-    pub fn add_text_display(&mut self, text: TextDisplay) {
-        self.text_displays.push(text);
-    }
-
     pub fn set_text(&mut self, display: usize, text: String) {
         self.text_displays[display].text = text;
     }
 
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         for button in &self.buttons {
-            button.draw(ctx, resources);
+            if button.active {
+                button.draw(ctx, resources);
+            }
         }
 
         for text_display in &self.text_displays {
-            text_display.draw(ctx, resources);
+            if text_display.active {
+                text_display.draw(ctx, resources);
+            }
         }
     }
 
     pub fn clicked(&self, x: f32, y: f32) -> Option<usize> {
         for (i, button) in self.buttons.iter().enumerate() {
-            if button.clicked(x, y) {
+            if button.active && button.clicked(x, y) {
                 return Some(i);
             }
         }
