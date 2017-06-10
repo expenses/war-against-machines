@@ -2,7 +2,6 @@ use rand;
 use rand::Rng;
 
 use images;
-// use items::{Item, ItemType};
 
 pub struct Tile {
     pub base: usize,
@@ -28,7 +27,7 @@ impl Tile {
 }
 
 pub struct Tiles {
-    tiles: Vec<Tile>,
+    pub tiles: Vec<Tile>,
     pub cols: usize,
     pub rows: usize
 }
@@ -73,25 +72,25 @@ impl Tiles {
         let pit_y = rng.gen_range(1, self.rows - 1 - pit_height);
 
         // Add pit corners
-        self.mut_tile_at(pit_x, pit_y).set_pit(images::PIT_TOP);
-        self.mut_tile_at(pit_x, pit_y + pit_height).set_pit(images::PIT_LEFT);
-        self.mut_tile_at(pit_x + pit_width, pit_y).set_pit(images::PIT_RIGHT);
-        self.mut_tile_at(pit_x + pit_width, pit_y + pit_height).set_pit(images::PIT_BOTTOM);
+        self.tile_at_mut(pit_x, pit_y).set_pit(images::PIT_TOP);
+        self.tile_at_mut(pit_x, pit_y + pit_height).set_pit(images::PIT_LEFT);
+        self.tile_at_mut(pit_x + pit_width, pit_y).set_pit(images::PIT_RIGHT);
+        self.tile_at_mut(pit_x + pit_width, pit_y + pit_height).set_pit(images::PIT_BOTTOM);
 
         // Add pit edges and center
 
         for x in pit_x + 1 .. pit_x + pit_width {
-            self.mut_tile_at(x, pit_y).set_pit(images::PIT_TR);
-            self.mut_tile_at(x, pit_y + pit_height).set_pit(images::PIT_BL);
+            self.tile_at_mut(x, pit_y).set_pit(images::PIT_TR);
+            self.tile_at_mut(x, pit_y + pit_height).set_pit(images::PIT_BL);
 
             for y in pit_y + 1 .. pit_y + pit_height {
-                self.mut_tile_at(x, y).set_pit(images::PIT_CENTER);
+                self.tile_at_mut(x, y).set_pit(images::PIT_CENTER);
             }
         }
 
         for y in pit_y + 1 .. pit_y + pit_height {
-             self.mut_tile_at(pit_x, y).set_pit(images::PIT_TL);
-             self.mut_tile_at(pit_x + pit_width, y).set_pit(images::PIT_BR);
+             self.tile_at_mut(pit_x, y).set_pit(images::PIT_TL);
+             self.tile_at_mut(pit_x + pit_width, y).set_pit(images::PIT_BR);
         }
     }
 
@@ -99,7 +98,7 @@ impl Tiles {
         &self.tiles[x * self.rows + y]
     }
 
-    fn mut_tile_at(&mut self, x: usize, y: usize) -> &mut Tile {
+    fn tile_at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[x * self.rows + y]
     }
 }

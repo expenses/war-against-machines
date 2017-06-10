@@ -1,5 +1,5 @@
 use ggez::graphics;
-use ggez::graphics::{Point, Image, DrawParam};
+use ggez::graphics::{Point, DrawParam, Text, Drawable};
 use ggez::Context;
 use ggez::event::{Keycode, MouseButton};
 
@@ -7,7 +7,7 @@ use tiles::Tiles;
 use images;
 use Resources;
 use {WINDOW_WIDTH, WINDOW_HEIGHT};
-use units::{Squaddie, Enemy};
+use units::{Unit, UnitType, UnitSide};
 use ui::{UI, Button, TextDisplay};
 use paths::{pathfind, PathPoint};
 // use items::ItemType;
@@ -63,8 +63,8 @@ pub struct Map {
     camera: Camera,
     cursor: Cursor,
     keys: [bool; 6],
-    squaddies: Vec<Squaddie>,
-    enemies: Vec<Enemy>,
+    squaddies: Vec<Unit>,
+    enemies: Vec<Unit>,
     selected: Option<usize>,
     path: Option<Vec<PathPoint>>,
     turn: u16,
@@ -99,7 +99,6 @@ impl Map {
             TextDisplay::new(5.0, 5.0)
         ];
 
-
         Map {
             tiles: Tiles::new(20, 20),
             camera: Camera::new(),
@@ -120,12 +119,12 @@ impl Map {
 
         // Add squaddies
         for x in 0..3 {
-            self.squaddies.push(Squaddie::new(x, 0));
+            self.squaddies.push(Unit::new(UnitType::Squaddie, UnitSide::Friendly, x, 0));
         }
 
         // Add enemies
         for y in self.tiles.cols - 3 .. self.tiles.cols {
-            self.enemies.push(Enemy::new(y, self.tiles.rows - 1));
+            self.enemies.push(Unit::new(UnitType::Robot, UnitSide::Enemy, y, self.tiles.rows - 1));
         }
     }
 
@@ -153,7 +152,7 @@ impl Map {
         if self.camera.zoom < 1.0 { self.camera.zoom = 1.0; }
     }
 
-    fn draw_at_scale(&self, ctx: &mut Context, image: &Image, x: f32, y: f32, scale: f32) {
+    fn draw_at_scale(&self, ctx: &mut Context, image: &Drawable, x: f32, y: f32, scale: f32) {
         graphics::draw_ex(
             ctx,
             image,
@@ -165,7 +164,7 @@ impl Map {
         ).unwrap();
     }
 
-    fn draw_image(&self, ctx: &mut Context, image: &Image, x: f32, y: f32) {
+    fn draw_image(&self, ctx: &mut Context, image: &Drawable, x: f32, y: f32) {
         let (x, y) = from_map_coords(x, y);
         let width = WINDOW_WIDTH as f32;
         let height = WINDOW_HEIGHT as f32;
@@ -245,6 +244,8 @@ impl Map {
         match self.path {
             Some(ref points) => {
                 for point in points {
+                    let cost = Text::new(ctx, format!("{}", point.cost).as_str(), &resources.font).unwrap();
+                    self.draw_image(ctx, &cost, point.x as f32, point.y as f32);
                     self.draw_image(ctx, &resources.images[images::PATH], point.x as f32, point.y as f32);
                 }
             }
@@ -253,22 +254,12 @@ impl Map {
 
         // Draw squaddies
         for squaddie in &self.squaddies {
-            let (x, y) = (squaddie.x as f32, squaddie.y as f32);
-            if squaddie.alive() {
-                self.draw_image(ctx, &resources.images[squaddie.image], x, y);
-            } else {
-                self.draw_image(ctx, &resources.images[images::DEAD_FRIENDLY], x, y);
-            }
+            self.draw_image(ctx, &resources.images[squaddie.image()], squaddie.x as f32, squaddie.y as f32);
         }
 
         // Draw enemies
         for enemy in &self.enemies {
-            let (x, y) = (enemy.x as f32, enemy.y as f32);
-            if enemy.alive() {
-                self.draw_image(ctx, &resources.images[enemy.image], x, y);
-            } else {
-                self.draw_image(ctx, &resources.images[images::DEAD_ENEMY], x, y);
-            }
+            self.draw_image(ctx, &resources.images[enemy.image()], enemy.x as f32, enemy.y as f32);
         }
 
         if self.cursor.fire {
@@ -285,7 +276,10 @@ impl Map {
         let selected = match self.selected {
             Some(i) => {
                 let squaddie = &self.squaddies[i];
-                format!("(Name: {}, ID: {}, X: {}, Y: {}, Moves: {})", squaddie.name, i, squaddie.x, squaddie.y, squaddie.moves)
+                format!(
+                    "(Name: {}, ID: {}, X: {}, Y: {}, Moves: {}, Weapon: {})",
+                    squaddie.name, i, squaddie.x, squaddie.y, squaddie.moves, squaddie.weapon.name()
+                )
             },
             None => String::from("~")
         };
@@ -362,7 +356,7 @@ impl Map {
                     };
 
                     let same_path = match self.path {
-                        Some(ref path) => path[path.len() - 1] == end,
+                        Some(ref path) => path[path.len() - 1].at(&end),
                         None => false
                     };
 

@@ -73,7 +73,7 @@ impl Resources {
                 // Image::new(ctx, "/scrap_metal.png")?,
                 // Image::new(ctx, "/weapon.png")?
             ],
-            font: Font::default_font().unwrap()
+            font: Font::new(ctx, "/font.ttf", 12)?
         })
     }
 }
@@ -178,6 +178,5 @@ pub fn main() {
 
     let mut ctx = Context::load_from_conf(TITLE, "ggez", c).unwrap();
     let mut state = MainState::new(&mut ctx).unwrap();
-
     event::run(&mut ctx, &mut state).unwrap();
 }
