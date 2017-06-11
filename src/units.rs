@@ -5,7 +5,7 @@ use images;
 use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 
-const FIRST_NAMES: [&str; 9] = [
+const FIRST_NAMES: &[&str; 9] = &[
     "David",
     "Dale",
     "Robert",
@@ -17,7 +17,7 @@ const FIRST_NAMES: [&str; 9] = [
     "Heisenberg"
 ];
 
-const LAST_NAMES: [&str; 7] = [
+const LAST_NAMES: &[&str; 7] = &[
     "Cooper",
     "Yang",
     "Smith",
@@ -59,10 +59,8 @@ impl Unit {
             UnitType::Squaddie => {
                 // Generate a random name
                 let mut rng = rand::thread_rng();
-                let first_names = &FIRST_NAMES;
-                let last_names = &LAST_NAMES;
-                let first = rng.choose(first_names).unwrap();
-                let last = rng.choose(last_names).unwrap();
+                let first = rng.choose(FIRST_NAMES).unwrap();
+                let last = rng.choose(LAST_NAMES).unwrap();
 
                 let weapon_type = if rng.gen::<bool>() { Rifle } else { MachineGun };
 

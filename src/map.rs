@@ -278,13 +278,23 @@ impl Map {
         // Draw path
         match self.path {
             Some(ref points) => {
+                let squaddie = &self.squaddies[self.selected.unwrap()];
+
                 for point in points {
                     let (x, y) = self.draw_location(point.x as f32, point.y as f32);
 
                     if self.tile_onscreen(x, y) {
                         let cost = Text::new(ctx, format!("{}", point.cost).as_str(), &resources.font).unwrap();
+                        let image = if point.cost > squaddie.moves {
+                            images::PATH_UNREACHABLE
+                        } else if point.cost + squaddie.weapon.cost > squaddie.moves {
+                            images::PATH_NO_WEAPON
+                        } else {
+                            images::PATH_DEFAULT
+                        };
+
                         self.draw_scaled(ctx, &cost, x, y);
-                        self.draw_scaled(ctx, &resources.images[images::PATH], x, y);
+                        self.draw_scaled(ctx, &resources.images[image], x, y);
                     }
                 }
             }
@@ -353,6 +363,8 @@ impl Map {
                 Some(1) => self.cursor.fire = !self.cursor.fire,
                 _ => match self.cursor.position {
                     Some((x, y)) => {
+                        self.path = None;
+
                         if self.cursor.fire && self.selected.is_some() {
                             match self.enemies.iter_mut().find(|enemy| enemy.x == x && enemy.y == y) {
                                 Some(enemy) => {
@@ -370,7 +382,10 @@ impl Map {
             },
             MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
-                    if self.taken(x, y) { return; }
+                    if self.taken(x, y) {
+                        self.path = None;
+                        return;
+                    }
 
                     let start = PathPoint::from(&self.squaddies[selected]);
                     let end = PathPoint::new(x, y);

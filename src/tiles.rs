@@ -43,26 +43,22 @@ impl Tiles {
         self.cols = cols;
         self.rows = rows;
 
+        let mut rng = rand::thread_rng();
+        let ruins = &[images::RUIN_1, images::RUIN_2, images::RUIN_3];
+        let bases = &[images::BASE_1, images::BASE_2];
+
         for _ in 0 .. cols {
             for row in 0 .. rows {
-                let mut tile = Tile::new(if rand::random::<bool>() {
-                    images::BASE_1
-                } else {
-                    images::BASE_2
-                });
+                let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
                 // Add in skulls
-                if rand::random::<f32>() > 0.975 {
+                if rand::random::<f32>() < 0.025 {
                     tile.decoration = Some(images::SKULL);
                 } 
 
                 // Add in ruins
-                if row != 0 && row != rows - 1 && rand::random::<f32>() > 0.90 {
-                    if rand::random::<bool>() {
-                        tile.set_obstacle(images::RUIN_1);
-                    } else {
-                        tile.set_obstacle(images::RUIN_2);
-                    }
+                if row != 0 && row != rows - 1 && rand::random::<f32>() < 0.1 {
+                    tile.set_obstacle(*rng.choose(ruins).unwrap());
                 }
 
                 self.tiles.push(tile);
