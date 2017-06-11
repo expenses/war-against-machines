@@ -10,7 +10,8 @@ mod tiles;
 mod ui;
 mod weapons;
 mod paths;
-// mod items;
+
+use menu::Callback;
 
 use std::time::Duration;
 
@@ -69,9 +70,10 @@ impl Resources {
                 Image::new(ctx, "/pit_bl.png")?,
                 Image::new(ctx, "/pit_center.png")?,
                 Image::new(ctx, "/end_turn_button.png")?,
-                Image::new(ctx, "/fire_button.png")?
-                // Image::new(ctx, "/scrap_metal.png")?,
-                // Image::new(ctx, "/weapon.png")?
+                Image::new(ctx, "/fire_button.png")?,
+                Image::new(ctx, "/ruin_1.png")?,
+                Image::new(ctx, "/ruin_2.png")?
+                // Image::new(ctx, "/fog.png")?
             ],
             font: Font::new(ctx, "/font.ttf", 12)?
         })
@@ -132,13 +134,12 @@ impl event::EventHandler for MainState {
         match self.mode {
             Mode::Game => self.map.handle_key(key, true),
             Mode::Menu => match self.menu.handle_key(key) {
-                Some(value) => match value {
-                    0 => {
+                Some(callback) => match callback {
+                    Callback::Play => {
                         self.mode = Mode::Game;
-                        self.map.start();
+                        self.map.start(self.menu.rows, self.menu.cols);
                     },
-                    1 => self.running = false,
-                    _ => {}
+                    Callback::Quit => self.running = false,
                 },
                 _ => {}
             }

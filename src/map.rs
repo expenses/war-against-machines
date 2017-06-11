@@ -58,6 +58,23 @@ impl Cursor {
     }
 }
 
+/*
+struct Fog {
+    x: f32,
+    y: f32,
+    image: usize
+}
+
+impl Fog {
+    fn new(x: f32, y: f32) -> Fog {
+        Fog {
+            x, y,
+            image: images::FOG
+        }
+    }
+}
+*/
+
 pub struct Map {
     pub tiles: Tiles,
     camera: Camera,
@@ -68,7 +85,8 @@ pub struct Map {
     selected: Option<usize>,
     path: Option<Vec<PathPoint>>,
     turn: u16,
-    ui: UI
+    ui: UI,
+    // fog: Vec<Fog>
 }
 
 impl Map {
@@ -100,7 +118,7 @@ impl Map {
         ];
 
         Map {
-            tiles: Tiles::new(20, 20),
+            tiles: Tiles::new(),
             camera: Camera::new(),
             cursor: Cursor::new(),
             keys: [false; 6],
@@ -109,13 +127,14 @@ impl Map {
             selected: None,
             path: None,
             turn: 1,
-            ui
+            ui: ui,
+            // fog: vec![Fog::new(-2.0, 3.0), Fog::new(-4.0, 2.0)]
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self, cols: usize, rows: usize) {
         // Generate tiles
-        self.tiles.generate();
+        self.tiles.generate(cols, rows);
 
         // Add squaddies
         for x in 0..3 {
@@ -150,124 +169,134 @@ impl Map {
 
         if self.camera.zoom > 10.0 { self.camera.zoom = 10.0; }
         if self.camera.zoom < 1.0 { self.camera.zoom = 1.0; }
+
+        /*for fog_cloud in &mut self.fog {
+            fog_cloud.x += 0.01;
+        }*/
     }
 
-    fn draw_at_scale(&self, ctx: &mut Context, image: &Drawable, x: f32, y: f32, scale: f32) {
+    fn draw_scaled(&self, ctx: &mut Context, image: &Drawable, x: f32, y: f32) {
         graphics::draw_ex(
             ctx,
             image,
             DrawParam {
                 dest: Point::new(x, y),
-                scale: Point::new(scale, scale),
+                scale: Point::new(self.camera.zoom, self.camera.zoom),
                 ..Default::default()
             }
         ).unwrap();
     }
 
-    fn draw_image(&self, ctx: &mut Context, image: &Drawable, x: f32, y: f32) {
+    fn draw_tile(&self, ctx: &mut Context, image: &Drawable, x: usize, y: usize) {
+        let (x, y) = self.draw_location(x as f32, y as f32);
+
+        if self.tile_onscreen(x, y) {
+            self.draw_scaled(ctx, image, x, y);
+        }
+    }
+
+    pub fn tile_onscreen(&self, x: f32, y: f32) -> bool {
+        let min = -TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
+        let max_x = WINDOW_WIDTH as f32  + TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
+        let max_y = WINDOW_HEIGHT as f32 + TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
+
+        x > min && x < max_x && y > min && y < max_y
+    }
+
+    pub fn draw_location(&self, x: f32, y: f32) -> (f32, f32) {
         let (x, y) = from_map_coords(x, y);
+
         let width = WINDOW_WIDTH as f32;
         let height = WINDOW_HEIGHT as f32;
 
         let x = (x - self.camera.x) * TILE_WIDTH  / 2.0 * self.camera.zoom + (width  / 2.0 - self.camera.x * self.camera.zoom);
         let y = (y - self.camera.y) * TILE_HEIGHT / 2.0 * self.camera.zoom + (height / 2.0 - self.camera.y * self.camera.zoom);
 
-        let min_x = -TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
-        let min_y = -TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
-        let max_x = width  + TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
-        let max_y = height + TILE_IMAGE_SIZE / 2.0 * self.camera.zoom;
-
-        if x > min_x && x < max_x && y > min_y && y < max_y {
-            self.draw_at_scale(ctx, image, x, y, self.camera.zoom);
-        }   
+        (x, y)
     }
 
     pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
         for x in 0 .. self.tiles.cols {
             for y in 0 .. self.tiles.rows {
                 let tile = self.tiles.tile_at(x, y);
-                let (x, y) = (x as f32, y as f32);
+                let (screen_x, screen_y) = self.draw_location(x as f32, y as f32);
 
-                self.draw_image(ctx, &resources.images[tile.base], x, y);
+                if self.tile_onscreen(screen_x, screen_y) {
+                    self.draw_scaled(ctx, &resources.images[tile.base], screen_x, screen_y);
 
-                match tile.decoration {
-                    Some(decoration) => self.draw_image(ctx, &resources.images[decoration], x, y),
-                    _ => {}
+                    match tile.decoration {
+                        Some(decoration) => self.draw_scaled(ctx, &resources.images[decoration], screen_x, screen_y),
+                        _ => {}
+                    }
+
+                    match self.cursor.position {
+                        Some((cursor_x, cursor_y)) => {
+                            if cursor_x == x && cursor_y == y {
+                                let image = if self.cursor.fire {
+                                    images::CURSOR_CROSSHAIR
+                                } else if !tile.walkable {
+                                    images::CURSOR_UNWALKABLE
+                                } else if self.squaddie_at(x, y).is_some() {
+                                    images::CURSOR_UNIT
+                                } else {
+                                    images::CURSOR
+                                };
+
+                                self.draw_scaled(ctx, &resources.images[image], screen_x, screen_y);
+                            }
+                        },
+                        _ => {}
+                    }
+
+                    match self.squaddie_at(x, y) {
+                        Some((_, squaddie)) => self.draw_scaled(ctx, &resources.images[squaddie.image()], screen_x, screen_y),
+                        _ => {}
+                    }
+
+                    match self.enemy_at(x, y) {
+                        Some((_, enemy)) => self.draw_scaled(ctx, &resources.images[enemy.image()], screen_x, screen_y),
+                        _ => {}
+                    }
                 }
-
-                /* for item in &tile.items {
-                    let image = match item.item_type {
-                        ItemType::Scrap => images::SCRAP_METAL,
-                        ItemType::Weapon => images::WEAPON
-                    };
-
-                    self.draw_image(ctx, &resources.images[image], x, y);
-                } */
             }
         }
 
         // Draw the edges
 
-        self.draw_image(ctx, &resources.images[images::EDGE_LEFT_CORNER], 0.0, self.tiles.rows as f32);
-        self.draw_image(ctx, &resources.images[images::EDGE_CORNER], self.tiles.cols as f32, self.tiles.rows as f32);
-        self.draw_image(ctx, &resources.images[images::EDGE_RIGHT_CORNER], self.tiles.cols as f32, 0.0);
+        self.draw_tile(ctx, &resources.images[images::EDGE_LEFT_CORNER], 0, self.tiles.rows);
+        self.draw_tile(ctx, &resources.images[images::EDGE_CORNER], self.tiles.cols, self.tiles.rows);
+        self.draw_tile(ctx, &resources.images[images::EDGE_RIGHT_CORNER], self.tiles.cols, 0);
 
         for x in 1..self.tiles.cols {
-            self.draw_image(ctx, &resources.images[images::EDGE_LEFT], x as f32, self.tiles.rows as f32);
+            self.draw_tile(ctx, &resources.images[images::EDGE_LEFT], x, self.tiles.rows);
         }
 
         for y in 1..self.tiles.rows {
-            self.draw_image(ctx, &resources.images[images::EDGE_RIGHT], self.tiles.cols as f32, y as f32);
-        }
-
-        // Draw cursor
-        if !self.cursor.fire {
-            match self.cursor.position {
-                Some((x, y)) => {
-                    let tile = self.tiles.tile_at(x, y);
-
-                    let image = if !tile.walkable {
-                        images::CURSOR_UNWALKABLE
-                    } else if self.squaddie_at(x, y).is_some() {
-                        images::CURSOR_UNIT
-                    } else {
-                        images::CURSOR
-                    };
-
-                    self.draw_image(ctx, &resources.images[image], x as f32, y as f32);
-                }
-                None => {}
-            }
+            self.draw_tile(ctx, &resources.images[images::EDGE_RIGHT], self.tiles.cols, y);
         }
 
         // Draw path
         match self.path {
             Some(ref points) => {
                 for point in points {
-                    let cost = Text::new(ctx, format!("{}", point.cost).as_str(), &resources.font).unwrap();
-                    self.draw_image(ctx, &cost, point.x as f32, point.y as f32);
-                    self.draw_image(ctx, &resources.images[images::PATH], point.x as f32, point.y as f32);
+                    let (x, y) = self.draw_location(point.x as f32, point.y as f32);
+
+                    if self.tile_onscreen(x, y) {
+                        let cost = Text::new(ctx, format!("{}", point.cost).as_str(), &resources.font).unwrap();
+                        self.draw_scaled(ctx, &cost, x, y);
+                        self.draw_scaled(ctx, &resources.images[images::PATH], x, y);
+                    }
                 }
             }
-            None => {}
+            _ => {}
         }
 
-        // Draw squaddies
-        for squaddie in &self.squaddies {
-            self.draw_image(ctx, &resources.images[squaddie.image()], squaddie.x as f32, squaddie.y as f32);
-        }
+        /*for fog_cloud in &self.fog {
+            let (x, y) = to_map_coords(fog_cloud.x, fog_cloud.y);
+            let (x, y) = self.draw_location(x, y);
 
-        // Draw enemies
-        for enemy in &self.enemies {
-            self.draw_image(ctx, &resources.images[enemy.image()], enemy.x as f32, enemy.y as f32);
-        }
-
-        if self.cursor.fire {
-            match self.cursor.position {
-                Some((x, y)) => self.draw_image(ctx, &resources.images[images::CURSOR_CROSSHAIR], x as f32, y as f32),
-                None => {}
-            }
-        }
+            self.draw_scaled(ctx, &resources.images[fog_cloud.image], x, y);
+        }*/
 
         self.draw_ui(ctx, resources);
     }
@@ -281,7 +310,7 @@ impl Map {
                     squaddie.name, i, squaddie.x, squaddie.y, squaddie.moves, squaddie.weapon.name()
                 )
             },
-            None => String::from("~")
+            _ => String::from("~")
         };
 
         self.ui.set_text(0, format!("Turn: {}, Selected: {}", self.turn, selected));
@@ -322,7 +351,7 @@ impl Map {
             MouseButton::Left => match self.ui.clicked(x, y) {
                 Some(0) => self.end_turn(),
                 Some(1) => self.cursor.fire = !self.cursor.fire,
-                None => match self.cursor.position {
+                _ => match self.cursor.position {
                     Some((x, y)) => {
                         if self.cursor.fire && self.selected.is_some() {
                             match self.enemies.iter_mut().find(|enemy| enemy.x == x && enemy.y == y) {
@@ -330,15 +359,14 @@ impl Map {
                                     let squaddie = &mut self.squaddies[self.selected.unwrap()];
                                     squaddie.fire_at(enemy);
                                 }
-                                None => {}
+                                _ => {}
                             }
                         } else if !self.cursor.fire {
-                            self.selected = self.squaddie_at(x, y);
+                            self.selected = self.squaddie_at(x, y).map(|(i, _)| i);
                         }
                     },
-                    None => {}
-                },
-                _ => {}
+                    _ => {}
+                }
             },
             MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
@@ -349,7 +377,7 @@ impl Map {
 
                     let (points, cost) = match pathfind(&start, &end, &self) {
                         Some((points, cost)) => (points, cost),
-                        None => {
+                        _ => {
                             self.path = None;
                             return;
                         }
@@ -357,7 +385,7 @@ impl Map {
 
                     let same_path = match self.path {
                         Some(ref path) => path[path.len() - 1].at(&end),
-                        None => false
+                        _ => false
                     };
 
                     let squaddie = &mut self.squaddies[selected];
@@ -368,29 +396,27 @@ impl Map {
                         Some(points)
                     }
                 }
-                None => {}
+                _ => {}
             },
             _ => {}
         }
     }
 
-    fn squaddie_at(&self, x: usize, y: usize) -> Option<usize> {
-        for (i, squaddie) in self.squaddies.iter().enumerate() {
-            if squaddie.x == x && squaddie.y == y {
-                return Some(i);
-            }
-        }
+    fn squaddie_at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
+        self.squaddies.iter().enumerate().find(|&(_, squaddie)| squaddie.x == x && squaddie.y == y)
+    }
 
-        None
+    fn enemy_at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
+        self.enemies.iter().enumerate().find(|&(_, enemy)| enemy.x == x && enemy.y == y)
     }
 
     pub fn taken(&self, x: usize, y: usize) -> bool {
         !self.tiles.tile_at(x, y).walkable ||
         self.squaddie_at(x, y).is_some() ||
-        self.enemies.iter().any(|enemy| enemy.x == x && enemy.y == y)
+        self.enemy_at(x, y).is_some()
     }
 
-    /// End the current turn
+    // End the current turn
     fn end_turn(&mut self) {
         for squaddie in &mut self.squaddies {
             squaddie.moves = squaddie.max_moves;

@@ -7,7 +7,6 @@ pub struct Tile {
     pub base: usize,
     pub decoration: Option<usize>,
     pub walkable: bool,
-    // pub items: Vec<Item>
 }
 
 impl Tile {
@@ -16,81 +15,87 @@ impl Tile {
             base,
             decoration: None,
             walkable: true,
-            // items: Vec::new()
         }
     }
 
-    fn set_pit(&mut self, decoration: usize) {
+    fn set_obstacle(&mut self, decoration: usize) {
         self.decoration = Some(decoration);
         self.walkable = false;        
     }
 }
 
 pub struct Tiles {
-    pub tiles: Vec<Tile>,
+    tiles: Vec<Tile>,
     pub cols: usize,
     pub rows: usize
 }
 
 impl Tiles {
-    pub fn new(cols: usize, rows: usize) -> Tiles {
+    pub fn new() -> Tiles {
         Tiles {
             tiles: Vec::new(),
-            cols,
-            rows
+            cols: 0,
+            rows: 0
         }
     }
 
-    pub fn generate(&mut self) {
-        for _ in 0 .. self.cols * self.rows {
-            let mut tile = Tile::new(if rand::random::<bool>() {
-                images::BASE_1
-            } else {
-                images::BASE_2
-            });
+    pub fn generate(&mut self, cols: usize, rows: usize) {
+        self.cols = cols;
+        self.rows = rows;
 
-            if rand::random::<f32>() > 0.975 {
-                tile.decoration = Some(images::SKULL);
+        for _ in 0 .. cols {
+            for row in 0 .. rows {
+                let mut tile = Tile::new(if rand::random::<bool>() {
+                    images::BASE_1
+                } else {
+                    images::BASE_2
+                });
+
+                // Add in skulls
+                if rand::random::<f32>() > 0.975 {
+                    tile.decoration = Some(images::SKULL);
+                } 
+
+                // Add in ruins
+                if row != 0 && row != rows - 1 && rand::random::<f32>() > 0.90 {
+                    if rand::random::<bool>() {
+                        tile.set_obstacle(images::RUIN_1);
+                    } else {
+                        tile.set_obstacle(images::RUIN_2);
+                    }
+                }
+
+                self.tiles.push(tile);
             }
-
-            /* if rand::random::<f32>() > 0.99 {
-                tile.items.push(Item::new(ItemType::Scrap))
-            }
-
-            if rand::random::<f32>() > 0.99 {
-                tile.items.push(Item::new(ItemType::Weapon))
-            } */
-
-            self.tiles.push(tile);
         }
 
         // Generate pit position and size
         let mut rng = rand::thread_rng();
         let pit_width = rng.gen_range(1, 4);
         let pit_height = rng.gen_range(1, 4);
-        let pit_x = rng.gen_range(1, self.cols - 1 - pit_width);
-        let pit_y = rng.gen_range(1, self.rows - 1 - pit_height);
+        let pit_x = rng.gen_range(1, cols - 1 - pit_width);
+        let pit_y = rng.gen_range(1, rows - 1 - pit_height);
 
         // Add pit corners
-        self.tile_at_mut(pit_x, pit_y).set_pit(images::PIT_TOP);
-        self.tile_at_mut(pit_x, pit_y + pit_height).set_pit(images::PIT_LEFT);
-        self.tile_at_mut(pit_x + pit_width, pit_y).set_pit(images::PIT_RIGHT);
-        self.tile_at_mut(pit_x + pit_width, pit_y + pit_height).set_pit(images::PIT_BOTTOM);
+        self.tile_at_mut(pit_x,             pit_y             ).set_obstacle(images::PIT_TOP);
+        self.tile_at_mut(pit_x,             pit_y + pit_height).set_obstacle(images::PIT_LEFT);
+        self.tile_at_mut(pit_x + pit_width, pit_y             ).set_obstacle(images::PIT_RIGHT);
+        self.tile_at_mut(pit_x + pit_width, pit_y + pit_height).set_obstacle(images::PIT_BOTTOM);
 
         // Add pit edges and center
 
         for x in pit_x + 1 .. pit_x + pit_width {
-            self.tile_at_mut(x, pit_y).set_pit(images::PIT_TR);
-            self.tile_at_mut(x, pit_y + pit_height).set_pit(images::PIT_BL);
+            self.tile_at_mut(x, pit_y             ).set_obstacle(images::PIT_TR);
+            self.tile_at_mut(x, pit_y + pit_height).set_obstacle(images::PIT_BL);
 
             for y in pit_y + 1 .. pit_y + pit_height {
-                self.tile_at_mut(x, y).set_pit(images::PIT_CENTER);
+                self.tile_at_mut(x, y).set_obstacle(images::PIT_CENTER);
             }
         }
 
         for y in pit_y + 1 .. pit_y + pit_height {
-             self.tile_at_mut(pit_x, y).set_pit(images::PIT_TL);
-             self.tile_at_mut(pit_x + pit_width, y).set_pit(images::PIT_BR);
+             self.tile_at_mut(pit_x,             y).set_obstacle(images::PIT_TL);
+             self.tile_at_mut(pit_x + pit_width, y).set_obstacle(images::PIT_BR);
         }
     }
 

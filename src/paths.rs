@@ -66,7 +66,7 @@ impl PathPoint {
 
         for x in min_x .. max_x + 1 {
             for y in min_y .. max_y + 1 {
-                if !map.taken(x, y) {
+                if !map.taken(x, y) && !(x == self.x && y == self.y) {
                     let mut point = PathPoint::new(x, y);
                     let cost = self.cost(&point);
                     point.cost = self.cost + cost;
