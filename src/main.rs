@@ -170,7 +170,7 @@ impl event::EventHandler for MainState {
 
 pub fn main() {
     let c = conf::Conf {
-        window_title: String::from(TITLE),
+        window_title: TITLE.into(),
         vsync: true,
         window_width: WINDOW_WIDTH,
         window_height: WINDOW_HEIGHT,

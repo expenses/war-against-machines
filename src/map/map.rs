@@ -141,7 +141,7 @@ impl Map {
                     squaddie.name, i, squaddie.x, squaddie.y, squaddie.moves, squaddie.weapon.name()
                 )
             },
-            _ => String::from("~")
+            _ => "~".into()
         };
 
         self.ui.set_text(0, format!("Turn: {}, Selected: {}", self.turn, selected));

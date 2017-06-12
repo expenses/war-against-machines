@@ -84,8 +84,8 @@ impl Menu {
 
         Menu {
             cols, rows,
-            main: Submenu::new(vec![String::from("Play Game"), String::from("Settings"), String::from("Quit")]),
-            settings: Submenu::new(vec![String::from("Back"), format!("Cols: {}", cols), format!("Rows: {}", rows)]),
+            main: Submenu::new(vec!["Play Game".into(), "Settings".into(), "Quit".into()]),
+            settings: Submenu::new(vec!["Back".into(), format!("Cols: {}", cols), format!("Rows: {}", rows)]),
             submenu: Selected::Main
         }
     }
