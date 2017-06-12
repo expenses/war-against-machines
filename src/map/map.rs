@@ -101,7 +101,7 @@ impl Map {
         }
     }
 
-    pub fn handle_key(&mut self, key: Keycode, pressed: bool) {
+    pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode, pressed: bool) {
         match key {
             Keycode::Up    | Keycode::W => self.keys[0] = pressed,
             Keycode::Down  | Keycode::S => self.keys[1] = pressed,
@@ -109,6 +109,7 @@ impl Map {
             Keycode::Right | Keycode::D => self.keys[3] = pressed,
             Keycode::O                  => self.keys[4] = pressed,
             Keycode::P                  => self.keys[5] = pressed,
+            Keycode::Escape             => ctx.quit().unwrap(),
             _ => {}
         };
     }

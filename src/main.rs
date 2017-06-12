@@ -87,9 +87,7 @@ struct MainState {
     resources: Resources,
     mode: Mode,
     map: Map,
-    menu: menu::Menu,
-    // The state of the game, used to trigger ctx.quit() when ctx might not be avaliable (event listeners)
-    running: bool
+    menu: menu::Menu
 }
 
 impl MainState {
@@ -103,15 +101,12 @@ impl MainState {
             resources,
             menu: menu::Menu::new(), 
             mode: Mode::Menu,
-            running: true
         })
     }
 }
 
 impl event::EventHandler for MainState {
-    fn update(&mut self, ctx: &mut Context, _dt: Duration) -> GameResult<()> {
-        if !self.running { ctx.quit()?; }
-
+    fn update(&mut self, _ctx: &mut Context, _dt: Duration) -> GameResult<()> {
         match self.mode {
             Mode::Game => self.map.update(),
             _ => {}
@@ -133,25 +128,25 @@ impl event::EventHandler for MainState {
         Ok(())
     }
 
-    fn key_down_event(&mut self, _ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
+    fn key_down_event(&mut self, ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
         match self.mode {
-            Mode::Game => self.map.handle_key(key, true),
+            Mode::Game => self.map.handle_key(ctx, key, true),
             Mode::Menu => match self.menu.handle_key(key) {
                 Some(callback) => match callback {
                     Callback::Play => {
                         self.mode = Mode::Game;
                         self.map.start(self.menu.rows, self.menu.cols);
                     },
-                    Callback::Quit => self.running = false,
+                    Callback::Quit => ctx.quit().unwrap()
                 },
                 _ => {}
             }
         };
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
+    fn key_up_event(&mut self, ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
         match self.mode {
-            Mode::Game => self.map.handle_key(key, false),
+            Mode::Game => self.map.handle_key(ctx, key, false),
             _ => {}
         }
     }
@@ -169,6 +164,8 @@ impl event::EventHandler for MainState {
             _ => {}
         }
     }
+
+    fn quit_event(&mut self) -> bool { false }
 }
 
 pub fn main() {
