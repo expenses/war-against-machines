@@ -7,7 +7,6 @@ use std::cmp::{min, max};
 
 use images;
 use Resources;
-use WINDOW_WIDTH;
 
 const MIN: usize = 5;
 const MAX: usize = 30;
@@ -39,7 +38,7 @@ impl Submenu {
             string.push_str(item);
 
             let rendered = Text::new(ctx, string.as_str(), &resources.font).unwrap();
-            let position = Point::new(WINDOW_WIDTH as f32 / 2.0, 150.0 + i as f32 * 20.0);
+            let position = Point::new(ctx.conf.window_width as f32 / 2.0, 150.0 + i as f32 * 20.0);
 
             graphics::draw(ctx, &rendered, position, 0.0).unwrap();
         }
@@ -94,7 +93,7 @@ impl Menu {
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         let title = &resources.images[images::TITLE];
 
-        let point = Point::new(WINDOW_WIDTH as f32 / 2.0, title.height() as f32 / 2.0);
+        let point = Point::new(ctx.conf.window_width as f32 / 2.0, title.height() as f32 / 2.0);
 
         graphics::draw(ctx, title, point, 0.0).unwrap();
 

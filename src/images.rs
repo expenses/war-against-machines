@@ -32,6 +32,7 @@ pub const FIRE_BUTTON:          usize = 30;
 pub const RUIN_1:               usize = 31;
 pub const RUIN_2:               usize = 32;
 pub const RUIN_3:               usize = 33;
+pub const BULLET:               usize = 34;
 // pub const FOG:                  usize = 30;
 // pub const SCRAP_METAL:          usize = 29;
 // pub const WEAPON:               usize = 30;

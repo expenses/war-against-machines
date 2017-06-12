@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]
-ggez = "0.3.1"
+ggez = { git = "https://github.com/expenses/ggez", branch = "events_with_ctx" }
 rand = "0.3.15"
 pathfinding = "0.1.11"
 

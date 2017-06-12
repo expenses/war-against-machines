@@ -2,7 +2,7 @@ use pathfinding;
 
 use std::cmp::{min, max};
 
-use map::Map;
+use map::map::Map;
 use units::Unit;
 
 const WALK_STRAIGHT_COST: usize = 2;

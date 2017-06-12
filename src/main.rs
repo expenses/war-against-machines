@@ -2,25 +2,24 @@ extern crate ggez;
 extern crate rand;
 extern crate pathfinding;
 
-mod map;
-mod menu;
-mod images;
-mod units;
-mod tiles;
-mod ui;
-mod weapons;
-mod paths;
-
-use menu::Callback;
-
-use std::time::Duration;
-
 use ggez::conf;
 use ggez::event;
 use ggez::event::{Mod, Keycode, MouseState, MouseButton};
 use ggez::{GameResult, Context};
 use ggez::graphics;
 use ggez::graphics::{Image, FilterMode, Color, Font};
+
+use std::time::Duration;
+
+mod map;
+mod menu;
+mod images;
+mod units;
+mod ui;
+mod weapons;
+
+use map::map::Map;
+use menu::Callback;
 
 enum Mode {
     Menu,
@@ -75,7 +74,8 @@ impl Resources {
                 Image::new(ctx, "/button/fire.png")?,
                 Image::new(ctx, "/ruin/1.png")?,
                 Image::new(ctx, "/ruin/2.png")?,
-                Image::new(ctx, "/ruin/3.png")?
+                Image::new(ctx, "/ruin/3.png")?,
+                Image::new(ctx, "/bullet/bullet.png")?
                 // Image::new(ctx, "/fog.png")?
             ],
             font: Font::new(ctx, "/font.ttf", 12)?
@@ -86,7 +86,7 @@ impl Resources {
 struct MainState {
     resources: Resources,
     mode: Mode,
-    map: map::Map,
+    map: Map,
     menu: menu::Menu,
     // The state of the game, used to trigger ctx.quit() when ctx might not be avaliable (event listeners)
     running: bool
@@ -99,7 +99,7 @@ impl MainState {
         let resources = Resources::new(ctx)?;
 
         Ok(MainState {
-            map: map::Map::new(&resources),
+            map: Map::new(ctx, &resources),
             resources,
             menu: menu::Menu::new(), 
             mode: Mode::Menu,
@@ -133,7 +133,7 @@ impl event::EventHandler for MainState {
         Ok(())
     }
 
-    fn key_down_event(&mut self, key: Keycode, _mod: Mod, _repeat: bool) {
+    fn key_down_event(&mut self, _ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
         match self.mode {
             Mode::Game => self.map.handle_key(key, true),
             Mode::Menu => match self.menu.handle_key(key) {
@@ -149,21 +149,21 @@ impl event::EventHandler for MainState {
         };
     }
 
-    fn key_up_event(&mut self, key: Keycode, _mod: Mod, _repeat: bool) {
+    fn key_up_event(&mut self, _ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
         match self.mode {
             Mode::Game => self.map.handle_key(key, false),
             _ => {}
         }
     }
 
-    fn mouse_motion_event(&mut self, _state: MouseState, x: i32, y: i32, _xrel: i32, _yrel: i32) {
+    fn mouse_motion_event(&mut self, ctx: &mut Context, _state: MouseState, x: i32, y: i32, _xrel: i32, _yrel: i32) {
         match self.mode {
-            Mode::Game => self.map.move_cursor(x as f32, y as f32),
+            Mode::Game => self.map.move_cursor(ctx, x as f32, y as f32),
             _ => {}
         }
     }
 
-    fn mouse_button_down_event(&mut self, button: MouseButton, x: i32, y: i32) {
+    fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
         match self.mode {
             Mode::Game => self.map.mouse_button(button, x as f32, y as f32),
             _ => {}

@@ -2,7 +2,7 @@ use rand;
 use rand::Rng;
 
 use images;
-use weapons::Weapon;
+use weapons::{Weapon, Bullet};
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 
 const FIRST_NAMES: &[&str; 9] = &[
@@ -109,7 +109,7 @@ impl Unit {
         false
     }
 
-    pub fn fire_at(&mut self, target: &mut Unit) {
+    pub fn fire_at(&mut self, target: &mut Unit, bullets: &mut Vec<Bullet>) {
         if self.moves < self.weapon.cost || !target.alive() {
             return;
         }
@@ -120,13 +120,17 @@ impl Unit {
         let hit_chance = chance_to_hit(distance);
         let random = rand::random::<f32>();
 
-        if hit_chance > random {
+        let will_hit = hit_chance > random;
+
+        if will_hit {
             target.health = if target.health < self.weapon.damage {
                 0
             } else {
                 target.health - self.weapon.damage
             };
         }
+
+        bullets.push(Bullet::new(self, target, will_hit));
     }
 }
 
