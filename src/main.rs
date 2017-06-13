@@ -1,183 +1,225 @@
-extern crate ggez;
+extern crate sdl2;
 extern crate rand;
 extern crate pathfinding;
 
-use ggez::conf;
-use ggez::event;
-use ggez::event::{Mod, Keycode, MouseState, MouseButton};
-use ggez::{GameResult, Context};
-use ggez::graphics;
-use ggez::graphics::{Image, FilterMode, Color, Font};
-
-use std::time::Duration;
+use sdl2::render::{Texture, TextureCreator};
+use sdl2::video::WindowContext;
+use sdl2::image::LoadTexture;
+use sdl2::event::Event;
+use sdl2::ttf;
+use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
 
 mod map;
 mod menu;
-mod images;
 mod units;
 mod ui;
 mod weapons;
+mod context;
 
+use context::Context;
 use map::map::Map;
 use menu::Callback;
+
+use std::collections::HashMap;
+
+const TITLE: &str = "Assault";
+const WINDOW_WIDTH: u32 = 800;
+const WINDOW_HEIGHT: u32 = 600;
 
 enum Mode {
     Menu,
     Game
 }
 
-const TITLE: &str = "Assault";
-const WINDOW_WIDTH: u32 = 800;
-const WINDOW_HEIGHT: u32 = 600;
-
-pub struct Resources {
-    images: Vec<Image>,
-    font: Font
+pub struct Resources<'a> {
+    texture_creator: &'a TextureCreator<WindowContext>,
+    images: HashMap<&'a str, Texture<'a>>,
+    font_context: &'a ttf::Sdl2TtfContext,
+    fonts: HashMap<&'a str, ttf::Font<'a, 'a>>,
 }
 
-impl Resources {
-    fn new(ctx: &mut Context) -> GameResult<Resources> {
-        graphics::set_default_filter(ctx, FilterMode::Nearest);
+impl<'a> Resources<'a> {
+    fn new(texture_creator: &'a TextureCreator<WindowContext>, font_context: &'a ttf::Sdl2TtfContext) -> Resources<'a> {
+        Resources {
+            texture_creator,
+            images: HashMap::new(),
+            font_context,
+            fonts: HashMap::new(),
+        }
+    }
 
-        Ok(Resources {
-            images: vec![
-                Image::new(ctx, "/base/1.png")?,
-                Image::new(ctx, "/base/2.png")?,
-                Image::new(ctx, "/edge/left_corner.png")?,
-                Image::new(ctx, "/edge/left.png")?,
-                Image::new(ctx, "/edge/corner.png")?,
-                Image::new(ctx, "/edge/right.png")?,
-                Image::new(ctx, "/edge/right_corner.png")?,
-                Image::new(ctx, "/decoration/skull.png")?,
-                Image::new(ctx, "/cursor/default.png")?,
-                Image::new(ctx, "/cursor/unit.png")?,
-                Image::new(ctx, "/cursor/unwalkable.png")?,
-                Image::new(ctx, "/cursor/crosshair.png")?,
-                Image::new(ctx, "/title.png")?,
-                Image::new(ctx, "/unit/friendly.png")?,
-                Image::new(ctx, "/unit/enemy.png")?,
-                Image::new(ctx, "/unit/dead_friendly.png")?,
-                Image::new(ctx, "/unit/dead_enemy.png")?,
-                Image::new(ctx, "/path/default.png")?,
-                Image::new(ctx, "/path/no_weapon.png")?,
-                Image::new(ctx, "/path/unreachable.png")?,
-                Image::new(ctx, "/pit/left.png")?,
-                Image::new(ctx, "/pit/top.png")?,
-                Image::new(ctx, "/pit/right.png")?,
-                Image::new(ctx, "/pit/bottom.png")?,
-                Image::new(ctx, "/pit/tl.png")?,
-                Image::new(ctx, "/pit/tr.png")?,
-                Image::new(ctx, "/pit/br.png")?,
-                Image::new(ctx, "/pit/bl.png")?,
-                Image::new(ctx, "/pit/center.png")?,
-                Image::new(ctx, "/button/end_turn.png")?,
-                Image::new(ctx, "/button/fire.png")?,
-                Image::new(ctx, "/ruin/1.png")?,
-                Image::new(ctx, "/ruin/2.png")?,
-                Image::new(ctx, "/ruin/3.png")?,
-                Image::new(ctx, "/bullet/bullet.png")?
-                // Image::new(ctx, "/fog.png")?
-            ],
-            font: Font::new(ctx, "/font.ttf", 12)?
-        })
+    fn load_image(&mut self, name: &'a str, path: &str) {
+        self.images.insert(name, self.texture_creator.load_texture(path).unwrap());
+    }
+
+    fn image(&self, name: &str) -> &Texture {
+        match self.images.get(name) {
+            Some(texture) => &texture,
+            None => panic!("Missing image: '{}'", name)
+        }
+    }
+
+    fn load_font(&mut self, name: &'a str, path: &str, size: u16) {
+        self.fonts.insert(name, self.font_context.load_font(path, size).unwrap());
+    }
+
+    fn render(&self, font: &str, text: &str) -> Texture {
+        let colour = sdl2::pixels::Color {r:255, g:255, b:255,a:100};
+
+        let rendered = self.fonts[font].render(text).solid(colour).unwrap();
+
+        self.texture_creator.create_texture_from_surface(rendered).unwrap()
     }
 }
 
-struct MainState {
-    resources: Resources,
+struct State<'a> {
+    ctx: &'a mut Context,
+    resources: Resources<'a>,
     mode: Mode,
+    menu: menu::Menu,
     map: Map,
-    menu: menu::Menu
 }
 
-impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
-        graphics::set_background_color(ctx, Color::new(0.0, 0.0, 0.0, 0.0));
-
-        let resources = Resources::new(ctx)?;
-
-        Ok(MainState {
-            map: Map::new(ctx, &resources),
-            resources,
-            menu: menu::Menu::new(), 
+impl<'a> State<'a> {
+    fn run(ctx: &'a mut Context, resources: Resources<'a>) {
+        let mut state = State {
             mode: Mode::Menu,
-        })
-    }
-}
+            menu: menu::Menu::new(),
+            map: Map::new(&resources),
+            ctx, resources,
+        };
 
-impl event::EventHandler for MainState {
-    fn update(&mut self, _ctx: &mut Context, _dt: Duration) -> GameResult<()> {
+        let mut pump = state.ctx.event_pump();
+
+        'main: while state.ctx.running {
+            for event in pump.poll_iter() {
+                match event {
+                    Event::Quit {..} => break 'main,
+                    Event::KeyDown {keycode, ..} => state.handle_key_down(keycode.unwrap()),
+                    Event::KeyUp {keycode, ..} => state.handle_key_up(keycode.unwrap()),
+                    Event::MouseMotion {x, y, ..} => state.handle_mouse_motion(x, y),
+                    Event::MouseButtonDown {mouse_btn, x, y, ..} => state.handle_mouse_button(mouse_btn, x, y),
+                    _ => {}
+                }
+            }
+
+            state.update();
+            state.draw();
+        }
+    }
+
+    fn update(&mut self) {
         match self.mode {
             Mode::Game => self.map.update(),
             _ => {}
-        };
-        
-        Ok(())
+        }
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx);
-
+    fn handle_key_down(&mut self, key: Keycode) {
         match self.mode {
-            Mode::Game => self.map.draw(ctx, &self.resources),
-            Mode::Menu => self.menu.draw(ctx, &self.resources)
-        };
-
-        graphics::present(ctx);
-
-        Ok(())
-    }
-
-    fn key_down_event(&mut self, ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
-        match self.mode {
-            Mode::Game => self.map.handle_key(ctx, key, true),
-            Mode::Menu => match self.menu.handle_key(key) {
+            Mode::Menu => match self.menu.handle_key(self.ctx, key) {
                 Some(callback) => match callback {
                     Callback::Play => {
                         self.mode = Mode::Game;
                         self.map.start(self.menu.rows, self.menu.cols);
-                    },
-                    Callback::Quit => ctx.quit().unwrap()
+                    }
                 },
                 _ => {}
-            }
-        };
+            },
+            Mode::Game => self.map.handle_key(self.ctx, key, true)
+        }
     }
 
-    fn key_up_event(&mut self, ctx: &mut Context, key: Keycode, _mod: Mod, _repeat: bool) {
+    fn handle_key_up(&mut self, key: Keycode) {
         match self.mode {
-            Mode::Game => self.map.handle_key(ctx, key, false),
+            Mode::Game => self.map.handle_key(self.ctx, key, false),
             _ => {}
         }
     }
 
-    fn mouse_motion_event(&mut self, ctx: &mut Context, _state: MouseState, x: i32, y: i32, _xrel: i32, _yrel: i32) {
+    fn handle_mouse_motion(&mut self, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.move_cursor(ctx, x as f32, y as f32),
+            Mode::Game => self.map.move_cursor(self.ctx, x as f32, y as f32),
             _ => {}
         }
     }
 
-    fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
+    fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.mouse_button(button, x as f32, y as f32),
+            Mode::Game => self.map.mouse_button(self.ctx, button, x as f32, y as f32),
             _ => {}
         }
     }
 
-    fn quit_event(&mut self) -> bool { false }
+    fn draw(&mut self) {
+        self.ctx.clear();
+
+        match self.mode {
+            Mode::Game => self.map.draw(self.ctx, &self.resources),
+            Mode::Menu => self.menu.draw(self.ctx, &self.resources)
+        }
+
+        self.ctx.present();
+    }
 }
 
 pub fn main() {
-    let c = conf::Conf {
-        window_title: TITLE.into(),
-        vsync: true,
-        window_width: WINDOW_WIDTH,
-        window_height: WINDOW_HEIGHT,
-        ..Default::default()
-    };
+    let mut ctx = Context::new(TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
+    
+    let font_context = sdl2::ttf::init().unwrap();
+    let texture_creator = ctx.texture_creator();
+    
+    let mut resources = Resources::new(&texture_creator, &font_context);
 
-    let mut ctx = Context::load_from_conf(TITLE, "ggez", c).unwrap();
-    let mut state = MainState::new(&mut ctx).unwrap();
-    event::run(&mut ctx, &mut state).unwrap();
+    resources.load_image("title", "/resources/title.png");
+
+    resources.load_image("base_1", "/resources/base/1.png");
+    resources.load_image("base_2", "/resources/base/2.png");
+    
+    resources.load_image("friendly", "/resources/unit/friendly.png");
+    resources.load_image("enemy", "/resources/unit/enemy.png");
+    resources.load_image("dead_friendly", "/resources/unit/dead_friendly.png");
+    resources.load_image("dead_enemy", "/resources/unit/dead_enemy.png");
+
+    resources.load_image("bullet", "/resources/bullet/bullet.png");
+
+    resources.load_image("cursor", "/resources/cursor/default.png");
+    resources.load_image("cursor_unit", "/resources/cursor/unit.png");
+    resources.load_image("cursor_unwalkable", "/resources/cursor/unwalkable.png");
+    resources.load_image("cursor_crosshair", "/resources/cursor/crosshair.png");
+
+    resources.load_image("ruin_1", "/resources/ruin/1.png");
+    resources.load_image("ruin_2", "/resources/ruin/2.png");
+    resources.load_image("ruin_3", "/resources/ruin/3.png");
+
+    resources.load_image("pit_top", "/resources/pit/top.png");
+    resources.load_image("pit_right", "/resources/pit/right.png");
+    resources.load_image("pit_left", "/resources/pit/left.png");
+    resources.load_image("pit_bottom", "/resources/pit/bottom.png");
+    resources.load_image("pit_tl", "/resources/pit/tl.png");
+    resources.load_image("pit_tr", "/resources/pit/tr.png");
+    resources.load_image("pit_bl", "/resources/pit/bl.png");
+    resources.load_image("pit_br", "/resources/pit/br.png");
+    resources.load_image("pit_center", "/resources/pit/center.png");
+    
+    resources.load_image("path", "/resources/path/default.png");
+    resources.load_image("path_no_weapon", "/resources/path/no_weapon.png");
+    resources.load_image("path_unreachable", "/resources/path/unreachable.png");
+
+    resources.load_image("edge_left", "/resources/edge/left.png");
+    resources.load_image("edge_right", "/resources/edge/right.png");
+    resources.load_image("edge_left_corner", "/resources/edge/left_corner.png");
+    resources.load_image("edge_right_corner", "/resources/edge/right_corner.png");
+    resources.load_image("edge_corner", "/resources/edge/corner.png");
+
+    resources.load_image("skull", "/resources/decoration/skull.png");
+    resources.load_image("fog", "/resources/decoration/fog.png");
+
+    resources.load_image("end_turn_button", "/resources/button/end_turn.png");
+    resources.load_image("fire_button", "/resources/button/fire.png");
+    
+    resources.load_font("main", "/resources/font.ttf", 35);
+
+    State::run(&mut ctx, resources);
 }

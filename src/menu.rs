@@ -1,12 +1,8 @@
-use ggez::Context;
-use ggez::graphics;
-use ggez::event::Keycode;
-use ggez::graphics::{Point, Text};
-
 use std::cmp::{min, max};
+use sdl2::keyboard::Keycode;
 
-use images;
 use Resources;
+use context::Context;
 
 const MIN: usize = 5;
 const MAX: usize = 30;
@@ -14,7 +10,6 @@ const DEFAULT: usize = 20;
 
 pub enum Callback {
     Play,
-    Quit
 }
 
 struct Submenu {
@@ -37,10 +32,12 @@ impl Submenu {
             if i == self.selection { string.push_str("> "); }
             string.push_str(item);
 
-            let rendered = Text::new(ctx, string.as_str(), &resources.font).unwrap();
-            let position = Point::new(ctx.conf.window_width as f32 / 2.0, 150.0 + i as f32 * 20.0);
+            let rendered = resources.render("main", string.as_str());
 
-            graphics::draw(ctx, &rendered, position, 0.0).unwrap();
+            let window_width = ctx.width();
+            let rendered_width = rendered.query().width as f32;
+
+            ctx.draw(&rendered, (window_width - rendered_width) / 2.0, 150.0 + i as f32 * 20.0, 1.0);
         }
     }
 
@@ -91,11 +88,12 @@ impl Menu {
     }
 
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let title = &resources.images[images::TITLE];
+        let title = resources.image("title");
 
-        let point = Point::new(ctx.conf.window_width as f32 / 2.0, title.height() as f32 / 2.0);
+        let window_width = ctx.width();
+        let title_width = title.query().width as f32;
 
-        graphics::draw(ctx, title, point, 0.0).unwrap();
+        ctx.draw(title, (window_width - title_width) / 2.0, 0.0, 1.0);
 
         match self.submenu {
             Selected::Main => self.main.draw(ctx, resources),
@@ -108,7 +106,7 @@ impl Menu {
         self.settings.set_item(2, format!("Rows: {}", self.rows));
     }
 
-    pub fn handle_key(&mut self, key: Keycode) -> Option<Callback> {
+    pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode) -> Option<Callback> {
         match key {
             Keycode::Up => match self.submenu {
                 Selected::Main => self.main.rotate_up(),
@@ -122,7 +120,7 @@ impl Menu {
                 Selected::Main => match self.main.selection {
                     0 => return Some(Callback::Play),
                     1 => self.submenu = Selected::Settings,
-                    2 => return Some(Callback::Quit),
+                    2 => ctx.quit(),
                     _ => {}
                 },
                 Selected::Settings => match self.settings.selection {

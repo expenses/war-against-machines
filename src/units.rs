@@ -1,7 +1,6 @@
 use rand;
 use rand::Rng;
 
-use images;
 use weapons::{Weapon, Bullet};
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 
@@ -44,8 +43,8 @@ pub struct Unit {
     pub x: usize,
     pub y: usize,
     pub weapon: Weapon,
-    pub image: usize,
-    pub dead_image: usize,
+    pub image: String,
+    pub dead_image: String,
     pub name: String,
     pub moves: usize,
     pub max_moves: usize,
@@ -66,14 +65,14 @@ impl Unit {
 
                 (
                     Weapon::new(weapon_type),
-                    images::FRIENDLY, images::DEAD_FRIENDLY,
+                    "friendly".into(), "dead_friendly".into(),
                     format!("{} {}", first, last), 30, 75
                 )
             },
             UnitType::Robot => {
                 (
                     Weapon::new(PlasmaRifle),
-                    images::ENEMY, images::DEAD_ENEMY,
+                    "enemy".into(), "dead_enemy".into(),
                     format!("ROBOT"), 25, 150
                 )
             }
@@ -90,11 +89,11 @@ impl Unit {
         self.health > 0
     }
 
-    pub fn image(&self) -> usize {
+    pub fn image(&self) -> &String {
         if self.alive() {
-            self.image
+            &self.image
         } else {
-            self.dead_image
+            &self.dead_image
         }
     }
 

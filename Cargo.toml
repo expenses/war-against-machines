@@ -4,9 +4,12 @@ version = "0.1.0"
 authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]
-ggez = { git = "https://github.com/expenses/ggez", branch = "events_with_ctx" }
 rand = "0.3.15"
 pathfinding = "0.1.11"
+
+[dependencies.sdl2]
+version = "0.30.0"
+features = ["image", "ttf"]
 
 [profile.dev]
 opt-level = 1

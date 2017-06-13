@@ -1,5 +1,6 @@
-
+use rand;
 use units::Unit;
+use rand::distributions::{IndependentSample, Range};
 
 pub enum WeaponType {
     Rifle,
@@ -49,30 +50,49 @@ impl Weapon {
 pub struct Bullet {
     pub x: f32,
     pub y: f32,
-    _target_x: f32,
-    _target_y: f32,
     pub direction: f32,
-    _will_hit: bool
+    left: bool,
+    above: bool,
+    target_x: f32,
+    target_y: f32,
+    will_hit: bool
 }
 
 impl Bullet {
-    pub fn new(fired_by: &Unit, target: &Unit, _will_hit: bool) -> Bullet {
+    pub fn new(fired_by: &Unit, target: &Unit, will_hit: bool) -> Bullet {
         let x = fired_by.x as f32;
         let y = fired_by.y as f32;
         let target_x = target.x as f32;
         let target_y = target.y as f32;
-        let direction = (target_y - y).atan2(target_x - x);
+        let mut direction = (target_y - y).atan2(target_x - x);
+
+        if !will_hit {
+            let mut rng = rand::thread_rng();
+            direction += Range::new(-0.1, 0.1).ind_sample(&mut rng);
+        }
+
+        let left = x < target_x;
+        let above = y < target_y;
 
         Bullet {
            x, y, direction,
-           _target_x: target_x,
-           _target_y: target_y,
-           _will_hit
+           left, above,
+           target_x, target_y,
+           will_hit
         }
     }
 
     pub fn travel(&mut self) {        
         self.x += self.direction.cos();
         self.y += self.direction.sin();
+    }
+
+    pub fn traveling(&self) -> bool {
+        !self.will_hit || (self.left == (self.x < self.target_x) && self.above == (self.y < self.target_y))
+    }
+
+    pub fn on_map(&self, cols: usize, rows: usize) -> bool {
+        self.x > -5.0 && self.x < cols as f32 + 5.0 &&
+        self.y > -5.0 && self.y < rows as f32 + 5.0
     }
 }

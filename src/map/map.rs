@@ -1,11 +1,11 @@
-use ggez::Context;
-use ggez::event::{Keycode, MouseButton};
+use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
+use context::Context;
 
 use map::tiles::Tiles;
-use images;
 use Resources;
 use units::{Unit, UnitType, UnitSide};
-use ui::{UI, Button, TextDisplay};
+use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use map::paths::{pathfind, PathPoint};
 use weapons::Bullet;
 // use items::ItemType;
@@ -44,27 +44,30 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(ctx: &Context, resources: &Resources) -> Map {
+    pub fn new(resources: &Resources) -> Map {
         let scale = 2.0;
-        let button_image = &resources.images[images::END_TURN_BUTTON];
-        let (width, height) = (button_image.width() as f32 * scale, button_image.height() as f32 * scale);
+        let width = resources.image("end_turn_button").query().width as f32 * scale;
 
         let mut ui = UI::new();
 
         ui.buttons = vec![
             Button::new(
-                images::END_TURN_BUTTON,
-                ctx.conf.window_width  as f32 - width,
-                ctx.conf.window_height as f32 - height,
+                "end_turn_button".into(),
+                0.0,
+                0.0,
                 scale,
-                resources
+                resources,
+                VerticalAlignment::Right,
+                HorizontalAlignment::Bottom
             ),
             Button::new(
-                images::FIRE_BUTTON,
-                ctx.conf.window_width  as f32 - width * 2.0,
-                ctx.conf.window_height as f32 - height,
+                "fire_button".into(),
+                -width,
+                0.0,
                 scale,
-                resources
+                resources,
+                VerticalAlignment::Right,
+                HorizontalAlignment::Bottom
             )
         ];
         ui.text_displays = vec![
@@ -109,7 +112,7 @@ impl Map {
             Keycode::Right | Keycode::D => self.keys[3] = pressed,
             Keycode::O                  => self.keys[4] = pressed,
             Keycode::P                  => self.keys[5] = pressed,
-            Keycode::Escape             => ctx.quit().unwrap(),
+            Keycode::Escape             => ctx.quit(),
             _ => {}
         };
     }
@@ -125,6 +128,11 @@ impl Map {
         for bullet in &mut self.bullets {
             bullet.travel();
         }
+
+        let cols = self.tiles.cols;
+        let rows = self.tiles.rows;
+
+        self.bullets.retain(|bullet| bullet.traveling() && bullet.on_map(cols, rows));
     }
 
     pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
@@ -160,11 +168,14 @@ impl Map {
         }
     }
 
-    pub fn mouse_button(&mut self, button: MouseButton, x: f32, y: f32) {
+    pub fn mouse_button(&mut self, ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
         match button {
-            MouseButton::Left => match self.ui.clicked(x, y) {
+            MouseButton::Left => match self.ui.clicked(ctx, x, y) {
                 Some(0) => self.end_turn(),
-                Some(1) => self.cursor.fire = !self.cursor.fire,
+                Some(1) => {
+                    self.cursor.fire = !self.cursor.fire;
+                    self.path = None;
+                },
                 _ => match self.cursor.position {
                     Some((x, y)) => {
                         self.path = None;
@@ -187,7 +198,9 @@ impl Map {
             },
             MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
-                    if self.taken(x, y) {
+                    if self.cursor.fire {
+                        return;
+                    } else if self.taken(x, y) {
                         self.path = None;
                         return;
                     }

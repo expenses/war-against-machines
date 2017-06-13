@@ -1,46 +1,71 @@
-use ggez::Context;
-use ggez::graphics;
-use ggez::graphics::{Point, DrawParam, Text};
-
 use Resources;
+use context::Context;
+
+pub enum VerticalAlignment {
+    _Left,
+    _Middle,
+    Right
+}
+
+pub enum HorizontalAlignment {
+    _Top,
+    _Middle,
+    Bottom
+}
 
 pub struct Button {
-    image: usize,
+    image: String,
     x: f32,
     y: f32,
     width: f32,
     height: f32,
     scale: f32,
     active: bool,
+    v_align: VerticalAlignment,
+    h_align: HorizontalAlignment
 }
 
 impl Button {
-    pub fn new(image: usize, x: f32, y: f32, scale: f32, resources: &Resources) -> Button {
-        let image_resource = &resources.images[image];
-        let width = image_resource.width() as f32 * scale;
-        let height = image_resource.height() as f32 * scale;
+    pub fn new(image: String, x: f32, y: f32, scale: f32, resources: &Resources, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {
+        let image_resource = resources.image(image.as_str());
+        
+        let query = image_resource.query();
+        let width = query.width as f32 * scale;
+        let height = query.height as f32 * scale;
 
         Button {
-            image, x, y, width, height, scale,
+            image, x, y, width, height, scale, v_align, h_align,
             active: true
         }
     }
 
-    fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        graphics::draw_ex(
-            ctx,
-            &resources.images[self.image],
-            DrawParam {
-                dest: Point::new(self.x + self.width / 2.0, self.y + self.height / 2.0),
-                scale: Point::new(self.scale, self.scale),
-                ..Default::default()
-            }
-        ).unwrap();
+    fn get_location(&self, ctx: &mut Context) -> (f32, f32) {
+        let x = match self.v_align {
+            VerticalAlignment::_Left => self.x,
+            VerticalAlignment::_Middle => (ctx.width() - self.width)  / 2.0 + self.x,
+            VerticalAlignment::Right => (ctx.width() - self.width) + self.x
+        };
+
+        let y = match self.h_align {
+            HorizontalAlignment::_Top => self.y,
+            HorizontalAlignment::_Middle => (ctx.height() - self.height) / 2.0 + self.y,
+            HorizontalAlignment::Bottom => (ctx.height() - self.height) + self.y
+        };
+
+        (x, y)
     }
 
-    fn clicked(&self, x: f32, y: f32) -> bool {
-        x >= self.x && x <= self.x + self.width &&
-        y >= self.y && y <= self.y + self.height
+    fn draw(&self, ctx: &mut Context, resources: &Resources) {
+        let (x, y) = self.get_location(ctx);
+
+        ctx.draw(resources.image(self.image.as_str()), x, y, self.scale);
+    }
+
+    fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> bool {
+        let (pos_x, pos_y) = self.get_location(ctx);
+
+        x >= pos_x && x <= pos_x + self.width &&
+        y >= pos_y && y <= pos_y + self.height
     }
 }
 
@@ -61,13 +86,15 @@ impl TextDisplay {
     }
 
     fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let rendered = Text::new(ctx, self.text.as_str(), &resources.font).unwrap();
-        let point = Point::new(
+        let rendered = resources.render("main", self.text.as_str());
+        //let query = rendered.query();
+
+        /*let point = Point::new(
             self.x + rendered.width() as f32 / 2.0,
             self.y + rendered.height() as f32 / 2.0
-        );
+        );*/
 
-        graphics::draw(ctx, &rendered, point, 0.0).unwrap();
+        ctx.draw(&rendered, self.x, self.y, 1.0);
     }
 }
 
@@ -102,9 +129,9 @@ impl UI {
         }
     }
 
-    pub fn clicked(&self, x: f32, y: f32) -> Option<usize> {
+    pub fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> Option<usize> {
         for (i, button) in self.buttons.iter().enumerate() {
-            if button.active && button.clicked(x, y) {
+            if button.active && button.clicked(ctx, x, y) {
                 return Some(i);
             }
         }
