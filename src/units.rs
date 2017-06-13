@@ -115,8 +115,7 @@ impl Unit {
 
         self.moves -= self.weapon.cost;
 
-        let distance = (self.x as f32 - target.x as f32).hypot(self.y as f32 - target.y as f32);
-        let hit_chance = chance_to_hit(distance);
+        let hit_chance = chance_to_hit(self, target);
         let random = rand::random::<f32>();
 
         let will_hit = hit_chance > random;
@@ -133,6 +132,8 @@ impl Unit {
     }
 }
 
-fn chance_to_hit(distance: f32) -> f32 {
+pub fn chance_to_hit(from: &Unit, target: &Unit) -> f32 {
+    let distance = (from.x as f32 - target.x as f32).hypot(from.y as f32 - target.y as f32);
+
     1.0 / (1.0 + 0.02 * 4.0_f32.powf(distance / 3.0))
 }

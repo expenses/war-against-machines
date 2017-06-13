@@ -5,6 +5,7 @@ use sdl2::video::Window;
 use map::map::Map;
 use Resources;
 use context::Context;
+use units::chance_to_hit;
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -149,7 +150,7 @@ impl Drawer {
                                 Some(selected) => if selected == index {
                                     canvas.draw(resources.image("cursor_unit"), screen_x, screen_y);
                                 },
-                                None => {}
+                                _ => {}
                             }
 
                             canvas.draw(resources.image(squaddie.image().as_str()), screen_x, screen_y);
@@ -160,15 +161,6 @@ impl Drawer {
                     match map.enemy_at(x, y) {
                         Some((_, enemy)) => canvas.draw(resources.image(enemy.image().as_str()), screen_x, screen_y),
                         _ => {}
-                    }
-
-                    if map.cursor.fire {
-                        match map.cursor.position {
-                            Some((cursor_x, cursor_y)) => if cursor_x == x && cursor_y == y {
-                                canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
-                            },
-                            None => {}
-                        }
                     }
                 }
             }
@@ -214,6 +206,34 @@ impl Drawer {
             _ => {}
         }
 
+        if map.cursor.fire {
+            match map.cursor.position {
+                Some((x, y)) => {
+                    let (screen_x, screen_y) = self.draw_location(canvas, x as f32, y as f32);
+
+                    if canvas.on_screen(screen_x, screen_y) {
+                        canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
+
+                        match map.selected.and_then(|i| map.enemy_at(x, y).map(|(_, enemy)| (i, enemy))) {
+                            Some((i, enemy)) => {
+                                let squaddie = &map.squaddies[i];
+
+                                let hit_chance = format!("{:0.3}%", chance_to_hit(squaddie, enemy) * 100.0);
+
+                                let chance = resources.render("main", hit_chance.as_str());
+
+                                let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
+
+                                canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
+                            }
+                            _ => {}
+                        }
+                    }                    
+                },
+                _ => {}
+            }
+        }
+
         for bullet in &map.bullets {
             let (x, y) = self.draw_location(canvas, bullet.x, bullet.y);
             if canvas.on_screen(x, y) {
@@ -244,9 +264,6 @@ impl Drawer {
         let center_x = ctx.width()  as f32 / 2.0;
         let center_y = ctx.height() as f32 / 2.0;
 
-        // Convert the points to their locations on the map
-        // This involves finding the points relative to the center of the screen and the camera
-        // Then scaling them down to the proper locations and finally offsetting by half the camera position
         let x = (x - center_x) / TILE_WIDTH as f32  / self.camera.zoom + self.camera.x / 2.0;
         let y = (y - center_y) / TILE_HEIGHT as f32 / self.camera.zoom + self.camera.y / 2.0;
 
