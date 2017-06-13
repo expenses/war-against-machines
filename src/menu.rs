@@ -5,7 +5,7 @@ use Resources;
 use context::Context;
 
 const MIN: usize = 5;
-const MAX: usize = 30;
+const MAX: usize = 50;
 const DEFAULT: usize = 20;
 
 pub enum Callback {
@@ -34,10 +34,9 @@ impl Submenu {
 
             let rendered = resources.render("main", string.as_str());
 
-            let window_width = ctx.width();
-            let rendered_width = rendered.query().width as f32;
+            let center = (ctx.width() - rendered.query().width) as f32 / 2.0;
 
-            ctx.draw(&rendered, (window_width - rendered_width) / 2.0, 150.0 + i as f32 * 20.0, 1.0);
+            ctx.draw(&rendered, center, 150.0 + i as f32 * 20.0, 1.0);
         }
     }
 
@@ -90,10 +89,9 @@ impl Menu {
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         let title = resources.image("title");
 
-        let window_width = ctx.width();
-        let title_width = title.query().width as f32;
+        let center = (ctx.width() - title.query().width) as f32 / 2.0;
 
-        ctx.draw(title, (window_width - title_width) / 2.0, 0.0, 1.0);
+        ctx.draw(title, center, 0.0, 1.0);
 
         match self.submenu {
             Selected::Main => self.main.draw(ctx, resources),

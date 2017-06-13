@@ -40,16 +40,18 @@ impl Button {
     }
 
     fn get_location(&self, ctx: &mut Context) -> (f32, f32) {
+        let (width, height) = (ctx.width() as f32, ctx.height() as f32);
+
         let x = match self.v_align {
             VerticalAlignment::_Left => self.x,
-            VerticalAlignment::_Middle => (ctx.width() - self.width)  / 2.0 + self.x,
-            VerticalAlignment::Right => (ctx.width() - self.width) + self.x
+            VerticalAlignment::_Middle => (width - self.width)  / 2.0 + self.x,
+            VerticalAlignment::Right => (width - self.width) + self.x
         };
 
         let y = match self.h_align {
             HorizontalAlignment::_Top => self.y,
-            HorizontalAlignment::_Middle => (ctx.height() - self.height) / 2.0 + self.y,
-            HorizontalAlignment::Bottom => (ctx.height() - self.height) + self.y
+            HorizontalAlignment::_Middle => (height - self.height) / 2.0 + self.y,
+            HorizontalAlignment::Bottom => (height - self.height) + self.y
         };
 
         (x, y)

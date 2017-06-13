@@ -9,6 +9,7 @@ use sdl2::event::Event;
 use sdl2::ttf;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
+use sdl2::pixels::PixelFormatEnum;
 
 mod map;
 mod menu;
@@ -58,6 +59,10 @@ impl<'a> Resources<'a> {
             Some(texture) => &texture,
             None => panic!("Missing image: '{}'", name)
         }
+    }
+
+    fn create_texture(&self, width: u32, height: u32) -> Texture {
+        self.texture_creator.create_texture_target(PixelFormatEnum::ARGB8888, width, height).unwrap()
     }
 
     fn load_font(&mut self, name: &'a str, path: &str, size: u16) {
@@ -172,52 +177,42 @@ pub fn main() {
     
     let mut resources = Resources::new(&texture_creator, &font_context);
 
-    resources.load_image("title", "/resources/title.png");
-
-    resources.load_image("base_1", "/resources/base/1.png");
-    resources.load_image("base_2", "/resources/base/2.png");
-    
-    resources.load_image("friendly", "/resources/unit/friendly.png");
-    resources.load_image("enemy", "/resources/unit/enemy.png");
-    resources.load_image("dead_friendly", "/resources/unit/dead_friendly.png");
-    resources.load_image("dead_enemy", "/resources/unit/dead_enemy.png");
-
-    resources.load_image("bullet", "/resources/bullet/bullet.png");
-
-    resources.load_image("cursor", "/resources/cursor/default.png");
-    resources.load_image("cursor_unit", "/resources/cursor/unit.png");
-    resources.load_image("cursor_unwalkable", "/resources/cursor/unwalkable.png");
-    resources.load_image("cursor_crosshair", "/resources/cursor/crosshair.png");
-
-    resources.load_image("ruin_1", "/resources/ruin/1.png");
-    resources.load_image("ruin_2", "/resources/ruin/2.png");
-    resources.load_image("ruin_3", "/resources/ruin/3.png");
-
-    resources.load_image("pit_top", "/resources/pit/top.png");
-    resources.load_image("pit_right", "/resources/pit/right.png");
-    resources.load_image("pit_left", "/resources/pit/left.png");
-    resources.load_image("pit_bottom", "/resources/pit/bottom.png");
-    resources.load_image("pit_tl", "/resources/pit/tl.png");
-    resources.load_image("pit_tr", "/resources/pit/tr.png");
-    resources.load_image("pit_bl", "/resources/pit/bl.png");
-    resources.load_image("pit_br", "/resources/pit/br.png");
-    resources.load_image("pit_center", "/resources/pit/center.png");
-    
-    resources.load_image("path", "/resources/path/default.png");
-    resources.load_image("path_no_weapon", "/resources/path/no_weapon.png");
-    resources.load_image("path_unreachable", "/resources/path/unreachable.png");
-
-    resources.load_image("edge_left", "/resources/edge/left.png");
-    resources.load_image("edge_right", "/resources/edge/right.png");
-    resources.load_image("edge_left_corner", "/resources/edge/left_corner.png");
-    resources.load_image("edge_right_corner", "/resources/edge/right_corner.png");
-    resources.load_image("edge_corner", "/resources/edge/corner.png");
-
-    resources.load_image("skull", "/resources/decoration/skull.png");
-    resources.load_image("fog", "/resources/decoration/fog.png");
-
-    resources.load_image("end_turn_button", "/resources/button/end_turn.png");
-    resources.load_image("fire_button", "/resources/button/fire.png");
+    resources.load_image("title",               "resources/title.png");
+    resources.load_image("base_1",              "resources/base/1.png");
+    resources.load_image("base_2",              "resources/base/2.png");
+    resources.load_image("friendly",            "resources/unit/friendly.png");
+    resources.load_image("enemy",               "resources/unit/enemy.png");
+    resources.load_image("dead_friendly",       "resources/unit/dead_friendly.png");
+    resources.load_image("dead_enemy",          "resources/unit/dead_enemy.png");
+    resources.load_image("bullet",              "resources/bullet/bullet.png");
+    resources.load_image("cursor",              "resources/cursor/default.png");
+    resources.load_image("cursor_unit",         "resources/cursor/unit.png");
+    resources.load_image("cursor_unwalkable",   "resources/cursor/unwalkable.png");
+    resources.load_image("cursor_crosshair",    "resources/cursor/crosshair.png");
+    resources.load_image("ruin_1",              "resources/ruin/1.png");
+    resources.load_image("ruin_2",              "resources/ruin/2.png");
+    resources.load_image("ruin_3",              "resources/ruin/3.png");
+    resources.load_image("pit_top",             "resources/pit/top.png");
+    resources.load_image("pit_right",           "resources/pit/right.png");
+    resources.load_image("pit_left",            "resources/pit/left.png");
+    resources.load_image("pit_bottom",          "resources/pit/bottom.png");
+    resources.load_image("pit_tl",              "resources/pit/tl.png");
+    resources.load_image("pit_tr",              "resources/pit/tr.png");
+    resources.load_image("pit_bl",              "resources/pit/bl.png");
+    resources.load_image("pit_br",              "resources/pit/br.png");
+    resources.load_image("pit_center",          "resources/pit/center.png");
+    resources.load_image("path",                "resources/path/default.png");
+    resources.load_image("path_no_weapon",      "resources/path/no_weapon.png");
+    resources.load_image("path_unreachable",    "resources/path/unreachable.png");
+    resources.load_image("edge_left",           "resources/edge/left.png");
+    resources.load_image("edge_right",          "resources/edge/right.png");
+    resources.load_image("edge_left_corner",    "resources/edge/left_corner.png");
+    resources.load_image("edge_right_corner",   "resources/edge/right_corner.png");
+    resources.load_image("edge_corner",         "resources/edge/corner.png");
+    resources.load_image("skull",               "resources/decoration/skull.png");
+    resources.load_image("fog",                 "resources/decoration/fog.png");
+    resources.load_image("end_turn_button",     "resources/button/end_turn.png");
+    resources.load_image("fire_button",         "resources/button/fire.png");
     
     resources.load_font("main", "/resources/font.ttf", 35);
 

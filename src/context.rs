@@ -6,7 +6,7 @@ use sdl2::render::{Texture, TextureCreator};
 
 pub struct Context {
     sdl_context: sdl2::Sdl,
-    canvas: sdl2::render::Canvas<Window>,
+    pub canvas: sdl2::render::Canvas<Window>,
     pub running: bool,
 }
 
@@ -43,14 +43,6 @@ impl Context {
         self.sdl_context.event_pump().unwrap()
     }
 
-    pub fn draw_with_rotation(&mut self, image: &Texture, x: f32, y: f32, scale: f32, rotation: f64) {
-        let query = image.query();
-        let (width, height) = (query.width as f32 * scale, query.height as f32 * scale);
-        let rect = Rect::new(x as i32, y as i32, width as u32, height as u32);
-
-        self.canvas.copy_ex(image, None, Some(rect), rotation, None, false, false).unwrap();
-    }
-
     pub fn draw(&mut self, image: &Texture, x: f32, y: f32, scale: f32) {
         let query = image.query();
         let (width, height) = (query.width as f32 * scale, query.height as f32 * scale);
@@ -67,16 +59,15 @@ impl Context {
         self.canvas.present()
     }
 
-    pub fn size(&self) -> (f32, f32) {
-        let (width, height) = self.canvas.output_size().unwrap();
-        (width as f32, height as f32)
+    pub fn size(&self) -> (u32, u32) {
+        self.canvas.output_size().unwrap()
     }
 
-    pub fn width(&self) -> f32 {
+    pub fn width(&self) -> u32 {
         self.size().0
     }
 
-    pub fn height(&self) -> f32 {
+    pub fn height(&self) -> u32 {
         self.size().1
     }
 
