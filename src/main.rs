@@ -214,7 +214,7 @@ pub fn main() {
     resources.load_image("end_turn_button",     "resources/button/end_turn.png");
     resources.load_image("fire_button",         "resources/button/fire.png");
     
-    resources.load_font("main", "/resources/font.ttf", 35);
+    resources.load_font("main", "resources/font.ttf", 35);
 
     State::run(&mut ctx, resources);
 }

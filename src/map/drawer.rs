@@ -24,13 +24,13 @@ pub struct CanvasTexture<'a> {
     canvas: &'a mut Canvas<Window>,
     width: u32,
     height: u32,
-    zoom: f32
+    camera: &'a Camera
 }
 
 impl<'a> CanvasTexture<'a> {
-    fn new(canvas: &'a mut Canvas<Window>, width: u32, height: u32, zoom: f32) -> CanvasTexture {
+    fn new(canvas: &'a mut Canvas<Window>, width: u32, height: u32, camera: &'a Camera) -> CanvasTexture<'a> {
         CanvasTexture {
-            canvas, width, height, zoom
+            canvas, width, height, camera
         }
     }
 
@@ -44,6 +44,14 @@ impl<'a> CanvasTexture<'a> {
         self.canvas.copy(image, None, Some(Rect::new(x, y, query.width, query.height))).unwrap();
     }
 
+    fn draw_tile(&mut self, image: &Texture, x: usize, y: usize) {
+        let (x, y) = self.draw_location(x as f32, y as f32);
+
+        if self.on_screen(x, y) {
+            self.draw(image, x, y);
+        }
+    }
+
     fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f32) {
         let query = image.query();
 
@@ -51,11 +59,21 @@ impl<'a> CanvasTexture<'a> {
     }
 
     fn on_screen(&self, x: i32, y: i32) -> bool {
-        let min = (-(TILE_IMAGE_SIZE as f32) * self.zoom) as i32;
-        let max_x = ((self.width  + TILE_IMAGE_SIZE / 2) as f32 * self.zoom) as i32;
-        let max_y = ((self.height + TILE_IMAGE_SIZE / 2) as f32 * self.zoom) as i32;
+        let min = (-(TILE_IMAGE_SIZE as f32) * self.camera.zoom) as i32;
+        let max_x = ((self.width  + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom) as i32;
+        let max_y = ((self.height + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom) as i32;
 
         x > min && x < max_x && y > min && y < max_y
+    }
+
+    fn draw_location(&self, x: f32, y: f32) -> (i32, i32) {
+        let (x, y) = from_map_coords(x, y);
+        let (tile_width, tile_height) = (TILE_WIDTH as f32, TILE_HEIGHT as f32);
+
+        let x = (x * tile_width  - (self.camera.x * tile_width  - self.width  as f32)) / 2.0;
+        let y = (y * tile_height - (self.camera.y * tile_height - self.height as f32)) / 2.0;
+        
+        (x as i32, y as i32)
     }
 }
 
@@ -93,29 +111,11 @@ impl Drawer {
         if self.camera.zoom < 1.0 { self.camera.zoom = 1.0; }
     }
 
-    fn draw_tile(&self, canvas: &mut CanvasTexture, image: &Texture, x: usize, y: usize,) {
-        let (x, y) = self.draw_location(canvas, x as f32, y as f32);
-
-        if canvas.on_screen(x, y) {
-            canvas.draw(image, x, y);
-        }
-    }
-
-    fn draw_location(&self, canvas: &CanvasTexture, x: f32, y: f32) -> (i32, i32) {
-        let (x, y) = from_map_coords(x, y);
-        let (tile_width, tile_height) = (TILE_WIDTH as f32, TILE_HEIGHT as f32);
-
-        let x = (x * tile_width  - (self.camera.x * tile_width  - canvas.width  as f32)) / 2.0;
-        let y = (y * tile_height - (self.camera.y * tile_height - canvas.height as f32)) / 2.0;
-        
-        (x as i32, y as i32)
-    }
-
     pub fn draw_to_canvas(&self, canvas: &mut CanvasTexture, resources: &Resources, map: &Map) {
         for x in 0 .. map.tiles.cols {
             for y in 0 .. map.tiles.rows {
                 let tile = map.tiles.tile_at(x, y);
-                let (screen_x, screen_y) = self.draw_location(canvas, x as f32, y as f32);
+                let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
                 if canvas.on_screen(screen_x, screen_y) {
                     canvas.draw(resources.image(tile.base.as_str()), screen_x, screen_y);
@@ -166,16 +166,16 @@ impl Drawer {
             }
         }
 
-        self.draw_tile(canvas, resources.image("edge_left_corner"), 0, map.tiles.rows);
-        self.draw_tile(canvas, resources.image("edge_corner"), map.tiles.cols, map.tiles.rows);
-        self.draw_tile(canvas, resources.image("edge_right_corner"), map.tiles.cols, 0);
+        canvas.draw_tile(resources.image("edge_left_corner"), 0, map.tiles.rows);
+        canvas.draw_tile(resources.image("edge_corner"), map.tiles.cols, map.tiles.rows);
+        canvas.draw_tile(resources.image("edge_right_corner"), map.tiles.cols, 0);
 
         for x in 1..map.tiles.cols {
-            self.draw_tile(canvas, resources.image("edge_left"), x, map.tiles.rows);
+            canvas.draw_tile(resources.image("edge_left"), x, map.tiles.rows);
         }
 
         for y in 1..map.tiles.rows {
-            self.draw_tile(canvas, resources.image("edge_right"), map.tiles.cols, y);
+            canvas.draw_tile(resources.image("edge_right"), map.tiles.cols, y);
         }
 
         // Draw path
@@ -184,7 +184,7 @@ impl Drawer {
                 let squaddie = &map.squaddies[map.selected.unwrap()];
 
                 for point in points {
-                    let (x, y) = self.draw_location(canvas, point.x as f32, point.y as f32);
+                    let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
 
                     if canvas.on_screen(x, y) {
                         let image = if point.cost > squaddie.moves {
@@ -209,7 +209,7 @@ impl Drawer {
         if map.cursor.fire {
             match map.cursor.position {
                 Some((x, y)) => {
-                    let (screen_x, screen_y) = self.draw_location(canvas, x as f32, y as f32);
+                    let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
                     if canvas.on_screen(screen_x, screen_y) {
                         canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
@@ -235,7 +235,7 @@ impl Drawer {
         }
 
         for bullet in &map.bullets {
-            let (x, y) = self.draw_location(canvas, bullet.x, bullet.y);
+            let (x, y) = canvas.draw_location(bullet.x, bullet.y);
             if canvas.on_screen(x, y) {
                 canvas.draw_with_rotation(resources.image("bullet"), x, y, bullet.direction.to_degrees() + 45.0);
             }
@@ -248,7 +248,7 @@ impl Drawer {
         let mut texture = resources.create_texture(width, height);
 
         ctx.canvas.with_texture_canvas(&mut texture, |canvas| {
-            let mut canvas = CanvasTexture::new(canvas, width, height, self.camera.zoom);
+            let mut canvas = CanvasTexture::new(canvas, width, height, &self.camera);
             canvas.clear();
 
             self.draw_to_canvas(&mut canvas, resources, map);
