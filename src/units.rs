@@ -4,6 +4,7 @@ use rand::Rng;
 use weapons::{Weapon, Bullet};
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 
+// A list of first names to pick from
 const FIRST_NAMES: &[&str; 9] = &[
     "David",
     "Dale",
@@ -16,6 +17,7 @@ const FIRST_NAMES: &[&str; 9] = &[
     "Heisenberg"
 ];
 
+// A list of last names to pick from
 const LAST_NAMES: &[&str; 7] = &[
     "Cooper",
     "Yang",
@@ -26,17 +28,20 @@ const LAST_NAMES: &[&str; 7] = &[
     "Savage"
 ];
 
+// The type of a unit
 pub enum UnitType {
     Squaddie,
     Robot
 }
 
+// The side of a unit
 pub enum UnitSide {
     Friendly,
     // Neutral,
     Enemy
 }
 
+// A struct for a unit in the game
 pub struct Unit {
     pub tag: UnitType,
     pub side: UnitSide,
@@ -52,6 +57,7 @@ pub struct Unit {
 }
 
 impl Unit {
+    // Create a new unit based on unit type
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
         let (weapon, image, name, max_moves, max_health) = match tag {
             UnitType::Squaddie => {
@@ -84,6 +90,7 @@ impl Unit {
         }
     }
 
+    // Update the image of the unit
     pub fn update(&mut self) {
         if self.health <= 0 {
             self.image = match self.tag {
@@ -93,6 +100,7 @@ impl Unit {
         }
     }
 
+    // Move the unit to a location
     pub fn move_to(&mut self, x: usize, y: usize, cost: usize) -> bool {
         if self.moves >= cost {
             self.x = x;
@@ -104,26 +112,33 @@ impl Unit {
         false
     }
 
+    // Fire the units weapon at another unit
     pub fn fire_at(&mut self, target: &mut Unit, bullets: &mut Vec<Bullet>) {
+        // return if the unit cannot fire or the unit is already dead
         if self.moves < self.weapon.cost || target.health <= 0 {
             return;
         }
 
         self.moves -= self.weapon.cost;
 
+        // Get the chance to hit and compare it to a random number
+
         let hit_chance = chance_to_hit(self, target);
         let random = rand::random::<f32>();
 
         let will_hit = hit_chance > random;
 
+        // Lower the targets health
         if will_hit {
             target.health -= self.weapon.damage;
         }
 
+        // Add a bullet to the array for drawing
         bullets.push(Bullet::new(self, target, will_hit));
     }
 }
 
+// A change to hit function based on a fairly simple sigmoid curve.
 pub fn chance_to_hit(from: &Unit, target: &Unit) -> f32 {
     let distance = (from.x as f32 - target.x as f32).hypot(from.y as f32 - target.y as f32);
 

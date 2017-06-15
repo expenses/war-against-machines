@@ -3,24 +3,24 @@ use sdl2::mouse::MouseButton;
 use context::Context;
 
 use map::tiles::Tiles;
+use map::drawer::Drawer;
+use map::paths::{pathfind, PathPoint};
 use Resources;
 use units::{Unit, UnitType, UnitSide};
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
-use map::paths::{pathfind, PathPoint};
 use weapons::Bullet;
-// use items::ItemType;
-
-use map::drawer::Drawer;
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
 
+// A cursor on the map with a possible position
 pub struct Cursor {
     pub position: Option<(usize, usize)>,
     pub fire: bool
 }
 
 impl Cursor {
+    // Create a new cursor
     fn new() -> Cursor {
         Cursor {
             position: None,
@@ -29,6 +29,7 @@ impl Cursor {
     }
 }
 
+// The Map struct
 pub struct Map {
     pub tiles: Tiles,
     drawer: Drawer,
@@ -44,9 +45,12 @@ pub struct Map {
 }
 
 impl Map {
+    // Create a new name, using the resources to get the size of UI buttons
     pub fn new(resources: &Resources) -> Map {
         let scale = 2.0;
         let width = resources.image(&"end_turn_button".into()).query().width as f32 * scale;
+
+        // Create the UI and add the buttons and text display
 
         let mut ui = UI::new();
 
@@ -70,8 +74,9 @@ impl Map {
                 HorizontalAlignment::Bottom
             )
         ];
+
         ui.text_displays = vec![
-            TextDisplay::new(5.0, 5.0)
+            TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Top)
         ];
 
         Map {
@@ -89,6 +94,7 @@ impl Map {
         }
     }
 
+    // Start up the map
     pub fn start(&mut self, cols: usize, rows: usize) {
         // Generate tiles
         self.tiles.generate(cols, rows);
@@ -104,6 +110,7 @@ impl Map {
         }
     }
 
+    // Handle keypresses
     pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode, pressed: bool) {
         match key {
             Keycode::Up    | Keycode::W => self.keys[0] = pressed,
@@ -118,6 +125,7 @@ impl Map {
     }
 
     pub fn update(&mut self) {
+        // Change camera variables if a key is being pressed
         if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
         if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED; }
         if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED; }
@@ -147,6 +155,7 @@ impl Map {
 
     }
 
+    // Update all the units
     pub fn update_all_units(&mut self) {
         for squaddie in &mut self.squaddies {
             squaddie.update();
@@ -157,12 +166,15 @@ impl Map {
         }
     }
 
+    // Draw both the map and the UI
     pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
         self.drawer.draw_map(ctx, resources, &self);
         self.draw_ui(ctx, resources);
     }
 
+    // Draw the UI
     pub fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
+        // Get  string of info about the selected unit
         let selected = match self.selected {
             Some(i) => {
                 let squaddie = &self.squaddies[i];
@@ -174,15 +186,19 @@ impl Map {
             _ => "~".into()
         };
 
+        // Set the text of the UI text display
         self.ui.set_text(0, format!("Turn: {}, Selected: {}", self.turn, selected));
 
+        // Draw the UI
         self.ui.draw(ctx, resources);
     }
 
+    // Move the cursor on the screen
     pub fn move_cursor(&mut self, ctx: &mut Context, x: f32, y: f32) {
+        // Get the position where the cursor should be
         let (x, y) = self.drawer.tile_under_cursor(ctx, x, y);
 
-        // Set cursor position
+        // Set cursor position if it is on the map
         self.cursor.position = if x < self.tiles.cols && y < self.tiles.rows {
             Some((x, y))
         } else {
@@ -190,27 +206,33 @@ impl Map {
         }
     }
 
+    // Respond to mouse presses
     pub fn mouse_button(&mut self, ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
         match button {
             MouseButton::Left => match self.ui.clicked(ctx, x, y) {
+                // Respond to UI clicks
                 Some(0) => self.end_turn(),
                 Some(1) => {
                     self.cursor.fire = !self.cursor.fire;
                     self.path = None;
                 },
+                // Or check if cursor position
                 _ => match self.cursor.position {
                     Some((x, y)) => {
                         self.path = None;
 
+                        // If the cursor is in fire mode and a squaddie is selected and an enemy is under the cursor
                         if self.cursor.fire && self.selected.is_some() {
                             match self.enemies.iter_mut().find(|enemy| enemy.x == x && enemy.y == y) {
                                 Some(enemy) => {
+                                    // Fire at the enemy
                                     let squaddie = &mut self.squaddies[self.selected.unwrap()];
                                     let bullets = &mut self.bullets;
                                     squaddie.fire_at(enemy, bullets);
                                 }
                                 _ => {}
                             }
+                        // Otherwise select the squaddie under the cursor (or none)
                         } else if !self.cursor.fire {
                             self.selected = self.squaddie_at(x, y).map(|(i, _)| i);
                         }
@@ -218,19 +240,23 @@ impl Map {
                     _ => {}
                 }
             },
+            // Check if the cursor has a position and a unit is selected
             MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
+                    // Do nothing if fire mode is on
                     if self.cursor.fire {
                         return;
+                    // Or the the target location is selected
                     } else if self.taken(x, y) {
                         self.path = None;
                         return;
                     }
 
-                    let start = PathPoint::from(&self.squaddies[selected]);
-                    let end = PathPoint::new(x, y);
+                    // Get the destination point
+                    let dest = PathPoint::new(x, y);
 
-                    let (points, cost) = match pathfind(&start, &end, &self) {
+                    // Pathfind to get the path points and the cost
+                    let (points, cost) = match pathfind(&self.squaddies[selected], &dest, &self) {
                         Some((points, cost)) => (points, cost),
                         _ => {
                             self.path = None;
@@ -238,13 +264,14 @@ impl Map {
                         }
                     };
 
+                    // Is the path is the same as existing one?
                     let same_path = match self.path {
-                        Some(ref path) => path[path.len() - 1].at(&end),
+                        Some(ref path) => path[path.len() - 1].at(&dest),
                         _ => false
                     };
 
+                    // If the paths are the same and the squaddie can move to the destination, get rid of the path
                     let squaddie = &mut self.squaddies[selected];
-
                     self.path = if same_path && squaddie.move_to(x, y, cost) {
                         None
                     } else {
@@ -257,14 +284,17 @@ impl Map {
         }
     }
 
+    // Find a possible squaddie at a point and its index
     pub fn squaddie_at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
         self.squaddies.iter().enumerate().find(|&(_, squaddie)| squaddie.x == x && squaddie.y == y)
     }
 
+    // Find a possible enemy at a point and its index
     pub fn enemy_at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
         self.enemies.iter().enumerate().find(|&(_, enemy)| enemy.x == x && enemy.y == y)
     }
 
+    // Is a tile taken up by an obstacle or unit?
     pub fn taken(&self, x: usize, y: usize) -> bool {
         !self.tiles.tile_at(x, y).walkable ||
         self.squaddie_at(x, y).is_some() ||

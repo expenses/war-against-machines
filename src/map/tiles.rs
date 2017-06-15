@@ -1,6 +1,7 @@
 use rand;
 use rand::Rng;
 
+// A tile in the map
 pub struct Tile {
     pub base: String,
     pub decoration: Option<String>,
@@ -8,6 +9,7 @@ pub struct Tile {
 }
 
 impl Tile {
+    // Create a new tile
     fn new(base: &str) -> Tile {
         Tile {
             base: base.into(),
@@ -16,12 +18,14 @@ impl Tile {
         }
     }
 
+    // Set the decoration of the tile and make it unwalkable
     fn set_obstacle(&mut self, decoration: &str) {
         self.decoration = Some(decoration.into());
         self.walkable = false;        
     }
 }
 
+// A 2D array of tiles
 pub struct Tiles {
     tiles: Vec<Tile>,
     pub cols: usize,
@@ -29,6 +33,7 @@ pub struct Tiles {
 }
 
 impl Tiles {
+    // Create a new set of tiles but do not generate it
     pub fn new() -> Tiles {
         Tiles {
             tiles: Vec::new(),
@@ -37,6 +42,7 @@ impl Tiles {
         }
     }
 
+    // Generate the tiles
     pub fn generate(&mut self, cols: usize, rows: usize) {
         self.cols = cols;
         self.rows = rows;
@@ -47,6 +53,7 @@ impl Tiles {
 
         for _ in 0 .. cols {
             for row in 0 .. rows {
+                // Choose a random base image
                 let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
                 // Add in skulls
@@ -59,6 +66,7 @@ impl Tiles {
                     tile.set_obstacle(*rng.choose(ruins).unwrap());
                 }
 
+                // Push the tile
                 self.tiles.push(tile);
             }
         }
@@ -93,10 +101,12 @@ impl Tiles {
         }
     }
 
+    // Get a reference to a tile
     pub fn tile_at(&self, x: usize, y: usize) -> &Tile {
         &self.tiles[x * self.rows + y]
     }
 
+    // Get a mutable reference to a tile
     fn tile_at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[x * self.rows + y]
     }
