@@ -21,7 +21,7 @@ pub enum FireMode {
 pub struct Weapon {
     tag: WeaponType,
     pub cost: usize,
-    pub damage: u8,
+    pub damage: i16,
     // modes: Vec<FireMode>
 }
 
@@ -87,11 +87,11 @@ impl Bullet {
         self.y += self.direction.sin();
     }
 
-    pub fn traveling(&self) -> bool {
-        !self.will_hit || (self.left == (self.x < self.target_x) && self.above == (self.y < self.target_y))
-    }
-
-    pub fn on_map(&self, cols: usize, rows: usize) -> bool {
+    pub fn traveling(&self, cols: usize, rows: usize) -> bool {
+        !self.will_hit || (
+            self.left == (self.x < self.target_x) &&
+            self.above == (self.y < self.target_y)
+        ) &&
         self.x > -5.0 && self.x < cols as f32 + 5.0 &&
         self.y > -5.0 && self.y < rows as f32 + 5.0
     }

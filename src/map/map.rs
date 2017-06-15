@@ -125,14 +125,36 @@ impl Map {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
-        for bullet in &mut self.bullets {
-            bullet.travel();
-        }
-
         let cols = self.tiles.cols;
         let rows = self.tiles.rows;
+        let mut update = false;
 
-        self.bullets.retain(|bullet| bullet.traveling() && bullet.on_map(cols, rows));
+        // Update all the bullet positions
+        for bullet in &mut self.bullets {
+            bullet.travel();
+            
+            // Check if a bullet has stopped traveling
+            update = update || !bullet.traveling(cols, rows);
+        }
+
+        // Only keep bullets that are still traveling
+        self.bullets.retain(|bullet| bullet.traveling(cols, rows));
+
+        // If a bullet has stopped traveling, update all the units
+        if update {
+            self.update_all_units();
+        }
+
+    }
+
+    pub fn update_all_units(&mut self) {
+        for squaddie in &mut self.squaddies {
+            squaddie.update();
+        }
+
+        for enemy in &mut self.enemies {
+            enemy.update();
+        }
     }
 
     pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {

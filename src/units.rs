@@ -44,17 +44,16 @@ pub struct Unit {
     pub y: usize,
     pub weapon: Weapon,
     pub image: String,
-    pub dead_image: String,
     pub name: String,
     pub moves: usize,
     pub max_moves: usize,
-    pub health: u8,
-    pub max_health: u8
+    pub health: i16,
+    pub max_health: i16
 }
 
 impl Unit {
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
-        let (weapon, image, dead_image, name, max_moves, max_health) = match tag {
+        let (weapon, image, name, max_moves, max_health) = match tag {
             UnitType::Squaddie => {
                 // Generate a random name
                 let mut rng = rand::thread_rng();
@@ -65,35 +64,32 @@ impl Unit {
 
                 (
                     Weapon::new(weapon_type),
-                    "friendly".into(), "dead_friendly".into(),
+                    "friendly".into(),
                     format!("{} {}", first, last), 30, 75
                 )
             },
             UnitType::Robot => {
                 (
                     Weapon::new(PlasmaRifle),
-                    "enemy".into(), "dead_enemy".into(),
+                    "enemy".into(),
                     format!("ROBOT"), 25, 150
                 )
             }
         };
 
         Unit {
-            tag, side, x, y, weapon, image, dead_image, name, max_moves, max_health,
+            tag, side, x, y, weapon, image, name, max_moves, max_health,
             moves: max_moves,
             health: max_health
         }
     }
 
-    pub fn alive(&self) -> bool {
-        self.health > 0
-    }
-
-    pub fn image(&self) -> &String {
-        if self.alive() {
-            &self.image
-        } else {
-            &self.dead_image
+    pub fn update(&mut self) {
+        if self.health <= 0 {
+            self.image = match self.tag {
+                UnitType::Squaddie => "dead_friendly".into(),
+                UnitType::Robot => "dead_enemy".into()
+            }
         }
     }
 
@@ -109,7 +105,7 @@ impl Unit {
     }
 
     pub fn fire_at(&mut self, target: &mut Unit, bullets: &mut Vec<Bullet>) {
-        if self.moves < self.weapon.cost || !target.alive() {
+        if self.moves < self.weapon.cost || target.health <= 0 {
             return;
         }
 
@@ -121,11 +117,7 @@ impl Unit {
         let will_hit = hit_chance > random;
 
         if will_hit {
-            target.health = if target.health < self.weapon.damage {
-                0
-            } else {
-                target.health - self.weapon.damage
-            };
+            target.health -= self.weapon.damage;
         }
 
         bullets.push(Bullet::new(self, target, will_hit));

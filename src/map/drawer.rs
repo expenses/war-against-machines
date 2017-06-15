@@ -10,16 +10,22 @@ use units::chance_to_hit;
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
 const TILE_IMAGE_SIZE: u32 = 48;
-const DEFAULT_ZOOM: f32 = 2.0;
 
+const DEFAULT_ZOOM: f32 = 2.0;
+const ZOOM_MAX: f32 = 10.0;
+const ZOOM_MIN: f32 = 1.0;
+
+// Convert coordinates from isometric
 fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
     (x - y, x + y)
 }
 
+// Convert coordinates to isometric
 fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
     (y + x, y - x)
 }
 
+// A struct for writing to a canvas
 pub struct CanvasTexture<'a> {
     canvas: &'a mut Canvas<Window>,
     width: u32,
@@ -28,22 +34,26 @@ pub struct CanvasTexture<'a> {
 }
 
 impl<'a> CanvasTexture<'a> {
+    // Create a new CanvasTexture
     fn new(canvas: &'a mut Canvas<Window>, width: u32, height: u32, camera: &'a Camera) -> CanvasTexture<'a> {
         CanvasTexture {
             canvas, width, height, camera
         }
     }
 
+    // Clear the canvas
     fn clear(&mut self) {
         self.canvas.clear();
     }
 
+    // Draw a texture on the canvas at (x, y) at the same size as the image
     fn draw(&mut self, image: &Texture, x: i32, y: i32) {
         let query = image.query();
 
         self.canvas.copy(image, None, Some(Rect::new(x, y, query.width, query.height))).unwrap();
     }
 
+    // Draw a tile at the correct location if it is on screen
     fn draw_tile(&mut self, image: &Texture, x: usize, y: usize) {
         let (x, y) = self.draw_location(x as f32, y as f32);
 
@@ -52,12 +62,15 @@ impl<'a> CanvasTexture<'a> {
         }
     }
 
+    // Draw a texture with a particular rotation
     fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f32) {
         let query = image.query();
 
-        self.canvas.copy_ex(image, None, Some(Rect::new(x, y, query.width, query.height)), angle as f64, None, false, false).unwrap();
+        self.canvas.copy_ex(image, None, Some(Rect::new(x, y, query.width, query.height)),
+                            angle as f64, None, false, false).unwrap();
     }
 
+    // Calculate if a tile is on screen
     fn on_screen(&self, x: i32, y: i32) -> bool {
         let min = (-(TILE_IMAGE_SIZE as f32) * self.camera.zoom) as i32;
         let max_x = ((self.width  + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom) as i32;
@@ -66,6 +79,7 @@ impl<'a> CanvasTexture<'a> {
         x > min && x < max_x && y > min && y < max_y
     }
 
+    // Calculate the correct position to draw a tile on the screen
     fn draw_location(&self, x: f32, y: f32) -> (i32, i32) {
         let (x, y) = from_map_coords(x, y);
         let (tile_width, tile_height) = (TILE_WIDTH as f32, TILE_HEIGHT as f32);
@@ -77,6 +91,7 @@ impl<'a> CanvasTexture<'a> {
     }
 }
 
+// A simple camera for what the user is looking at
 pub struct Camera {
     pub x: f32,
     pub y: f32,
@@ -84,6 +99,7 @@ pub struct Camera {
 }
 
 impl Camera {
+    // Create a new Camera
     fn new() -> Camera {
         Camera {
             x: 0.0,
@@ -93,42 +109,53 @@ impl Camera {
     }
 }
 
+// The drawer object
 pub struct Drawer {
     pub camera: Camera,
 }
 
 impl Drawer {
+    // Create a new Drawer
     pub fn new() -> Drawer {
         Drawer {
             camera: Camera::new()
         }
     }
 
+    // Zoom in the camera by a particular amount, checking if it's zoomed in/out too far
     pub fn zoom(&mut self, amount: f32) {
         self.camera.zoom += amount * self.camera.zoom;
 
-        if self.camera.zoom > 10.0 { self.camera.zoom = 10.0; }
-        if self.camera.zoom < 1.0 { self.camera.zoom = 1.0; }
+        if self.camera.zoom > ZOOM_MAX { self.camera.zoom = ZOOM_MAX; }
+        if self.camera.zoom < ZOOM_MIN { self.camera.zoom = ZOOM_MIN; }
     }
 
+    // Draw the map onto a CanvasTexture
     pub fn draw_to_canvas(&self, canvas: &mut CanvasTexture, resources: &Resources, map: &Map) {
+        // Loop through tiles
         for x in 0 .. map.tiles.cols {
             for y in 0 .. map.tiles.rows {
+                // Get the tile
                 let tile = map.tiles.tile_at(x, y);
+                // Get the position of the tile in the screen
                 let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
                 if canvas.on_screen(screen_x, screen_y) {
+                    // Draw the tile base
                     canvas.draw(resources.image(tile.base.as_str()), screen_x, screen_y);
 
+                    // Draw the tile decoration
                     match tile.decoration {
                         Some(ref decoration) => canvas.draw(resources.image(decoration.as_str()), screen_x, screen_y),
                         _ => {}
                     }
 
+                    // Draw the cursor if it's not in fire mode
                     if !map.cursor.fire {
                         match map.cursor.position {
                             Some((cursor_x, cursor_y)) => {
                                 if cursor_x == x && cursor_y == y {
+                                    // Determine the cursor colour
                                     let image = if !tile.walkable {
                                         "cursor_unwalkable"
                                     } else if map.squaddie_at(x, y).is_some() {
@@ -144,8 +171,10 @@ impl Drawer {
                         }
                     }
 
+                    // Draw a squaddie at the position
                     match map.squaddie_at(x, y) {
                         Some((index, squaddie)) => {
+                            // Draw the cursor to show that the unit is selected
                             match map.selected {
                                 Some(selected) => if selected == index {
                                     canvas.draw(resources.image("cursor_unit"), screen_x, screen_y);
@@ -153,22 +182,26 @@ impl Drawer {
                                 _ => {}
                             }
 
-                            canvas.draw(resources.image(squaddie.image().as_str()), screen_x, screen_y);
+                            canvas.draw(resources.image(squaddie.image.as_str()), screen_x, screen_y);
                         },
                         _ => {}
                     }
 
+                    // Draw an enemy at the position
                     match map.enemy_at(x, y) {
-                        Some((_, enemy)) => canvas.draw(resources.image(enemy.image().as_str()), screen_x, screen_y),
+                        Some((_, enemy)) => canvas.draw(resources.image(enemy.image.as_str()), screen_x, screen_y),
                         _ => {}
                     }
                 }
             }
         }
 
+        // Draw the edge corners
         canvas.draw_tile(resources.image("edge_left_corner"), 0, map.tiles.rows);
         canvas.draw_tile(resources.image("edge_corner"), map.tiles.cols, map.tiles.rows);
         canvas.draw_tile(resources.image("edge_right_corner"), map.tiles.cols, 0);
+
+        // Draw the edges
 
         for x in 1..map.tiles.cols {
             canvas.draw_tile(resources.image("edge_left"), x, map.tiles.rows);
@@ -178,15 +211,17 @@ impl Drawer {
             canvas.draw_tile(resources.image("edge_right"), map.tiles.cols, y);
         }
 
-        // Draw path
+        // Draw the path
         match map.path {
             Some(ref points) => {
+                // Get the squaddie the path if for
                 let squaddie = &map.squaddies[map.selected.unwrap()];
 
                 for point in points {
                     let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
 
                     if canvas.on_screen(x, y) {
+                        // Get the image for the path
                         let image = if point.cost > squaddie.moves {
                             "path_unreachable"
                         } else if point.cost + squaddie.weapon.cost > squaddie.moves {
@@ -195,6 +230,7 @@ impl Drawer {
                             "path"
                         };
 
+                        // Rendet the path cost
                         let cost = resources.render("main", format!("{}", point.cost).as_str());
                         let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
@@ -206,21 +242,27 @@ impl Drawer {
             _ => {}
         }
 
+        // Draw the fire crosshair
         if map.cursor.fire {
             match map.cursor.position {
                 Some((x, y)) => {
                     let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
                     if canvas.on_screen(screen_x, screen_y) {
+                        // Draw the crosshair
                         canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
 
+                        // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
                         match map.selected.and_then(|i| map.enemy_at(x, y).map(|(_, enemy)| (i, enemy))) {
                             Some((i, enemy)) => {
                                 let squaddie = &map.squaddies[i];
 
-                                let hit_chance = format!("{:0.3}%", chance_to_hit(squaddie, enemy) * 100.0);
+                                // Get the chance to hit as a percentage
+                                let hit_chance = chance_to_hit(squaddie, enemy) * 100.0;
 
-                                let chance = resources.render("main", hit_chance.as_str());
+                                // Render itand draw it at the center
+
+                                let chance = resources.render("main", format!("{:0.3}%", hit_chance).as_str());
 
                                 let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
 
@@ -234,6 +276,7 @@ impl Drawer {
             }
         }
 
+        // Draw the bullets at the correct rotation (+45' because of the map being isometric)
         for bullet in &map.bullets {
             let (x, y) = canvas.draw_location(bullet.x, bullet.y);
             if canvas.on_screen(x, y) {
@@ -243,19 +286,29 @@ impl Drawer {
     }
 
     pub fn draw_map(&self, ctx: &mut Context, resources: &Resources, map: &Map) {
+        // Get the width and height of the screen
         let (width, height) = (ctx.width(), ctx.height());
 
+        // Create a texture to render into
         let mut texture = resources.create_texture(width, height);
 
+        // As I had problems with seams between textures before,
+        // the strategy to render the map is to render it into the texture
+        // and _then_ scale it to the screen, so here we use the canvas as a texture
+        // and wrap it in a CanvasTexture object.
         ctx.canvas.with_texture_canvas(&mut texture, |canvas| {
             let mut canvas = CanvasTexture::new(canvas, width, height, &self.camera);
+            // Clear the canvas
             canvas.clear();
 
+            // And draw to it
             self.draw_to_canvas(&mut canvas, resources, map);
         }).unwrap(); 
 
+        // Work out the center of the screen
         let (center_x, center_y) = (width as f32 / 2.0, height as f32 / 2.0);
 
+        // Draw the map texture onto the screen at the correct location
         ctx.draw(&texture, center_x - center_x * self.camera.zoom, center_y - center_y * self.camera.zoom, self.camera.zoom);
     }
 
@@ -264,10 +317,9 @@ impl Drawer {
         let center_x = ctx.width()  as f32 / 2.0;
         let center_y = ctx.height() as f32 / 2.0;
 
-        let x = (x - center_x) / TILE_WIDTH as f32  / self.camera.zoom + self.camera.x / 2.0;
-        let y = (y - center_y) / TILE_HEIGHT as f32 / self.camera.zoom + self.camera.y / 2.0;
-
-        let (x, y) = (x - 0.5, y - 0.5);
+        // Work out the position of the mouse on the screen relative to the camera
+        let x = (x - center_x) / TILE_WIDTH as f32  / self.camera.zoom + self.camera.x / 2.0 - 0.5;
+        let y = (y - center_y) / TILE_HEIGHT as f32 / self.camera.zoom + self.camera.y / 2.0 - 0.5;
 
         // Account for the images being square
         let y = y - 1.0;
