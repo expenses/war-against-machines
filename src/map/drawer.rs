@@ -142,11 +142,11 @@ impl Drawer {
 
                 if canvas.on_screen(screen_x, screen_y) {
                     // Draw the tile base
-                    canvas.draw(resources.image(tile.base.as_str()), screen_x, screen_y);
+                    canvas.draw(resources.image(&tile.base), screen_x, screen_y);
 
                     // Draw the tile decoration
                     match tile.decoration {
-                        Some(ref decoration) => canvas.draw(resources.image(decoration.as_str()), screen_x, screen_y),
+                        Some(ref decoration) => canvas.draw(resources.image(&decoration), screen_x, screen_y),
                         _ => {}
                     }
 
@@ -164,7 +164,7 @@ impl Drawer {
                                         "cursor"
                                     };
 
-                                    canvas.draw(resources.image(image), screen_x, screen_y);
+                                    canvas.draw(resources.image(&image.into()), screen_x, screen_y);
                                 }
                             },
                             _ => {}
@@ -177,19 +177,19 @@ impl Drawer {
                             // Draw the cursor to show that the unit is selected
                             match map.selected {
                                 Some(selected) => if selected == index {
-                                    canvas.draw(resources.image("cursor_unit"), screen_x, screen_y);
+                                    canvas.draw(resources.image(&"cursor_unit".into()), screen_x, screen_y);
                                 },
                                 _ => {}
                             }
 
-                            canvas.draw(resources.image(squaddie.image.as_str()), screen_x, screen_y);
+                            canvas.draw(resources.image(&squaddie.image), screen_x, screen_y);
                         },
                         _ => {}
                     }
 
                     // Draw an enemy at the position
                     match map.enemy_at(x, y) {
-                        Some((_, enemy)) => canvas.draw(resources.image(enemy.image.as_str()), screen_x, screen_y),
+                        Some((_, enemy)) => canvas.draw(resources.image(&enemy.image), screen_x, screen_y),
                         _ => {}
                     }
                 }
@@ -197,18 +197,18 @@ impl Drawer {
         }
 
         // Draw the edge corners
-        canvas.draw_tile(resources.image("edge_left_corner"), 0, map.tiles.rows);
-        canvas.draw_tile(resources.image("edge_corner"), map.tiles.cols, map.tiles.rows);
-        canvas.draw_tile(resources.image("edge_right_corner"), map.tiles.cols, 0);
+        canvas.draw_tile(resources.image(&"edge_left_corner".into()), 0, map.tiles.rows);
+        canvas.draw_tile(resources.image(&"edge_corner".into()), map.tiles.cols, map.tiles.rows);
+        canvas.draw_tile(resources.image(&"edge_right_corner".into()), map.tiles.cols, 0);
 
         // Draw the edges
 
         for x in 1..map.tiles.cols {
-            canvas.draw_tile(resources.image("edge_left"), x, map.tiles.rows);
+            canvas.draw_tile(resources.image(&"edge_left".into()), x, map.tiles.rows);
         }
 
         for y in 1..map.tiles.rows {
-            canvas.draw_tile(resources.image("edge_right"), map.tiles.cols, y);
+            canvas.draw_tile(resources.image(&"edge_right".into()), map.tiles.cols, y);
         }
 
         // Draw the path
@@ -231,11 +231,11 @@ impl Drawer {
                         };
 
                         // Rendet the path cost
-                        let cost = resources.render("main", format!("{}", point.cost).as_str());
+                        let cost = resources.render("main", &format!("{}", point.cost));
                         let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
                         canvas.draw(&cost, x + center as i32, y);
-                        canvas.draw(resources.image(image), x, y);
+                        canvas.draw(resources.image(&image.into()), x, y);
                     }
                 }
             }
@@ -250,7 +250,7 @@ impl Drawer {
 
                     if canvas.on_screen(screen_x, screen_y) {
                         // Draw the crosshair
-                        canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
+                        canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
 
                         // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
                         match map.selected.and_then(|i| map.enemy_at(x, y).map(|(_, enemy)| (i, enemy))) {
@@ -262,7 +262,7 @@ impl Drawer {
 
                                 // Render itand draw it at the center
 
-                                let chance = resources.render("main", format!("{:0.3}%", hit_chance).as_str());
+                                let chance = resources.render("main", &format!("{:0.3}%", hit_chance));
 
                                 let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
 
@@ -280,7 +280,7 @@ impl Drawer {
         for bullet in &map.bullets {
             let (x, y) = canvas.draw_location(bullet.x, bullet.y);
             if canvas.on_screen(x, y) {
-                canvas.draw_with_rotation(resources.image("bullet"), x, y, bullet.direction.to_degrees() + 45.0);
+                canvas.draw_with_rotation(resources.image(&"bullet".into()), x, y, bullet.direction.to_degrees() + 45.0);
             }
         }
     }

@@ -37,9 +37,9 @@ enum Mode {
 pub struct Resources<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
     directory: &'a Path,
-    images: HashMap<&'a str, Texture<'a>>,
+    images: HashMap<String, Texture<'a>>,
     font_context: &'a ttf::Sdl2TtfContext,
-    fonts: HashMap<&'a str, ttf::Font<'a, 'a>>,
+    fonts: HashMap<String, ttf::Font<'a, 'a>>,
 }
 
 impl<'a> Resources<'a> {
@@ -54,13 +54,13 @@ impl<'a> Resources<'a> {
         }
     }
 
-    fn load_image(&mut self, name: &'a str, path: &str) {
+    fn load_image(&mut self, name: &str, path: &str) {
         let path = self.directory.join(path);
 
-        self.images.insert(name, self.texture_creator.load_texture(path).unwrap());
+        self.images.insert(name.into(), self.texture_creator.load_texture(path).unwrap());
     }
 
-    fn image(&self, name: &str) -> &Texture {
+    fn image(&self, name: &String) -> &Texture {
         match self.images.get(name) {
             Some(texture) => &texture,
             None => panic!("Loaded image '{}' could not be found.", name)
@@ -71,13 +71,13 @@ impl<'a> Resources<'a> {
         self.texture_creator.create_texture_target(PixelFormatEnum::ARGB8888, width, height).unwrap()
     }
 
-    fn load_font(&mut self, name: &'a str, path: &str, size: u16) {
+    fn load_font(&mut self, name: &str, path: &str, size: u16) {
         let path = self.directory.join(path);
 
-        self.fonts.insert(name, self.font_context.load_font(path, size).unwrap());
+        self.fonts.insert(name.into(), self.font_context.load_font(path, size).unwrap());
     }
 
-    fn render(&self, font: &str, text: &str) -> Texture {
+    fn render(&self, font: &str, text: &String) -> Texture {
         let colour = sdl2::pixels::Color {r:255, g:255, b:255,a:100};
 
         let rendered = self.fonts[font].render(text).solid(colour).unwrap();
@@ -87,7 +87,7 @@ impl<'a> Resources<'a> {
 }
 
 struct State<'a> {
-    ctx: &'a mut Context,
+    ctx: Context,
     resources: Resources<'a>,
     mode: Mode,
     menu: menu::Menu,
@@ -95,7 +95,7 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    fn run(ctx: &'a mut Context, resources: Resources<'a>) {
+    fn run(ctx: Context, resources: Resources<'a>) {
         let mut state = State {
             mode: Mode::Menu,
             menu: menu::Menu::new(),
@@ -131,7 +131,7 @@ impl<'a> State<'a> {
 
     fn handle_key_down(&mut self, key: Keycode) {
         match self.mode {
-            Mode::Menu => match self.menu.handle_key(self.ctx, key) {
+            Mode::Menu => match self.menu.handle_key(&mut self.ctx, key) {
                 Some(callback) => match callback {
                     Callback::Play => {
                         self.mode = Mode::Game;
@@ -140,27 +140,27 @@ impl<'a> State<'a> {
                 },
                 _ => {}
             },
-            Mode::Game => self.map.handle_key(self.ctx, key, true)
+            Mode::Game => self.map.handle_key(&mut self.ctx, key, true)
         }
     }
 
     fn handle_key_up(&mut self, key: Keycode) {
         match self.mode {
-            Mode::Game => self.map.handle_key(self.ctx, key, false),
+            Mode::Game => self.map.handle_key(&mut self.ctx, key, false),
             _ => {}
         }
     }
 
     fn handle_mouse_motion(&mut self, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.move_cursor(self.ctx, x as f32, y as f32),
+            Mode::Game => self.map.move_cursor(&mut self.ctx, x as f32, y as f32),
             _ => {}
         }
     }
 
     fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.mouse_button(self.ctx, button, x as f32, y as f32),
+            Mode::Game => self.map.mouse_button(&mut self.ctx, button, x as f32, y as f32),
             _ => {}
         }
     }
@@ -169,8 +169,8 @@ impl<'a> State<'a> {
         self.ctx.clear();
 
         match self.mode {
-            Mode::Game => self.map.draw(self.ctx, &self.resources),
-            Mode::Menu => self.menu.draw(self.ctx, &self.resources)
+            Mode::Game => self.map.draw(&mut self.ctx, &self.resources),
+            Mode::Menu => self.menu.draw(&mut self.ctx, &self.resources)
         }
 
         self.ctx.present();
@@ -178,11 +178,11 @@ impl<'a> State<'a> {
 }
 
 pub fn main() {
-    let mut ctx = Context::new(TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
+    let ctx = Context::new(TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
     
-    let font_context = sdl2::ttf::init().unwrap();
     let texture_creator = ctx.texture_creator();
-    
+    let font_context = ttf::init().unwrap();
+
     let mut resources = Resources::new(&texture_creator, &font_context, "resources");
 
     resources.load_image("title",               "title.png");
@@ -224,5 +224,5 @@ pub fn main() {
     
     resources.load_font("main", "font.ttf", 35);
 
-    State::run(&mut ctx, resources);
+    State::run(ctx, resources);
 }

@@ -46,7 +46,7 @@ pub struct Map {
 impl Map {
     pub fn new(resources: &Resources) -> Map {
         let scale = 2.0;
-        let width = resources.image("end_turn_button").query().width as f32 * scale;
+        let width = resources.image(&"end_turn_button".into()).query().width as f32 * scale;
 
         let mut ui = UI::new();
 

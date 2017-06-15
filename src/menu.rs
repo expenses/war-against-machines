@@ -32,7 +32,7 @@ impl Submenu {
             if i == self.selection { string.push_str("> "); }
             string.push_str(item);
 
-            let rendered = resources.render("main", string.as_str());
+            let rendered = resources.render("main", &string);
 
             let center = (ctx.width() - rendered.query().width) as f32 / 2.0;
 
@@ -87,7 +87,7 @@ impl Menu {
     }
 
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let title = resources.image("title");
+        let title = resources.image(&"title".into());
 
         let center = (ctx.width() - title.query().width) as f32 / 2.0;
 

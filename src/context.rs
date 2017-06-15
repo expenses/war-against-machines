@@ -17,7 +17,6 @@ impl Context {
 
         let window = video_subsystem
             .window(title, width, height)
-            .opengl()
             .resizable()
             .build()
             .unwrap();
@@ -25,7 +24,6 @@ impl Context {
         let canvas = window
             .into_canvas()
             .present_vsync()
-            .accelerated()
             .build()
             .unwrap();
 

@@ -27,7 +27,7 @@ pub struct Button {
 
 impl Button {
     pub fn new(image: String, x: f32, y: f32, scale: f32, resources: &Resources, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {
-        let image_resource = resources.image(image.as_str());
+        let image_resource = resources.image(&image);
         
         let query = image_resource.query();
         let width = query.width as f32 * scale;
@@ -60,7 +60,7 @@ impl Button {
     fn draw(&self, ctx: &mut Context, resources: &Resources) {
         let (x, y) = self.get_location(ctx);
 
-        ctx.draw(resources.image(self.image.as_str()), x, y, self.scale);
+        ctx.draw(resources.image(&self.image), x, y, self.scale);
     }
 
     fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> bool {
@@ -88,7 +88,7 @@ impl TextDisplay {
     }
 
     fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let rendered = resources.render("main", self.text.as_str());
+        let rendered = resources.render("main", &self.text);
         //let query = rendered.query();
 
         /*let point = Point::new(
