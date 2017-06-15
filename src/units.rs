@@ -3,6 +3,7 @@ use rand::Rng;
 
 use weapons::{Weapon, Bullet};
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
+use utils::chance_to_hit;
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str; 9] = &[
@@ -136,11 +137,4 @@ impl Unit {
         // Add a bullet to the array for drawing
         bullets.push(Bullet::new(self, target, will_hit));
     }
-}
-
-// A change to hit function based on a fairly simple sigmoid curve.
-pub fn chance_to_hit(from: &Unit, target: &Unit) -> f32 {
-    let distance = (from.x as f32 - target.x as f32).hypot(from.y as f32 - target.y as f32);
-
-    1.0 / (1.0 + 0.02 * 4.0_f32.powf(distance / 3.0))
 }

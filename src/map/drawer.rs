@@ -5,7 +5,7 @@ use sdl2::video::Window;
 use map::map::Map;
 use Resources;
 use context::Context;
-use units::chance_to_hit;
+use utils::{bound, chance_to_hit};
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -140,7 +140,7 @@ impl Drawer {
                 // Get the position of the tile in the screen
                 let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
-                if canvas.on_screen(screen_x, screen_y) {
+                if tile.visible && canvas.on_screen(screen_x, screen_y) {
                     // Draw the tile base
                     canvas.draw(resources.image(&tile.base), screen_x, screen_y);
 
@@ -196,19 +196,32 @@ impl Drawer {
             }
         }
 
-        // Draw the edge corners
-        canvas.draw_tile(resources.image(&"edge_left_corner".into()), 0, map.tiles.rows);
-        canvas.draw_tile(resources.image(&"edge_corner".into()), map.tiles.cols, map.tiles.rows);
-        canvas.draw_tile(resources.image(&"edge_right_corner".into()), map.tiles.cols, 0);
+        // Draw the edge corners if visible
+
+        if map.tiles.tile_at(0, map.tiles.rows - 1).visible {
+            canvas.draw_tile(resources.image(&"edge_left_corner".into()), 0, map.tiles.rows);
+        }
+        
+        if map.tiles.tile_at(map.tiles.cols - 1, map.tiles.rows - 1).visible {
+            canvas.draw_tile(resources.image(&"edge_corner".into()), map.tiles.cols, map.tiles.rows);
+        }
+
+        if map.tiles.tile_at(map.tiles.cols - 1, 0).visible {
+            canvas.draw_tile(resources.image(&"edge_right_corner".into()), map.tiles.cols, 0);
+        }
 
         // Draw the edges
 
-        for x in 1..map.tiles.cols {
-            canvas.draw_tile(resources.image(&"edge_left".into()), x, map.tiles.rows);
+        for x in 1 .. map.tiles.cols {
+            if map.tiles.tile_at(x, map.tiles.rows - 1).visible {
+                canvas.draw_tile(resources.image(&"edge_left".into()), x, map.tiles.rows);
+            }
         }
 
-        for y in 1..map.tiles.rows {
-            canvas.draw_tile(resources.image(&"edge_right".into()), map.tiles.cols, y);
+        for y in 1 .. map.tiles.rows {
+            if map.tiles.tile_at(map.tiles.cols - 1, y).visible {
+                canvas.draw_tile(resources.image(&"edge_right".into()), map.tiles.cols, y);
+            }
         }
 
         // Draw the path
@@ -278,8 +291,13 @@ impl Drawer {
 
         // Draw the bullets at the correct rotation (+45' because of the map being isometric)
         for bullet in &map.bullets {
+            let visible = map.tiles.tile_at(
+                bound(bullet.x.round() as usize, 0, map.tiles.cols - 1),
+                bound(bullet.y.round() as usize, 0, map.tiles.rows - 1)
+            ).visible;
             let (x, y) = canvas.draw_location(bullet.x, bullet.y);
-            if canvas.on_screen(x, y) {
+
+            if visible && canvas.on_screen(x, y) {
                 canvas.draw_with_rotation(resources.image(&"bullet".into()), x, y, bullet.direction.to_degrees() + 45.0);
             }
         }

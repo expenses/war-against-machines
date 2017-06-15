@@ -1,8 +1,8 @@
-use std::cmp::{min, max};
 use sdl2::keyboard::Keycode;
 
 use Resources;
 use context::Context;
+use utils::bound;
 
 const MIN: usize = 10;
 const MAX: usize = 50;
@@ -64,11 +64,6 @@ impl Submenu {
     fn rotate_down(&mut self) {
         self.selection = (self.selection + 1) % self.list.len();
     }
-}
-
-// Limit a value by a a max and min bound
-fn to_bounds(value: usize) -> usize {
-     max(min(value, MAX), MIN)
 }
 
 // Which submenu is selected
@@ -147,8 +142,8 @@ impl Menu {
             // Lower the cols/rows values
             Keycode::Left => match self.submenu {
                 Selected::Settings => match self.settings.selection {
-                    1 => { self.cols = to_bounds(self.cols - CHANGE); self.refresh_settings(); },
-                    2 => { self.rows = to_bounds(self.rows - CHANGE); self.refresh_settings(); },
+                    1 => { self.cols = bound(self.cols - CHANGE, MIN, MAX); self.refresh_settings(); },
+                    2 => { self.rows = bound(self.rows - CHANGE, MIN, MAX); self.refresh_settings(); },
                     _ => {}
                 },
                 _ => {}
@@ -156,8 +151,8 @@ impl Menu {
             // Raise the cols/rows values
             Keycode::Right => match self.submenu {
                 Selected::Settings => match self.settings.selection {
-                    1 => { self.cols = to_bounds(self.cols + CHANGE); self.refresh_settings(); },
-                    2 => { self.rows = to_bounds(self.rows + CHANGE); self.refresh_settings(); },
+                    1 => { self.cols = bound(self.cols + CHANGE, MIN, MAX); self.refresh_settings(); },
+                    2 => { self.rows = bound(self.rows + CHANGE, MIN, MAX); self.refresh_settings(); },
                     _ => {}
                 },
                 _ => {}

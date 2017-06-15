@@ -6,6 +6,7 @@ pub struct Tile {
     pub base: String,
     pub decoration: Option<String>,
     pub walkable: bool,
+    pub visible: bool
 }
 
 impl Tile {
@@ -15,6 +16,7 @@ impl Tile {
             base: base.into(),
             decoration: None,
             walkable: true,
+            visible: false
         }
     }
 
@@ -107,7 +109,7 @@ impl Tiles {
     }
 
     // Get a mutable reference to a tile
-    fn tile_at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
+    pub fn tile_at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[x * self.rows + y]
     }
 }

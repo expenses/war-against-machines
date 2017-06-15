@@ -17,6 +17,7 @@ mod units;
 mod ui;
 mod weapons;
 mod context;
+mod utils;
 
 use context::Context;
 use map::map::Map;
@@ -85,7 +86,7 @@ impl<'a> Resources<'a> {
 
     // Render a string of text using a font
     fn render(&self, font: &str, text: &String) -> Texture {
-        let colour = sdl2::pixels::Color {r:255, g:255, b:255,a:100};
+        let colour = sdl2::pixels::Color {r: 255, g: 255, b: 255, a: 255};
 
         let rendered = self.fonts[font].render(text).solid(colour).unwrap();
 

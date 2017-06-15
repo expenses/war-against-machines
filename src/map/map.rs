@@ -12,6 +12,7 @@ use weapons::Bullet;
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
+const UNIT_SIGHT: f32 = 7.5;
 
 // A cursor on the map with a possible position
 pub struct Cursor {
@@ -108,6 +109,24 @@ impl Map {
         for y in self.tiles.cols - 3 .. self.tiles.cols {
             self.enemies.push(Unit::new(UnitType::Robot, UnitSide::Enemy, y, self.tiles.rows - 1));
         }
+
+        self.update_visiblity();
+    }
+
+    pub fn update_visiblity(&mut self) {
+        for squaddie in &self.squaddies {
+            for x in 0 .. self.tiles.cols {
+                for y in 0 .. self.tiles.rows {
+                    let tile = self.tiles.tile_at_mut(x, y);
+
+                    let distance = (squaddie.x as f32 - x as f32).hypot(squaddie.y as f32 - y as f32);
+                    
+                    if distance <= UNIT_SIGHT {
+                        tile.visible = true;
+                    }
+                }
+            }
+        }
     }
 
     // Handle keypresses
@@ -179,8 +198,8 @@ impl Map {
             Some(i) => {
                 let squaddie = &self.squaddies[i];
                 format!(
-                    "(Name: {}, ID: {}, X: {}, Y: {}, Moves: {}, Weapon: {})",
-                    squaddie.name, i, squaddie.x, squaddie.y, squaddie.moves, squaddie.weapon.name()
+                    "(Name: {}, Moves: {}, Weapon: {})",
+                    squaddie.name, squaddie.moves, squaddie.weapon.name()
                 )
             },
             _ => "~".into()
@@ -198,8 +217,8 @@ impl Map {
         // Get the position where the cursor should be
         let (x, y) = self.drawer.tile_under_cursor(ctx, x, y);
 
-        // Set cursor position if it is on the map
-        self.cursor.position = if x < self.tiles.cols && y < self.tiles.rows {
+        // Set cursor position if it is on the map and visible
+        self.cursor.position = if x < self.tiles.cols && y < self.tiles.rows && self.tiles.tile_at(x, y).visible {
             Some((x, y))
         } else {
             None
@@ -271,8 +290,8 @@ impl Map {
                     };
 
                     // If the paths are the same and the squaddie can move to the destination, get rid of the path
-                    let squaddie = &mut self.squaddies[selected];
-                    self.path = if same_path && squaddie.move_to(x, y, cost) {
+                    self.path = if same_path && self.squaddies[selected].move_to(x, y, cost) {
+                        self.update_visiblity();
                         None
                     } else {
                         Some(points)

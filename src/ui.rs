@@ -3,7 +3,7 @@ use context::Context;
 
 // The vertical alignment of an item
 pub enum VerticalAlignment {
-    Left,
+    _Left,
     Middle,
     Right
 }
@@ -11,7 +11,7 @@ pub enum VerticalAlignment {
 // The horizontal alignment of an item
 pub enum HorizontalAlignment {
     Top,
-    Middle,
+    _Middle,
     Bottom
 }
 
@@ -49,14 +49,14 @@ impl Button {
         let (width, height) = (ctx.width() as f32, ctx.height() as f32);
 
         let x = match self.v_align {
-            VerticalAlignment::Left => self.x,
+            VerticalAlignment::_Left => self.x,
             VerticalAlignment::Middle => (width - self.width)  / 2.0 + self.x,
             VerticalAlignment::Right => (width - self.width) + self.x
         };
 
         let y = match self.h_align {
             HorizontalAlignment::Top => self.y,
-            HorizontalAlignment::Middle => (height - self.height) / 2.0 + self.y,
+            HorizontalAlignment::_Middle => (height - self.height) / 2.0 + self.y,
             HorizontalAlignment::Bottom => (height - self.height) + self.y
         };
 
@@ -107,14 +107,14 @@ impl TextDisplay {
         let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
 
         let x = match self.v_align {
-            VerticalAlignment::Left => self.x,
+            VerticalAlignment::_Left => self.x,
             VerticalAlignment::Middle => (screen_width - width)  / 2.0 + self.x,
             VerticalAlignment::Right => (screen_width - width) + self.x
         };
 
         let y = match self.h_align {
             HorizontalAlignment::Top => self.y,
-            HorizontalAlignment::Middle => (screen_height - height) / 2.0 + self.y,
+            HorizontalAlignment::_Middle => (screen_height - height) / 2.0 + self.y,
             HorizontalAlignment::Bottom => (screen_height - height) + self.y
         };
 
