@@ -9,12 +9,16 @@ const WALK_STRAIGHT_COST: usize = 2;
 const WALK_DIAGONAL_COST: usize = 3;
 
 // Use the A Star algorithm to find a path between a unit and a destination
-pub fn pathfind(unit: &Unit, dest: &PathPoint, map: &Map) -> Option<(Vec<PathPoint>, usize)> {
+pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, usize)> {
+    if map.taken(dest_x, dest_y) {
+        return None
+    }
+
     pathfinding::astar(
         &PathPoint::from(unit),
         |point| point.neighbours(map),
-        |point| point.cost(dest),
-        |point| point.at(dest)
+        |point| point.cost(dest_x, dest_y),
+        |point| point.at(dest_x, dest_y)
     ).and_then(|(mut path, cost)| {
         // Remove the first point
         path.remove(0);
@@ -49,13 +53,13 @@ impl PathPoint {
     }
 
     // Test if two point are at the sme location (they may not have the same cost)
-    pub fn at(&self, point: &PathPoint) -> bool {
-        self.x == point.x && self.y == point.y
+    pub fn at(&self, x: usize, y: usize) -> bool {
+        self.x == x && self.y == y
     }
 
     // Get the cost to a past
-    fn cost(&self, point: &PathPoint) -> usize {
-        if self.x == point.x || self.y == point.y {
+    fn cost(&self, x: usize, y: usize) -> usize {
+        if self.x == x || self.y == y {
             WALK_STRAIGHT_COST
         } else {
             WALK_DIAGONAL_COST
@@ -78,7 +82,7 @@ impl PathPoint {
                     // Add the point
 
                     let mut point = PathPoint::new(x, y);
-                    let cost = self.cost(&point);
+                    let cost = self.cost(x, y);
                     point.cost = self.cost + cost;
 
                     neighbours.push((point, cost));

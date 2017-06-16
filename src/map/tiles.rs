@@ -1,6 +1,8 @@
 use rand;
 use rand::Rng;
 
+const DEFAULT_VISIBILITY: bool = true;
+
 // A tile in the map
 pub struct Tile {
     pub base: String,
@@ -16,7 +18,7 @@ impl Tile {
             base: base.into(),
             decoration: None,
             walkable: true,
-            visible: false
+            visible: DEFAULT_VISIBILITY
         }
     }
 

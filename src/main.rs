@@ -207,42 +207,58 @@ pub fn main() {
     let mut resources = Resources::new(&texture_creator, &font_context, "resources");
 
     // Load the images
-    resources.load_image("title",               "title.png");
-    resources.load_image("base_1",              "base/1.png");
-    resources.load_image("base_2",              "base/2.png");
-    resources.load_image("friendly",            "unit/friendly.png");
-    resources.load_image("enemy",               "unit/enemy.png");
-    resources.load_image("dead_friendly",       "unit/dead_friendly.png");
-    resources.load_image("dead_enemy",          "unit/dead_enemy.png");
-    resources.load_image("bullet",              "bullet/bullet.png");
+    resources.load_image("title",   "title.png");
+
+    resources.load_image("base_1",  "base/1.png");
+    resources.load_image("base_2",  "base/2.png");
+    
+    resources.load_image("friendly_squaddie",       "unit/friendly_squaddie.png");
+    resources.load_image("enemy_squaddie",          "unit/enemy_squaddie.png");
+    resources.load_image("dead_friendly_squaddie",  "unit/dead_friendly_squaddie.png");
+    resources.load_image("dead_enemy_squaddie",     "unit/dead_enemy_squaddie.png");
+    resources.load_image("friendly_robot",          "unit/friendly_robot.png");
+    resources.load_image("enemy_robot",             "unit/enemy_robot.png");
+    resources.load_image("dead_friendly_robot",     "unit/dead_friendly_robot.png");
+    resources.load_image("dead_enemy_robot",        "unit/dead_enemy_robot.png");
+    
+    
+    resources.load_image("bullet",  "bullet/bullet.png");
+    
     resources.load_image("cursor",              "cursor/default.png");
     resources.load_image("cursor_unit",         "cursor/unit.png");
     resources.load_image("cursor_unwalkable",   "cursor/unwalkable.png");
     resources.load_image("cursor_crosshair",    "cursor/crosshair.png");
-    resources.load_image("ruin_1",              "ruin/1.png");
-    resources.load_image("ruin_2",              "ruin/2.png");
-    resources.load_image("ruin_3",              "ruin/3.png");
-    resources.load_image("pit_top",             "pit/top.png");
-    resources.load_image("pit_right",           "pit/right.png");
-    resources.load_image("pit_left",            "pit/left.png");
-    resources.load_image("pit_bottom",          "pit/bottom.png");
-    resources.load_image("pit_tl",              "pit/tl.png");
-    resources.load_image("pit_tr",              "pit/tr.png");
-    resources.load_image("pit_bl",              "pit/bl.png");
-    resources.load_image("pit_br",              "pit/br.png");
-    resources.load_image("pit_center",          "pit/center.png");
+    
+    resources.load_image("ruin_1",  "ruin/1.png");
+    resources.load_image("ruin_2",  "ruin/2.png");
+    resources.load_image("ruin_3",  "ruin/3.png");
+    
+    resources.load_image("pit_top",     "pit/top.png");
+    resources.load_image("pit_right",   "pit/right.png");
+    resources.load_image("pit_left",    "pit/left.png");
+    resources.load_image("pit_bottom",  "pit/bottom.png");
+    resources.load_image("pit_tl",      "pit/tl.png");
+    resources.load_image("pit_tr",      "pit/tr.png");
+    resources.load_image("pit_bl",      "pit/bl.png");
+    resources.load_image("pit_br",      "pit/br.png");
+    resources.load_image("pit_center",  "pit/center.png");
+    
     resources.load_image("path",                "path/default.png");
     resources.load_image("path_no_weapon",      "path/no_weapon.png");
     resources.load_image("path_unreachable",    "path/unreachable.png");
+    
     resources.load_image("edge_left",           "edge/left.png");
     resources.load_image("edge_right",          "edge/right.png");
     resources.load_image("edge_left_corner",    "edge/left_corner.png");
     resources.load_image("edge_right_corner",   "edge/right_corner.png");
     resources.load_image("edge_corner",         "edge/corner.png");
-    resources.load_image("skull",               "decoration/skull.png");
-    resources.load_image("fog",                 "decoration/fog.png");
-    resources.load_image("end_turn_button",     "button/end_turn.png");
-    resources.load_image("fire_button",         "button/fire.png");
+    
+    resources.load_image("skull",   "decoration/skull.png");
+    resources.load_image("fog",     "decoration/fog.png");
+    
+    resources.load_image("end_turn_button", "button/end_turn.png");
+    resources.load_image("fire_button",     "button/fire.png");
+    
     // Load the font
     resources.load_font("main", "font.ttf", 35);
 

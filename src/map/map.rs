@@ -9,6 +9,7 @@ use Resources;
 use units::{Unit, UnitType, UnitSide};
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use weapons::Bullet;
+use utils::{distance, chance_to_hit};
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
@@ -28,6 +29,13 @@ impl Cursor {
             fire: false
         }
     }
+}
+
+struct AIMove {
+    x: usize,
+    y: usize,
+    cost: usize,
+    score: f32
 }
 
 // The Map struct
@@ -107,7 +115,7 @@ impl Map {
 
         // Add enemies
         for y in self.tiles.cols - 3 .. self.tiles.cols {
-            self.enemies.push(Unit::new(UnitType::Robot, UnitSide::Enemy, y, self.tiles.rows - 1));
+            self.enemies.push(Unit::new(UnitType::Squaddie, UnitSide::Enemy, y, self.tiles.rows - 1));
         }
 
         self.update_visiblity();
@@ -118,10 +126,8 @@ impl Map {
             for x in 0 .. self.tiles.cols {
                 for y in 0 .. self.tiles.rows {
                     let tile = self.tiles.tile_at_mut(x, y);
-
-                    let distance = (squaddie.x as f32 - x as f32).hypot(squaddie.y as f32 - y as f32);
                     
-                    if distance <= UNIT_SIGHT {
+                    if distance(squaddie.x, squaddie.y, x, y) <= UNIT_SIGHT {
                         tile.visible = true;
                     }
                 }
@@ -183,6 +189,14 @@ impl Map {
         for enemy in &mut self.enemies {
             enemy.update();
         }
+
+        if self.squaddies.iter().all(|squaddie| !squaddie.alive()) {
+            println!("All squaddies kiled!");
+        }
+
+        if self.enemies.iter().all(|enemy| !enemy.alive()) {
+            println!("All enemies killed!");
+        }
     }
 
     // Draw both the map and the UI
@@ -198,8 +212,8 @@ impl Map {
             Some(i) => {
                 let squaddie = &self.squaddies[i];
                 format!(
-                    "(Name: {}, Moves: {}, Weapon: {})",
-                    squaddie.name, squaddie.moves, squaddie.weapon.name()
+                    "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
+                    squaddie.name, squaddie.moves, squaddie.health, squaddie.weapon.name()
                 )
             },
             _ => "~".into()
@@ -271,11 +285,8 @@ impl Map {
                         return;
                     }
 
-                    // Get the destination point
-                    let dest = PathPoint::new(x, y);
-
                     // Pathfind to get the path points and the cost
-                    let (points, cost) = match pathfind(&self.squaddies[selected], &dest, &self) {
+                    let (points, cost) = match pathfind(&self.squaddies[selected], x, y, &self) {
                         Some((points, cost)) => (points, cost),
                         _ => {
                             self.path = None;
@@ -285,7 +296,7 @@ impl Map {
 
                     // Is the path is the same as existing one?
                     let same_path = match self.path {
-                        Some(ref path) => path[path.len() - 1].at(&dest),
+                        Some(ref path) => path[path.len() - 1].at(x, y),
                         _ => false
                     };
 
@@ -325,6 +336,78 @@ impl Map {
         for squaddie in &mut self.squaddies {
             squaddie.moves = squaddie.max_moves;
         }
+
+        self.ai();
+
+        for enemy in &mut self.enemies {
+            enemy.moves = enemy.max_moves;
+        }
+
         self.turn += 1;
+    }
+
+    fn ai(&mut self) {
+        for enemy_id in 0 .. self.enemies.len() {
+            if !self.enemies[enemy_id].alive() {
+                continue;
+            }
+
+            let squaddie_id = self.squaddies.iter()
+                .enumerate()
+                .filter(|&(_, squaddie)| squaddie.alive())
+                .min_by_key(|&(_, squaddie)| {
+                    let enemy = &self.enemies[enemy_id];
+                    distance(enemy.x, enemy.y, squaddie.x, squaddie.y) as usize
+                })
+                .and_then(|(i, _)| Some(i));
+
+            match squaddie_id {
+                Some(squaddie_id) => {
+                    let mut ai_move = {
+                        let enemy = &self.enemies[enemy_id];
+                        let squaddie = &self.squaddies[squaddie_id];
+                        AIMove {x: enemy.x, y: enemy.y, cost: 0, score: self.tile_score(enemy.x, enemy.y, 0, enemy, squaddie)}
+                    };
+
+                    for x in 0 .. self.tiles.cols {
+                        for y in 0 .. self.tiles.rows {
+                            let enemy = &self.enemies[enemy_id];
+                            let squaddie = &self.squaddies[squaddie_id];
+
+                            match pathfind(enemy, x, y, &self) {
+                                Some((_, cost)) => {
+                                    let score = self.tile_score(x, y, cost, enemy, squaddie);
+
+                                    if score > ai_move.score {
+                                        println!("Enemy {} found ({}, {}) with a score of {}", enemy_id, x, y, score);
+                                        ai_move = AIMove {x, y, cost, score};
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    let enemy = &mut self.enemies[enemy_id];
+                    let squaddie = &mut self.squaddies[squaddie_id];
+                    let bullets = &mut self.bullets;
+
+                    if enemy.move_to(ai_move.x, ai_move.y, ai_move.cost) {
+                        for _ in 0 .. enemy.moves / enemy.weapon.cost {
+                            enemy.fire_at(squaddie, bullets);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn tile_score(&self, x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {
+        if cost > unit.moves {
+            return 0.0
+        }
+
+        chance_to_hit(x, y, target.x, target.y) * ((unit.moves - cost) / unit.weapon.cost) as f32
     }
 }

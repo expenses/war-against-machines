@@ -69,35 +69,48 @@ impl Unit {
 
                 let weapon_type = if rng.gen::<bool>() { Rifle } else { MachineGun };
 
-                (
-                    Weapon::new(weapon_type),
-                    "friendly".into(),
-                    format!("{} {}", first, last), 30, 75
-                )
+                let image = match side {
+                    UnitSide::Friendly => "friendly_squaddie",
+                    UnitSide::Enemy => "enemy_squaddie"
+                };
+
+                (Weapon::new(weapon_type), image, format!("{} {}", first, last), 30, 75)
             },
             UnitType::Robot => {
-                (
-                    Weapon::new(PlasmaRifle),
-                    "enemy".into(),
-                    format!("ROBOT"), 25, 150
-                )
+                let image = match side {
+                    UnitSide::Friendly => "friendly_robot",
+                    UnitSide::Enemy => "enemy_robot"
+                };
+
+                (Weapon::new(PlasmaRifle), image, format!("ROBOT"), 25, 150)
             }
         };
 
         Unit {
-            tag, side, x, y, weapon, image, name, max_moves, max_health,
+            tag, side, x, y, weapon, name, max_moves, max_health,
+            image: image.into(),
             moves: max_moves,
             health: max_health
         }
     }
 
+    pub fn alive(&self) -> bool {
+        self.health > 0
+    }
+
     // Update the image of the unit
     pub fn update(&mut self) {
-        if self.health <= 0 {
+        if !self.alive() {
             self.image = match self.tag {
-                UnitType::Squaddie => "dead_friendly".into(),
-                UnitType::Robot => "dead_enemy".into()
-            }
+                UnitType::Squaddie => match self.side {
+                    UnitSide::Friendly => "dead_friendly_squaddie",
+                    UnitSide::Enemy => "dead_enemy_squaddie"
+                },
+                UnitType::Robot => match self.side {
+                    UnitSide::Friendly => "dead_friendly_robot",
+                    UnitSide::Enemy => "dead_enemy_robot"
+                }
+            }.into();
         }
     }
 
@@ -116,7 +129,7 @@ impl Unit {
     // Fire the units weapon at another unit
     pub fn fire_at(&mut self, target: &mut Unit, bullets: &mut Vec<Bullet>) {
         // return if the unit cannot fire or the unit is already dead
-        if self.moves < self.weapon.cost || target.health <= 0 {
+        if self.moves < self.weapon.cost || !target.alive() {
             return;
         }
 
@@ -124,7 +137,7 @@ impl Unit {
 
         // Get the chance to hit and compare it to a random number
 
-        let hit_chance = chance_to_hit(self, target);
+        let hit_chance = chance_to_hit(self.x, self.y, target.x, target.y);
         let random = rand::random::<f32>();
 
         let will_hit = hit_chance > random;

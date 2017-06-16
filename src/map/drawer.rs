@@ -271,7 +271,7 @@ impl Drawer {
                                 let squaddie = &map.squaddies[i];
 
                                 // Get the chance to hit as a percentage
-                                let hit_chance = chance_to_hit(squaddie, enemy) * 100.0;
+                                let hit_chance = chance_to_hit(squaddie.x, squaddie.y, enemy.x, enemy.y) * 100.0;
 
                                 // Render itand draw it at the center
 
