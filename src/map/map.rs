@@ -6,10 +6,10 @@ use context::Context;
 use map::tiles::Tiles;
 use map::drawer::Drawer;
 use map::paths::{pathfind, PathPoint};
+use map::animations::AnimationQueue;
+use map::units::{Unit, UnitType, UnitSide};
 use Resources;
-use units::{Unit, UnitType, UnitSide};
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
-use weapons::Bullet;
 use utils::{distance, chance_to_hit};
 
 const CAMERA_SPEED: f32 = 0.2;
@@ -32,6 +32,7 @@ impl Cursor {
     }
 }
 
+// A move that the AI could take
 struct AIMove {
     x: usize,
     y: usize,
@@ -51,7 +52,7 @@ pub struct Map {
     pub path: Option<Vec<PathPoint>>,
     turn: u16,
     ui: UI,
-    pub bullets: Vec<Bullet>
+    pub animation_queue: AnimationQueue
 }
 
 impl Map {
@@ -100,7 +101,7 @@ impl Map {
             path: None,
             turn: 1,
             ui: ui,
-            bullets: Vec::new()
+            animation_queue: AnimationQueue::new()
         }
     }
 
@@ -110,7 +111,7 @@ impl Map {
         self.tiles.generate(cols, rows);
 
         // Add squaddies
-        for x in 0..3 {
+        for x in 0 .. 3 {
             self.squaddies.push(Unit::new(UnitType::Squaddie, UnitSide::Friendly, x, 0));
         }
 
@@ -159,26 +160,10 @@ impl Map {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
-        let cols = self.tiles.cols;
-        let rows = self.tiles.rows;
-        let mut update = false;
-
-        // Update all the bullet positions
-        for bullet in &mut self.bullets {
-            bullet.travel();
-            
-            // Check if a bullet has stopped traveling
-            update = update || !bullet.traveling(cols, rows);
-        }
-
-        // Only keep bullets that are still traveling
-        self.bullets.retain(|bullet| bullet.traveling(cols, rows));
-
-        // If a bullet has stopped traveling, update all the units
-        if update {
+        // If the animation queue has been changed, update all the units
+        if self.animation_queue.update(self.tiles.cols, self.tiles.rows) {
             self.update_all_units();
         }
-
     }
 
     // Update all the units
@@ -261,8 +246,7 @@ impl Map {
                                 Some(enemy) => {
                                     // Fire at the enemy
                                     let squaddie = &mut self.squaddies[self.selected.unwrap()];
-                                    let bullets = &mut self.bullets;
-                                    squaddie.fire_at(enemy, bullets);
+                                    squaddie.fire_at(enemy, &mut self.animation_queue);
                                 }
                                 _ => {}
                             }
@@ -391,11 +375,10 @@ impl Map {
 
                     let enemy = &mut self.enemies[enemy_id];
                     let squaddie = &mut self.squaddies[squaddie_id];
-                    let bullets = &mut self.bullets;
 
                     if enemy.move_to(ai_move.x, ai_move.y, ai_move.cost) {
                         for _ in 0 .. enemy.moves / enemy.weapon.cost {
-                            enemy.fire_at(squaddie, bullets);
+                            enemy.fire_at(squaddie, &mut self.animation_queue);
                         }
                     }
                 }

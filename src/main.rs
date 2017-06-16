@@ -14,7 +14,6 @@ use sdl2::pixels::PixelFormatEnum;
 
 mod map;
 mod menu;
-mod units;
 mod ui;
 mod weapons;
 mod context;

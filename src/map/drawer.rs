@@ -289,17 +289,20 @@ impl Drawer {
             }
         }
 
-        // Draw the bullets at the correct rotation (+45' because of the map being isometric)
-        for bullet in &map.bullets {
-            let visible = map.tiles.tile_at(
-                bound(bullet.x.round() as usize, 0, map.tiles.cols - 1),
-                bound(bullet.y.round() as usize, 0, map.tiles.rows - 1)
-            ).visible;
-            let (x, y) = canvas.draw_location(bullet.x, bullet.y);
+        // Draw the bullet at the correct rotation (+45' because of the map being isometric)
+        match map.animation_queue.first() {
+            Some(bullet) => {
+                let visible = map.tiles.tile_at(
+                    bound(bullet.x.round() as usize, 0, map.tiles.cols - 1),
+                    bound(bullet.y.round() as usize, 0, map.tiles.rows - 1)
+                ).visible;
+                let (x, y) = canvas.draw_location(bullet.x, bullet.y);
 
-            if visible && canvas.on_screen(x, y) {
-                canvas.draw_with_rotation(resources.image(&"bullet".into()), x, y, bullet.direction.to_degrees() + 45.0);
+                if visible && canvas.on_screen(x, y) {
+                    canvas.draw_with_rotation(resources.image(&"bullet".into()), x, y, bullet.direction.to_degrees() + 45.0);
+                }
             }
+            _ => {}
         }
     }
 

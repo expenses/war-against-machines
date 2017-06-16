@@ -1,9 +1,10 @@
 use rand;
 use rand::Rng;
 
-use weapons::{Weapon, Bullet};
+use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 use utils::chance_to_hit;
+use map::animations::{Bullet, AnimationQueue};
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str; 9] = &[
@@ -139,7 +140,7 @@ impl Unit {
     }
 
     // Fire the units weapon at another unit
-    pub fn fire_at(&mut self, target: &mut Unit, bullets: &mut Vec<Bullet>) {
+    pub fn fire_at(&mut self, target: &mut Unit, animation_queue: &mut AnimationQueue) {
         // return if the unit cannot fire or the unit is already dead
         if self.moves < self.weapon.cost || !target.alive() {
             return;
@@ -160,6 +161,6 @@ impl Unit {
         }
 
         // Add a bullet to the array for drawing
-        bullets.push(Bullet::new(self, target, will_hit));
+        animation_queue.push(Bullet::new(self, target, will_hit));
     }
 }

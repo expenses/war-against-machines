@@ -3,7 +3,7 @@ use pathfinding;
 use std::cmp::{min, max};
 
 use map::map::Map;
-use units::Unit;
+use map::units::Unit;
 
 const WALK_STRAIGHT_COST: usize = 2;
 const WALK_DIAGONAL_COST: usize = 3;
