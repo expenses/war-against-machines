@@ -6,6 +6,7 @@ authors = ["Expenses <expenses@airmail.cc>"]
 [dependencies]
 rand = "0.3.15"
 pathfinding = "0.1.11"
+ord_subset = "2.0.0"
 
 [dependencies.sdl2]
 version = "0.30.0"

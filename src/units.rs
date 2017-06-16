@@ -32,7 +32,7 @@ const LAST_NAMES: &[&str; 7] = &[
 // The type of a unit
 pub enum UnitType {
     Squaddie,
-    Robot
+    _Robot
 }
 
 // The side of a unit
@@ -60,7 +60,7 @@ pub struct Unit {
 impl Unit {
     // Create a new unit based on unit type
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
-        let (weapon, image, name, max_moves, max_health) = match tag {
+        match tag {
             UnitType::Squaddie => {
                 // Generate a random name
                 let mut rng = rand::thread_rng();
@@ -72,25 +72,36 @@ impl Unit {
                 let image = match side {
                     UnitSide::Friendly => "friendly_squaddie",
                     UnitSide::Enemy => "enemy_squaddie"
-                };
+                }.into();
 
-                (Weapon::new(weapon_type), image, format!("{} {}", first, last), 30, 75)
+                let moves = 30;
+                let health = 100;
+
+                Unit {
+                    tag, side, x, y, moves, health, image,
+                    weapon: Weapon::new(weapon_type),
+                    name: format!("{} {}", first, last),
+                    max_moves: moves,
+                    max_health: health
+                }
             },
-            UnitType::Robot => {
+            UnitType::_Robot => {
                 let image = match side {
                     UnitSide::Friendly => "friendly_robot",
                     UnitSide::Enemy => "enemy_robot"
-                };
+                }.into();
 
-                (Weapon::new(PlasmaRifle), image, format!("ROBOT"), 25, 150)
+                let moves = 25;
+                let health = 150;
+
+                Unit {
+                    tag, side, x, y, moves, health, image,
+                    weapon: Weapon::new(PlasmaRifle),
+                    name: format!("ROBOT"),
+                    max_moves: moves,
+                    max_health: health
+                }
             }
-        };
-
-        Unit {
-            tag, side, x, y, weapon, name, max_moves, max_health,
-            image: image.into(),
-            moves: max_moves,
-            health: max_health
         }
     }
 
@@ -106,7 +117,7 @@ impl Unit {
                     UnitSide::Friendly => "dead_friendly_squaddie",
                     UnitSide::Enemy => "dead_enemy_squaddie"
                 },
-                UnitType::Robot => match self.side {
+                UnitType::_Robot => match self.side {
                     UnitSide::Friendly => "dead_friendly_robot",
                     UnitSide::Enemy => "dead_enemy_robot"
                 }
@@ -116,14 +127,15 @@ impl Unit {
 
     // Move the unit to a location
     pub fn move_to(&mut self, x: usize, y: usize, cost: usize) -> bool {
-        if self.moves >= cost {
-            self.x = x;
-            self.y = y;
-            self.moves -= cost;
-            return true;
+        if self.moves < cost {
+            return false;
         }
 
-        false
+        self.x = x;
+        self.y = y;
+        self.moves -= cost;
+        
+        true
     }
 
     // Fire the units weapon at another unit

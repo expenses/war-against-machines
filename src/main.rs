@@ -1,6 +1,7 @@
 extern crate sdl2;
 extern crate rand;
 extern crate pathfinding;
+extern crate ord_subset;
 
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::video::WindowContext;

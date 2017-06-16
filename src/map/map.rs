@@ -1,7 +1,8 @@
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
-use context::Context;
+use ord_subset::OrdSubsetIterExt;
 
+use context::Context;
 use map::tiles::Tiles;
 use map::drawer::Drawer;
 use map::paths::{pathfind, PathPoint};
@@ -355,9 +356,9 @@ impl Map {
             let squaddie_id = self.squaddies.iter()
                 .enumerate()
                 .filter(|&(_, squaddie)| squaddie.alive())
-                .min_by_key(|&(_, squaddie)| {
+                .ord_subset_min_by_key(|&(_, squaddie)| {
                     let enemy = &self.enemies[enemy_id];
-                    distance(enemy.x, enemy.y, squaddie.x, squaddie.y) as usize
+                    distance(enemy.x, enemy.y, squaddie.x, squaddie.y)
                 })
                 .and_then(|(i, _)| Some(i));
 
