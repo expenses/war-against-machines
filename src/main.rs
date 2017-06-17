@@ -221,8 +221,9 @@ pub fn main() {
     resources.load_image("dead_friendly_robot",     "unit/dead_friendly_robot.png");
     resources.load_image("dead_enemy_robot",        "unit/dead_enemy_robot.png");
     
-    
-    resources.load_image("bullet",  "bullet/bullet.png");
+    resources.load_image("rifle_round",         "bullet/rifle_round.png");
+    resources.load_image("machine_gun_round",   "bullet/machine_gun_round.png");
+    resources.load_image("plasma_round",        "bullet/plasma_round.png");
     
     resources.load_image("cursor",              "cursor/default.png");
     resources.load_image("cursor_unit",         "cursor/unit.png");

@@ -1,14 +1,13 @@
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 
-use context::Context;
 use map::tiles::Tiles;
 use map::drawer::Drawer;
 use map::paths::{pathfind, PathPoint};
 use map::animations::AnimationQueue;
 use map::units::{Unit, UnitType, UnitSide, Units};
 use map::ai;
-
+use context::Context;
 use Resources;
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use utils::distance;
@@ -186,7 +185,7 @@ impl Map {
                 if unit.side == UnitSide::Friendly {
                     format!(
                         "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
-                        unit.name, unit.moves, unit.health, unit.weapon.name()
+                        unit.name, unit.moves, unit.health, unit.weapon.name
                     )
                 } else {
                     format!("(Name: {})", unit.name)

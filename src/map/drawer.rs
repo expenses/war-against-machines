@@ -6,7 +6,7 @@ use map::map::Map;
 use map::units::UnitSide;
 use Resources;
 use context::Context;
-use utils::{bound, chance_to_hit};
+use utils::{bound, chance_to_hit, convert_rotation};
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -64,11 +64,11 @@ impl<'a> CanvasTexture<'a> {
     }
 
     // Draw a texture with a particular rotation
-    fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f32) {
+    fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f64) {
         let query = image.query();
 
         self.canvas.copy_ex(image, None, Some(Rect::new(x, y, query.width, query.height)),
-                            angle as f64, None, false, false).unwrap();
+                            angle, None, false, false).unwrap();
     }
 
     // Calculate if a tile is on screen
@@ -294,7 +294,7 @@ impl Drawer {
                 let (x, y) = canvas.draw_location(bullet.x, bullet.y);
 
                 if visible && canvas.on_screen(x, y) {
-                    canvas.draw_with_rotation(resources.image(&"bullet".into()), x, y, bullet.direction.to_degrees() + 45.0);
+                    canvas.draw_with_rotation(resources.image(&bullet.image), x, y, convert_rotation(bullet.direction));
                 }
             }
             _ => {}

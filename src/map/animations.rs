@@ -2,14 +2,17 @@ use rand;
 use rand::distributions::{IndependentSample, Range};
 
 use map::units::Unit;
+use weapons::WeaponType;
 
 const MARGIN: f32 = 5.0;
+const BULLET_SPEED: f32 = 0.5;
 
 // A bullet for drawing on the screen
 pub struct Bullet {
     pub x: f32,
     pub y: f32,
     pub direction: f32,
+    pub image: String,
     left: bool,
     above: bool,
     target_x: f32,
@@ -27,6 +30,12 @@ impl Bullet {
         // Calculate the direction of the bullet
         let mut direction = (target_y - y).atan2(target_x - x);
 
+        let image = match fired_by.weapon.tag {
+            WeaponType::Rifle => "rifle_round",
+            WeaponType::MachineGun => "machine_gun_round",
+            WeaponType::PlasmaRifle => "plasma_round"
+        }.into();
+
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
             let mut rng = rand::thread_rng();
@@ -38,17 +47,14 @@ impl Bullet {
         let above = y < target_y;
 
         Bullet {
-           x, y, direction,
-           left, above,
-           target_x, target_y,
-           will_hit
+           x, y, direction, image, left, above, target_x, target_y, will_hit
         }
     }
 
     // Move the bullet
     pub fn travel(&mut self) {        
-        self.x += self.direction.cos();
-        self.y += self.direction.sin();
+        self.x += self.direction.cos() * BULLET_SPEED;
+        self.y += self.direction.sin() * BULLET_SPEED;
     }
 
     // Work out if the bullet is currently traveling or has reached the destination

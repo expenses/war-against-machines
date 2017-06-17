@@ -15,3 +15,7 @@ pub fn chance_to_hit(from_x: usize, from_y: usize, target_x: usize, target_y: us
 
     1.0 / (1.0 + 0.02 * 4.0_f32.powf(distance / 3.0))
 }
+
+pub fn convert_rotation(rotation: f32) -> f64 {
+    (rotation.to_degrees() + 45.0) as f64
+}
