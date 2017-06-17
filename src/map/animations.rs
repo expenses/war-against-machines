@@ -100,7 +100,7 @@ impl AnimationQueue {
         self.bullets.push(bullet);
     }
 
-    pub fn empty(&self) -> bool {
+    pub fn _empty(&self) -> bool {
         self.bullets.is_empty()
     }
 }

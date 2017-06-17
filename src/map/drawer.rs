@@ -3,6 +3,7 @@ use sdl2::rect::Rect;
 use sdl2::video::Window;
 
 use map::map::Map;
+use map::units::UnitSide;
 use Resources;
 use context::Context;
 use utils::{bound, chance_to_hit};
@@ -158,7 +159,7 @@ impl Drawer {
                                     // Determine the cursor colour
                                     let image = if !tile.walkable {
                                         "cursor_unwalkable"
-                                    } else if map.squaddie_at(x, y).is_some() {
+                                    } else if map.units.at(x, y).is_some() {
                                         "cursor_unit"
                                     } else {
                                         "cursor"
@@ -172,8 +173,8 @@ impl Drawer {
                     }
 
                     // Draw a squaddie at the position
-                    match map.squaddie_at(x, y) {
-                        Some((index, squaddie)) => {
+                    match map.units.at(x, y) {
+                        Some((index, unit)) => {
                             // Draw the cursor to show that the unit is selected
                             match map.selected {
                                 Some(selected) => if selected == index {
@@ -182,14 +183,8 @@ impl Drawer {
                                 _ => {}
                             }
 
-                            canvas.draw(resources.image(&squaddie.image), screen_x, screen_y);
+                            canvas.draw(resources.image(&unit.image), screen_x, screen_y);
                         },
-                        _ => {}
-                    }
-
-                    // Draw an enemy at the position
-                    match map.enemy_at(x, y) {
-                        Some((_, enemy)) => canvas.draw(resources.image(&enemy.image), screen_x, screen_y),
                         _ => {}
                     }
                 }
@@ -228,16 +223,16 @@ impl Drawer {
         match map.path {
             Some(ref points) => {
                 // Get the squaddie the path if for
-                let squaddie = &map.squaddies[map.selected.unwrap()];
+                let unit = map.units.get(map.selected.unwrap());
 
                 for point in points {
                     let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
 
                     if canvas.on_screen(x, y) {
                         // Get the image for the path
-                        let image = if point.cost > squaddie.moves {
+                        let image = if point.cost > unit.moves {
                             "path_unreachable"
-                        } else if point.cost + squaddie.weapon.cost > squaddie.moves {
+                        } else if point.cost + unit.weapon.cost > unit.moves {
                             "path_no_weapon"
                         } else {
                             "path"
@@ -266,20 +261,20 @@ impl Drawer {
                         canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
 
                         // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
-                        match map.selected.and_then(|i| map.enemy_at(x, y).map(|(_, enemy)| (i, enemy))) {
-                            Some((i, enemy)) => {
-                                let squaddie = &map.squaddies[i];
+                        match map.selected.and_then(|selected| map.units.at_i(x, y).map(|target| (selected, target))) {
+                            Some((selected, target)) => {
+                                let firing = map.units.get(selected);
+                                let target = map.units.get(target);
 
-                                // Get the chance to hit as a percentage
-                                let hit_chance = chance_to_hit(squaddie.x, squaddie.y, enemy.x, enemy.y) * 100.0;
+                                if firing.side == UnitSide::Friendly && target.side == UnitSide::Enemy {
+                                    // Get the chance to hit as a percentage
+                                    let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
 
-                                // Render itand draw it at the center
-
-                                let chance = resources.render("main", &format!("{:0.3}%", hit_chance));
-
-                                let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
-
-                                canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
+                                    // Render it and draw it at the center
+                                    let chance = resources.render("main", &format!("{:0.3}%", hit_chance));
+                                    let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
+                                    canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
+                                }
                             }
                             _ => {}
                         }

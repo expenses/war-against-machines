@@ -1,6 +1,9 @@
 use rand;
 use rand::Rng;
 
+use std::slice::{Iter, IterMut};
+use std::iter::Filter;
+
 use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 use utils::chance_to_hit;
@@ -37,6 +40,7 @@ pub enum UnitType {
 }
 
 // The side of a unit
+#[derive(Eq, PartialEq)]
 pub enum UnitSide {
     Friendly,
     // Neutral,
@@ -162,5 +166,77 @@ impl Unit {
 
         // Add a bullet to the array for drawing
         animation_queue.push(Bullet::new(self, target, will_hit));
+    }
+}
+
+pub struct Units {
+    units: Vec<Unit>
+}
+
+impl Units {
+    pub fn new() -> Units {
+        Units {
+            units: Vec::new()
+        }
+    }
+
+    pub fn push(&mut self, unit: Unit) {
+        self.units.push(unit);
+    }
+
+    pub fn update(&mut self) {
+        for unit in self.iter_mut() {
+            unit.update();
+        }
+    }
+
+    pub fn iter(&self) -> Iter<Unit> {
+        self.units.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<Unit> {
+        self.units.iter_mut()
+    }
+
+    pub fn friendlies(&self) -> Filter<Iter<Unit>, fn(&&Unit) -> bool> {
+        self.iter().filter(|unit| unit.side == UnitSide::Friendly)
+    }
+
+    pub fn _enemies(&self) -> Filter<Iter<Unit>, fn(&&Unit) -> bool> {
+        self.iter().filter(|unit| unit.side == UnitSide::Enemy)
+    }
+
+    pub fn get(&self, id: usize) -> &Unit {
+        &self.units[id]
+    }
+
+    pub fn get_mut(&mut self, id: usize) -> &mut Unit {
+        &mut self.units[id]
+    }
+
+    pub fn get_two_mut(&mut self, a: usize, b: usize) -> (&mut Unit, &mut Unit) {
+        if a < b {
+            let (slice_1, slice_2) = self.units.split_at_mut(b);
+            (&mut slice_1[a], &mut slice_2[0])
+        } else {
+            let (slice_1, slice_2) = self.units.split_at_mut(a);
+            (&mut slice_2[0], &mut slice_1[b])
+        }
+    }
+
+    pub fn at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
+        self.units.iter().enumerate().find(|&(_, unit)| unit.x == x && unit.y == y)
+    }
+
+    pub fn at_i(&self, x: usize, y: usize) -> Option<usize> {
+        self.at(x, y).and_then(|(i, _)| Some(i))
+    }
+
+    pub fn len(&self) -> usize {
+        self.units.len()
+    }
+
+    pub fn any_alive(&self, side: UnitSide) -> bool {
+        self.iter().any(|unit| unit.side == side && unit.alive())
     }
 }

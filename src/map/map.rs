@@ -1,16 +1,17 @@
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
-use ord_subset::OrdSubsetIterExt;
 
 use context::Context;
 use map::tiles::Tiles;
 use map::drawer::Drawer;
 use map::paths::{pathfind, PathPoint};
 use map::animations::AnimationQueue;
-use map::units::{Unit, UnitType, UnitSide};
+use map::units::{Unit, UnitType, UnitSide, Units};
+use map::ai;
+
 use Resources;
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
-use utils::{distance, chance_to_hit};
+use utils::distance;
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
@@ -32,22 +33,13 @@ impl Cursor {
     }
 }
 
-// A move that the AI could take
-struct AIMove {
-    x: usize,
-    y: usize,
-    cost: usize,
-    score: f32
-}
-
 // The Map struct
 pub struct Map {
     pub tiles: Tiles,
     drawer: Drawer,
     pub cursor: Cursor,
     keys: [bool; 6],
-    pub squaddies: Vec<Unit>,
-    pub enemies: Vec<Unit>,
+    pub units: Units,
     pub selected: Option<usize>,
     pub path: Option<Vec<PathPoint>>,
     turn: u16,
@@ -95,8 +87,7 @@ impl Map {
             drawer: Drawer::new(),
             cursor: Cursor::new(),
             keys: [false; 6],
-            squaddies: Vec::new(),
-            enemies: Vec::new(),
+            units: Units::new(),
             selected: None,
             path: None,
             turn: 1,
@@ -112,24 +103,24 @@ impl Map {
 
         // Add squaddies
         for x in 0 .. 3 {
-            self.squaddies.push(Unit::new(UnitType::Squaddie, UnitSide::Friendly, x, 0));
+            self.units.push(Unit::new(UnitType::Squaddie, UnitSide::Friendly, x, 0));
         }
 
         // Add enemies
         for y in self.tiles.cols - 3 .. self.tiles.cols {
-            self.enemies.push(Unit::new(UnitType::Squaddie, UnitSide::Enemy, y, self.tiles.rows - 1));
+            self.units.push(Unit::new(UnitType::Squaddie, UnitSide::Enemy, y, self.tiles.rows - 1));
         }
 
         self.update_visiblity();
     }
 
     pub fn update_visiblity(&mut self) {
-        for squaddie in &self.squaddies {
+        for unit in self.units.friendlies() {
             for x in 0 .. self.tiles.cols {
                 for y in 0 .. self.tiles.rows {
                     let tile = self.tiles.tile_at_mut(x, y);
                     
-                    if distance(squaddie.x, squaddie.y, x, y) <= UNIT_SIGHT {
+                    if distance(unit.x, unit.y, x, y) <= UNIT_SIGHT {
                         tile.visible = true;
                     }
                 }
@@ -168,20 +159,14 @@ impl Map {
 
     // Update all the units
     pub fn update_all_units(&mut self) {
-        for squaddie in &mut self.squaddies {
-            squaddie.update();
+        self.units.update();
+
+        if !self.units.any_alive(UnitSide::Friendly) {
+            println!("All friendly units killed!");
         }
 
-        for enemy in &mut self.enemies {
-            enemy.update();
-        }
-
-        if self.squaddies.iter().all(|squaddie| !squaddie.alive()) {
-            println!("All squaddies kiled!");
-        }
-
-        if self.enemies.iter().all(|enemy| !enemy.alive()) {
-            println!("All enemies killed!");
+        if !self.units.any_alive(UnitSide::Enemy) {
+            println!("All enemy units killed!");
         }
     }
 
@@ -196,11 +181,16 @@ impl Map {
         // Get  string of info about the selected unit
         let selected = match self.selected {
             Some(i) => {
-                let squaddie = &self.squaddies[i];
-                format!(
-                    "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
-                    squaddie.name, squaddie.moves, squaddie.health, squaddie.weapon.name()
-                )
+                let unit = self.units.get(i);
+
+                if unit.side == UnitSide::Friendly {
+                    format!(
+                        "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
+                        unit.name, unit.moves, unit.health, unit.weapon.name()
+                    )
+                } else {
+                    format!("(Name: {})", unit.name)
+                }
             },
             _ => "~".into()
         };
@@ -242,17 +232,20 @@ impl Map {
 
                         // If the cursor is in fire mode and a squaddie is selected and an enemy is under the cursor
                         if self.cursor.fire && self.selected.is_some() {
-                            match self.enemies.iter_mut().find(|enemy| enemy.x == x && enemy.y == y) {
-                                Some(enemy) => {
-                                    // Fire at the enemy
-                                    let squaddie = &mut self.squaddies[self.selected.unwrap()];
-                                    squaddie.fire_at(enemy, &mut self.animation_queue);
+                            match self.selected.and_then(|selected| self.units.at_i(x, y).map(|target| (selected, target))) {
+                                Some((selected, target)) => {
+                                    if self.units.get(selected).side != UnitSide::Friendly {
+                                        return;
+                                    }
+
+                                    let (selected, target) = self.units.get_two_mut(selected, target);
+                                    selected.fire_at(target, &mut self.animation_queue);
                                 }
                                 _ => {}
                             }
                         // Otherwise select the squaddie under the cursor (or none)
                         } else if !self.cursor.fire {
-                            self.selected = self.squaddie_at(x, y).map(|(i, _)| i);
+                            self.selected = self.units.at_i(x, y);
                         }
                     },
                     _ => {}
@@ -261,8 +254,8 @@ impl Map {
             // Check if the cursor has a position and a unit is selected
             MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
                 Some((x, y, selected)) => {
-                    // Do nothing if fire mode is on
-                    if self.cursor.fire {
+                    // Do nothing if fire mode is on or if the unit isn't friendly
+                    if self.cursor.fire || self.units.get(selected).side != UnitSide::Friendly {
                         return;
                     // Or the the target location is selected
                     } else if self.taken(x, y) {
@@ -271,7 +264,7 @@ impl Map {
                     }
 
                     // Pathfind to get the path points and the cost
-                    let (points, cost) = match pathfind(&self.squaddies[selected], x, y, &self) {
+                    let (points, cost) = match pathfind(self.units.get(selected), x, y, &self) {
                         Some((points, cost)) => (points, cost),
                         _ => {
                             self.path = None;
@@ -286,7 +279,7 @@ impl Map {
                     };
 
                     // If the paths are the same and the squaddie can move to the destination, get rid of the path
-                    self.path = if same_path && self.squaddies[selected].move_to(x, y, cost) {
+                    self.path = if same_path && self.units.get_mut(selected).move_to(x, y, cost) {
                         self.update_visiblity();
                         None
                     } else {
@@ -299,99 +292,20 @@ impl Map {
         }
     }
 
-    // Find a possible squaddie at a point and its index
-    pub fn squaddie_at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
-        self.squaddies.iter().enumerate().find(|&(_, squaddie)| squaddie.x == x && squaddie.y == y)
-    }
-
-    // Find a possible enemy at a point and its index
-    pub fn enemy_at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
-        self.enemies.iter().enumerate().find(|&(_, enemy)| enemy.x == x && enemy.y == y)
-    }
-
     // Is a tile taken up by an obstacle or unit?
     pub fn taken(&self, x: usize, y: usize) -> bool {
         !self.tiles.tile_at(x, y).walkable ||
-        self.squaddie_at(x, y).is_some() ||
-        self.enemy_at(x, y).is_some()
+        self.units.at(x, y).is_some()
     }
 
     // End the current turn
     fn end_turn(&mut self) {
-        for squaddie in &mut self.squaddies {
-            squaddie.moves = squaddie.max_moves;
-        }
+        ai::take_turn(self);
 
-        self.ai();
-
-        for enemy in &mut self.enemies {
-            enemy.moves = enemy.max_moves;
+        for unit in self.units.iter_mut() {
+            unit.moves = unit.max_moves;
         }
 
         self.turn += 1;
-    }
-
-    fn ai(&mut self) {
-        for enemy_id in 0 .. self.enemies.len() {
-            if !self.enemies[enemy_id].alive() {
-                continue;
-            }
-
-            let squaddie_id = self.squaddies.iter()
-                .enumerate()
-                .filter(|&(_, squaddie)| squaddie.alive())
-                .ord_subset_min_by_key(|&(_, squaddie)| {
-                    let enemy = &self.enemies[enemy_id];
-                    distance(enemy.x, enemy.y, squaddie.x, squaddie.y)
-                })
-                .and_then(|(i, _)| Some(i));
-
-            match squaddie_id {
-                Some(squaddie_id) => {
-                    let mut ai_move = {
-                        let enemy = &self.enemies[enemy_id];
-                        let squaddie = &self.squaddies[squaddie_id];
-                        AIMove {x: enemy.x, y: enemy.y, cost: 0, score: self.tile_score(enemy.x, enemy.y, 0, enemy, squaddie)}
-                    };
-
-                    for x in 0 .. self.tiles.cols {
-                        for y in 0 .. self.tiles.rows {
-                            let enemy = &self.enemies[enemy_id];
-                            let squaddie = &self.squaddies[squaddie_id];
-
-                            match pathfind(enemy, x, y, &self) {
-                                Some((_, cost)) => {
-                                    let score = self.tile_score(x, y, cost, enemy, squaddie);
-
-                                    if score > ai_move.score {
-                                        println!("Enemy {} found ({}, {}) with a score of {}", enemy_id, x, y, score);
-                                        ai_move = AIMove {x, y, cost, score};
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    let enemy = &mut self.enemies[enemy_id];
-                    let squaddie = &mut self.squaddies[squaddie_id];
-
-                    if enemy.move_to(ai_move.x, ai_move.y, ai_move.cost) {
-                        for _ in 0 .. enemy.moves / enemy.weapon.cost {
-                            enemy.fire_at(squaddie, &mut self.animation_queue);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn tile_score(&self, x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {
-        if cost > unit.moves {
-            return 0.0
-        }
-
-        chance_to_hit(x, y, target.x, target.y) * ((unit.moves - cost) / unit.weapon.cost) as f32
     }
 }
