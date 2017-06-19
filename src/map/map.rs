@@ -10,11 +10,9 @@ use map::ai;
 use context::Context;
 use Resources;
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
-use utils::distance;
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
-const UNIT_SIGHT: f32 = 7.5;
 
 // A cursor on the map with a possible position
 pub struct Cursor {
@@ -100,21 +98,7 @@ impl Map {
             self.units.push(Unit::new(UnitType::Squaddie, UnitSide::Enemy, y, self.tiles.rows - 1));
         }
 
-        self.update_visiblity();
-    }
-
-    pub fn update_visiblity(&mut self) {
-        for unit in self.units.friendlies() {
-            for x in 0 .. self.tiles.cols {
-                for y in 0 .. self.tiles.rows {
-                    let tile = self.tiles.tile_at_mut(x, y);
-                    
-                    if distance(unit.x, unit.y, x, y) <= UNIT_SIGHT {
-                        tile.visible = true;
-                    }
-                }
-            }
-        }
+        self.tiles.update_visibility(&self.units);
     }
 
     // Handle keypresses
@@ -141,7 +125,7 @@ impl Map {
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
         // Update the animation queue
-        self.animation_queue.update(&self.tiles, &mut self.units);
+        self.animation_queue.update(&mut self.tiles, &mut self.units);
     }
 
     // Draw both the map and the UI
@@ -182,7 +166,7 @@ impl Map {
         let (x, y) = self.drawer.tile_under_cursor(ctx, x, y);
 
         // Set cursor position if it is on the map and visible
-        self.cursor.position = if x < self.tiles.cols && y < self.tiles.rows && self.tiles.tile_at(x, y).visible {
+        self.cursor.position = if x < self.tiles.cols && y < self.tiles.rows && self.tiles.tile_at(x, y).visible() {
             Some((x, y))
         } else {
             None
@@ -253,8 +237,8 @@ impl Map {
                     };
 
                     // If the paths are the same and the squaddie can move to the destination, get rid of the path
-                    self.path = if same_path && self.units.get_mut(selected).move_to(x, y, cost) {
-                        self.update_visiblity();
+                    self.path = if same_path {
+                        self.units.get_mut(selected).move_to(selected, points, cost, &mut self.animation_queue);
                         None
                     } else {
                         Some(points)

@@ -1,14 +1,24 @@
 use rand;
 use rand::Rng;
 
-const DEFAULT_VISIBILITY: bool = true;
+use map::units::{UnitSide, Units};
+use utils::distance;
+
+const UNIT_SIGHT: f32 = 7.5;
+
+#[derive(Eq, PartialEq)]
+pub enum Visibility {
+    Visible,
+    Foggy,
+    Invisible
+}
 
 // A tile in the map
 pub struct Tile {
     pub base: String,
     pub decoration: Option<String>,
     pub walkable: bool,
-    pub visible: bool
+    pub visibility: Visibility
 }
 
 impl Tile {
@@ -18,7 +28,7 @@ impl Tile {
             base: base.into(),
             decoration: None,
             walkable: true,
-            visible: DEFAULT_VISIBILITY
+            visibility: Visibility::Invisible
         }
     }
 
@@ -26,6 +36,10 @@ impl Tile {
     fn set_obstacle(&mut self, decoration: &str) {
         self.decoration = Some(decoration.into());
         self.walkable = false;        
+    }
+
+    pub fn visible(&self) -> bool {
+        self.visibility != Visibility::Invisible
     }
 }
 
@@ -113,5 +127,23 @@ impl Tiles {
     // Get a mutable reference to a tile
     pub fn tile_at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[x * self.rows + y]
+    }
+
+    pub fn update_visibility(&mut self, units: &Units) {
+        for x in 0 .. self.cols {
+            for y in 0 .. self.rows {
+                let tile = self.tile_at_mut(x, y);
+
+                let visible = units.iter()
+                    .filter(|unit| unit.side == UnitSide::Friendly)
+                    .any(|unit| distance(unit.x, unit.y, x, y) <= UNIT_SIGHT);
+                
+                if visible {
+                    tile.visibility = Visibility::Visible;
+                } else if tile.visible() {
+                    tile.visibility = Visibility::Foggy;
+                }
+            }
+        }
     }
 }

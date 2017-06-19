@@ -4,6 +4,7 @@ use sdl2::video::Window;
 
 use map::map::Map;
 use map::units::UnitSide;
+use map::tiles::Visibility;
 use Resources;
 use context::Context;
 use utils::{bound, chance_to_hit, convert_rotation};
@@ -130,7 +131,7 @@ impl Drawer {
                 // Get the position of the tile in the screen
                 let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
-                if tile.visible && canvas.on_screen(screen_x, screen_y) {
+                if tile.visible() && canvas.on_screen(screen_x, screen_y) {
                     // Draw the tile base
                     canvas.draw(resources.image(&tile.base), screen_x, screen_y);
 
@@ -140,41 +141,45 @@ impl Drawer {
                         _ => {}
                     }
 
-                    // Draw the cursor if it's not in fire mode
-                    if !map.cursor.fire {
-                        match map.cursor.position {
-                            Some((cursor_x, cursor_y)) => {
-                                if cursor_x == x && cursor_y == y {
-                                    // Determine the cursor colour
-                                    let image = if !tile.walkable {
-                                        "cursor_unwalkable"
-                                    } else if map.units.at(x, y).is_some() {
-                                        "cursor_unit"
-                                    } else {
-                                        "cursor"
-                                    };
+                    if tile.visibility != Visibility::Foggy {
+                        // Draw the cursor if it's not in fire mode
+                        if !map.cursor.fire {
+                            match map.cursor.position {
+                                Some((cursor_x, cursor_y)) => {
+                                    if cursor_x == x && cursor_y == y {
+                                        // Determine the cursor colour
+                                        let image = if !tile.walkable {
+                                            "cursor_unwalkable"
+                                        } else if map.units.at(x, y).is_some() {
+                                            "cursor_unit"
+                                        } else {
+                                            "cursor"
+                                        };
 
-                                    canvas.draw(resources.image(&image.into()), screen_x, screen_y);
-                                }
-                            },
-                            _ => {}
-                        }
-                    }
-
-                    // Draw a squaddie at the position
-                    match map.units.at(x, y) {
-                        Some((index, unit)) => {
-                            // Draw the cursor to show that the unit is selected
-                            match map.selected {
-                                Some(selected) => if selected == index {
-                                    canvas.draw(resources.image(&"cursor_unit".into()), screen_x, screen_y);
+                                        canvas.draw(resources.image(&image.into()), screen_x, screen_y);
+                                    }
                                 },
                                 _ => {}
                             }
+                        }
 
-                            canvas.draw(resources.image(&unit.image), screen_x, screen_y);
-                        },
-                        _ => {}
+                        // Draw a squaddie at the position
+                        match map.units.at(x, y) {
+                            Some((index, unit)) => {
+                                // Draw the cursor to show that the unit is selected
+                                match map.selected {
+                                    Some(selected) => if selected == index {
+                                        canvas.draw(resources.image(&"cursor_unit".into()), screen_x, screen_y);
+                                    },
+                                    _ => {}
+                                }
+
+                                canvas.draw(resources.image(&unit.image), screen_x, screen_y);
+                            },
+                            _ => {}
+                        }
+                    } else {
+                        canvas.draw(resources.image(&"fog".into()), screen_x, screen_y);
                     }
                 }
             }
@@ -182,28 +187,28 @@ impl Drawer {
 
         // Draw the edge corners if visible
 
-        if map.tiles.tile_at(0, map.tiles.rows - 1).visible {
+        if map.tiles.tile_at(0, map.tiles.rows - 1).visible() {
             canvas.draw_tile(resources.image(&"edge_left_corner".into()), 0, map.tiles.rows);
         }
         
-        if map.tiles.tile_at(map.tiles.cols - 1, map.tiles.rows - 1).visible {
+        if map.tiles.tile_at(map.tiles.cols - 1, map.tiles.rows - 1).visible() {
             canvas.draw_tile(resources.image(&"edge_corner".into()), map.tiles.cols, map.tiles.rows);
         }
 
-        if map.tiles.tile_at(map.tiles.cols - 1, 0).visible {
+        if map.tiles.tile_at(map.tiles.cols - 1, 0).visible() {
             canvas.draw_tile(resources.image(&"edge_right_corner".into()), map.tiles.cols, 0);
         }
 
         // Draw the edges
 
         for x in 1 .. map.tiles.cols {
-            if map.tiles.tile_at(x, map.tiles.rows - 1).visible {
+            if map.tiles.tile_at(x, map.tiles.rows - 1).visible() {
                 canvas.draw_tile(resources.image(&"edge_left".into()), x, map.tiles.rows);
             }
         }
 
         for y in 1 .. map.tiles.rows {
-            if map.tiles.tile_at(map.tiles.cols - 1, y).visible {
+            if map.tiles.tile_at(map.tiles.cols - 1, y).visible() {
                 canvas.draw_tile(resources.image(&"edge_right".into()), map.tiles.cols, y);
             }
         }
@@ -283,7 +288,7 @@ impl Drawer {
                 let visible = map.tiles.tile_at(
                     bound(bullet.x.round() as usize, 0, map.tiles.cols - 1),
                     bound(bullet.y.round() as usize, 0, map.tiles.rows - 1)
-                ).visible;
+                ).visible();
                 let (x, y) = canvas.draw_location(bullet.x, bullet.y);
 
                 if visible && canvas.on_screen(x, y) {

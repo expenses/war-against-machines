@@ -2,12 +2,12 @@ use rand;
 use rand::Rng;
 
 use std::slice::{Iter, IterMut};
-use std::iter::Filter;
 
 use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 use utils::chance_to_hit;
-use map::animations::{Bullet, AnimationQueue};
+use map::animations::{Bullet, WalkAnimation, AnimationQueue};
+use map::paths::PathPoint;
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str; 9] = &[
@@ -131,16 +131,10 @@ impl Unit {
     }
 
     // Move the unit to a location
-    pub fn move_to(&mut self, x: usize, y: usize, cost: usize) -> bool {
-        if self.moves < cost {
-            return false;
+    pub fn move_to(&mut self, unit_id: usize, path: Vec<PathPoint>, cost: usize, animation_queue: &mut AnimationQueue) {
+        if self.moves >= cost {
+            animation_queue.add_walk(WalkAnimation::new(unit_id, path)); 
         }
-
-        self.x = x;
-        self.y = y;
-        self.moves -= cost;
-        
-        true
     }
 
     // Fire the units weapon at another unit
@@ -165,7 +159,7 @@ impl Unit {
         let lethal = !target.alive();
 
         // Add a bullet to the array for drawing
-        animation_queue.push(Bullet::new(self, target_id, target, lethal, will_hit));
+        animation_queue.add_bullet(Bullet::new(self, target_id, target, lethal, will_hit));
     }
 }
 
@@ -190,14 +184,6 @@ impl Units {
 
     pub fn iter_mut(&mut self) -> IterMut<Unit> {
         self.units.iter_mut()
-    }
-
-    pub fn friendlies(&self) -> Filter<Iter<Unit>, fn(&&Unit) -> bool> {
-        self.iter().filter(|unit| unit.side == UnitSide::Friendly)
-    }
-
-    pub fn _enemies(&self) -> Filter<Iter<Unit>, fn(&&Unit) -> bool> {
-        self.iter().filter(|unit| unit.side == UnitSide::Enemy)
     }
 
     pub fn get(&self, id: usize) -> &Unit {

@@ -69,10 +69,10 @@ pub fn take_turn(mut map: &mut Map) {
 
                 let (unit, target) = map.units.get_two_mut(unit_id, target_id);
 
-                if unit.move_to(ai_move.x, ai_move.y, ai_move.cost) {
-                    for _ in 0 .. unit.moves / unit.weapon.cost {
-                        unit.fire_at(target_id, target, &mut map.animation_queue);
-                    }
+                unit.move_to(unit_id, ai_move.path, ai_move.cost, &mut map.animation_queue);
+
+                for _ in 0 .. unit.moves / unit.weapon.cost {
+                    unit.fire_at(target_id, target, &mut map.animation_queue);
                 }
             }
             _ => {}
