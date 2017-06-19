@@ -56,7 +56,7 @@ impl PathPoint {
         self.x == x && self.y == y
     }
 
-    // Get the cost to a past
+    // Get the cost to a point
     fn cost(&self, x: usize, y: usize) -> usize {
         if self.x == x || self.y == y {
             WALK_STRAIGHT_COST
@@ -65,6 +65,7 @@ impl PathPoint {
         }
     }
 
+    // Get the neighbours to a point
     fn neighbours(&self, map: &Map) -> Vec<(PathPoint, usize)> {
         let mut neighbours = Vec::new();
 
@@ -81,7 +82,6 @@ impl PathPoint {
                     // Add the point
                     let cost = self.cost(x, y);
                     let point = PathPoint::new(x, y, cost);
-
                     neighbours.push((point, cost));
                 }
             }

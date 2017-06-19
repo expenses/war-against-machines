@@ -259,8 +259,6 @@ pub fn main() {
     
     resources.load_image("end_turn_button", "button/end_turn.png");
     resources.load_image("fire_button",     "button/fire.png");
-
-    resources.load_image("fog", "decoration/fog.png");
     
     // Load the font
     resources.load_font("main", "font.ttf", 35);

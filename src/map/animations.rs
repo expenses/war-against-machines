@@ -10,15 +10,15 @@ const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
 const WALK_SPEED: f32 = 0.1;
 
-pub struct WalkAnimation {
+pub struct Walk {
     unit: usize,
     progress: f32,
     path: Vec<PathPoint>
 }
 
-impl WalkAnimation {
-    pub fn new(unit: usize, path: Vec<PathPoint>) -> WalkAnimation {
-        WalkAnimation {
+impl Walk {
+    pub fn new(unit: usize, path: Vec<PathPoint>) -> Walk {
+        Walk {
             unit, path,
             progress: 0.0
         }
@@ -118,7 +118,7 @@ impl Bullet {
 
 pub struct AnimationQueue {
     bullets: Vec<Bullet>,
-    walks: Vec<WalkAnimation>
+    walks: Vec<Walk>
 }
 
 impl AnimationQueue {
@@ -134,7 +134,7 @@ impl AnimationQueue {
     }
 
     pub fn update(&mut self, tiles: &mut Tiles, units: &mut Units) {
-        let next = match self.bullets.first_mut() {
+        let bullet_finished = match self.bullets.first_mut() {
             Some(bullet) => {
                 let finished = bullet.step(tiles);
 
@@ -147,16 +147,16 @@ impl AnimationQueue {
             _ => false
         };
 
-        if next {
+        if bullet_finished {
             self.bullets.remove(0);
         }
         
-        let next = match self.walks.first_mut() {
+        let walk_finished = match self.walks.first_mut() {
             Some(walk) => walk.step(units, tiles),
             _ => false
         };
 
-        if next {
+        if walk_finished {
             self.walks.remove(0);
         }
     }
@@ -165,7 +165,7 @@ impl AnimationQueue {
         self.bullets.push(bullet);
     }
 
-    pub fn add_walk(&mut self, walk: WalkAnimation) {
+    pub fn add_walk(&mut self, walk: Walk) {
         self.walks.push(walk);
     }
 

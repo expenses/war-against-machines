@@ -7,7 +7,7 @@ use map::units::UnitSide;
 use map::tiles::Visibility;
 use Resources;
 use context::Context;
-use utils::{bound, chance_to_hit, convert_rotation};
+use utils::{bound_f, chance_to_hit, convert_rotation};
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -282,15 +282,18 @@ impl Drawer {
             }
         }
 
-        // Draw the bullet at the correct rotation (+45' because of the map being isometric)
+        // If a bullet is the first item in the animation queue, draw it
         match map.animation_queue.first() {
             Some(bullet) => {
+                // Calculate if the nearest tile to the bullet is visible
                 let visible = map.tiles.tile_at(
-                    bound(bullet.x.round() as usize, 0, map.tiles.cols - 1),
-                    bound(bullet.y.round() as usize, 0, map.tiles.rows - 1)
+                    bound_f(bullet.x.round(), 0, map.tiles.cols - 1),
+                    bound_f(bullet.y.round(), 0, map.tiles.rows - 1)
                 ).visible();
+                // Get the drawing location of the bullet
                 let (x, y) = canvas.draw_location(bullet.x, bullet.y);
 
+                // If the bullet is visable and on screen, draw it with the right rotation
                 if visible && canvas.on_screen(x, y) {
                     canvas.draw_with_rotation(resources.image(&bullet.image), x, y, convert_rotation(bullet.direction));
                 }

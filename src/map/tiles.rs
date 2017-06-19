@@ -6,6 +6,7 @@ use utils::distance;
 
 const UNIT_SIGHT: f32 = 7.5;
 
+// The visibility of the tile
 #[derive(Eq, PartialEq)]
 pub enum Visibility {
     Visible,
@@ -129,6 +130,7 @@ impl Tiles {
         &mut self.tiles[x * self.rows + y]
     }
 
+    // Update the visibility of the map
     pub fn update_visibility(&mut self, units: &Units) {
         for x in 0 .. self.cols {
             for y in 0 .. self.rows {

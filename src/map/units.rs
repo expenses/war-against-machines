@@ -6,7 +6,7 @@ use std::slice::{Iter, IterMut};
 use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 use utils::chance_to_hit;
-use map::animations::{Bullet, WalkAnimation, AnimationQueue};
+use map::animations::{Bullet, Walk, AnimationQueue};
 use map::paths::PathPoint;
 
 // A list of first names to pick from
@@ -39,7 +39,7 @@ pub enum UnitType {
     _Robot
 }
 
-// The side of a unit
+// The which side the unit is on
 #[derive(Eq, PartialEq)]
 pub enum UnitSide {
     Friendly,
@@ -110,6 +110,7 @@ impl Unit {
         }
     }
 
+    // Is the unit alive
     pub fn alive(&self) -> bool {
         self.health > 0
     }
@@ -130,10 +131,10 @@ impl Unit {
         }
     }
 
-    // Move the unit to a location
+    // Add the movement of the unit along a path to the animation queue
     pub fn move_to(&mut self, unit_id: usize, path: Vec<PathPoint>, cost: usize, animation_queue: &mut AnimationQueue) {
         if self.moves >= cost {
-            animation_queue.add_walk(WalkAnimation::new(unit_id, path)); 
+            animation_queue.add_walk(Walk::new(unit_id, path)); 
         }
     }
 

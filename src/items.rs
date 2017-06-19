@@ -4,7 +4,7 @@ pub enum ItemType {
     Weapon
 }
 
-// An item with a height value
+// An item with a weight value
 pub struct Item {
     pub tag: ItemType,
     pub weight: usize
