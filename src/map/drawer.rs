@@ -99,17 +99,6 @@ pub struct Camera {
     pub zoom: f32
 }
 
-impl Camera {
-    // Create a new Camera
-    fn new() -> Camera {
-        Camera {
-            x: 0.0,
-            y: 0.0,
-            zoom: DEFAULT_ZOOM
-        }
-    }
-}
-
 // The drawer object
 pub struct Drawer {
     pub camera: Camera,
@@ -119,7 +108,7 @@ impl Drawer {
     // Create a new Drawer
     pub fn new() -> Drawer {
         Drawer {
-            camera: Camera::new()
+            camera: Camera { x: 0.0, y: 0.0, zoom: DEFAULT_ZOOM }
         }
     }
 
@@ -222,24 +211,28 @@ impl Drawer {
         // Draw the path
         match map.path {
             Some(ref points) => {
+                let mut total_cost = 0;
+
                 // Get the squaddie the path if for
                 let unit = map.units.get(map.selected.unwrap());
 
                 for point in points {
+                    total_cost += point.cost;
+
                     let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
 
                     if canvas.on_screen(x, y) {
                         // Get the image for the path
-                        let image = if point.cost > unit.moves {
+                        let image = if total_cost > unit.moves {
                             "path_unreachable"
-                        } else if point.cost + unit.weapon.cost > unit.moves {
+                        } else if total_cost + unit.weapon.cost > unit.moves {
                             "path_no_weapon"
                         } else {
                             "path"
                         };
 
                         // Rendet the path cost
-                        let cost = resources.render("main", &format!("{}", point.cost));
+                        let cost = resources.render("main", &format!("{}", total_cost));
                         let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
                         canvas.draw(&cost, x + center as i32, y);

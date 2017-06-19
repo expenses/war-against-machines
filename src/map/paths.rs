@@ -36,10 +36,9 @@ pub struct PathPoint {
 
 impl PathPoint {
     // Create a new path point
-    pub fn new(x: usize, y: usize) -> PathPoint {
+    pub fn new(x: usize, y: usize, cost: usize) -> PathPoint {
         PathPoint {
-            x, y,
-            cost: 0
+            x, y, cost
         }
     }
 
@@ -80,10 +79,8 @@ impl PathPoint {
             for y in min_y .. max_y + 1 {
                 if !map.taken(x, y) && !(x == self.x && y == self.y) {
                     // Add the point
-
-                    let mut point = PathPoint::new(x, y);
                     let cost = self.cost(x, y);
-                    point.cost = self.cost + cost;
+                    let point = PathPoint::new(x, y, cost);
 
                     neighbours.push((point, cost));
                 }

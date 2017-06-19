@@ -1,7 +1,8 @@
 use rand;
 use rand::distributions::{IndependentSample, Range};
 
-use map::units::Unit;
+use map::tiles::Tiles;
+use map::units::{Unit, Units};
 use weapons::WeaponType;
 
 const MARGIN: f32 = 5.0;
@@ -15,14 +16,16 @@ pub struct Bullet {
     pub image: String,
     left: bool,
     above: bool,
+    target_id: usize,
     target_x: f32,
     target_y: f32,
+    lethal: bool,
     will_hit: bool
 }
 
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
-    pub fn new(fired_by: &Unit, target: &Unit, will_hit: bool) -> Bullet {
+    pub fn new(fired_by: &Unit, target_id: usize, target: &mut Unit, lethal: bool, will_hit: bool) -> Bullet {
         let x = fired_by.x as f32;
         let y = fired_by.y as f32;
         let target_x = target.x as f32;
@@ -47,26 +50,26 @@ impl Bullet {
         let above = y < target_y;
 
         Bullet {
-           x, y, direction, image, left, above, target_x, target_y, will_hit
+           x, y, direction, image, left, above, target_id, target_x, target_y, lethal, will_hit
         }
     }
 
     // Move the bullet
-    pub fn travel(&mut self) {        
+    pub fn step(&mut self) {        
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
     }
 
     // Work out if the bullet is currently traveling or has reached the destination
-    pub fn traveling(&self, cols: usize, rows: usize) -> bool {
+    pub fn finished(&self, tiles: &Tiles) -> bool {
         // If the bullet won't hit the target or hasn't hit the target
-        (!self.will_hit || (
-            self.left == (self.x < self.target_x) &&
-            self.above == (self.y < self.target_y)
-        )) &&
+        (self.will_hit && (
+            self.left  != (self.x < self.target_x as f32) ||
+            self.above != (self.y < self.target_y as f32)
+        )) ||
         // And if the bullet is within a certain margin of the map
-        self.x > -MARGIN && self.x < cols as f32 + MARGIN &&
-        self.y > -MARGIN && self.y < rows as f32 + MARGIN
+        self.x < -MARGIN || self.x > tiles.cols as f32 + MARGIN ||
+        self.y < -MARGIN || self.y > tiles.rows as f32 + MARGIN
     }
 }
 
@@ -85,12 +88,18 @@ impl AnimationQueue {
         self.bullets.first()
     }
 
-    pub fn update(&mut self, cols: usize, rows: usize) -> bool {
+    pub fn update(&mut self, tiles: &Tiles, units: &mut Units) {
         let next = match self.bullets.first_mut() {
             Some(bullet) => {
-                bullet.travel();
+                bullet.step();
                 
-                !bullet.traveling(cols, rows)
+                let finished = bullet.finished(tiles);
+
+                if finished && bullet.lethal {
+                    units.get_mut(bullet.target_id).update();
+                }
+
+                finished
             }
             _ => false
         };
@@ -98,8 +107,6 @@ impl AnimationQueue {
         if next {
             self.bullets.remove(0);
         }
-
-        next
     }
 
     pub fn push(&mut self, bullet: Bullet) {

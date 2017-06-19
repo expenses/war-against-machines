@@ -22,16 +22,6 @@ pub struct Cursor {
     pub fire: bool
 }
 
-impl Cursor {
-    // Create a new cursor
-    fn new() -> Cursor {
-        Cursor {
-            position: None,
-            fire: false
-        }
-    }
-}
-
 // The Map struct
 pub struct Map {
     pub tiles: Tiles,
@@ -84,7 +74,7 @@ impl Map {
         Map {
             tiles: Tiles::new(),
             drawer: Drawer::new(),
-            cursor: Cursor::new(),
+            cursor: Cursor { position: None, fire: false },
             keys: [false; 6],
             units: Units::new(),
             selected: None,
@@ -150,23 +140,8 @@ impl Map {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
-        // If the animation queue has been changed, update all the units
-        if self.animation_queue.update(self.tiles.cols, self.tiles.rows) {
-            self.update_all_units();
-        }
-    }
-
-    // Update all the units
-    pub fn update_all_units(&mut self) {
-        self.units.update();
-
-        if !self.units.any_alive(UnitSide::Friendly) {
-            println!("All friendly units killed!");
-        }
-
-        if !self.units.any_alive(UnitSide::Enemy) {
-            println!("All enemy units killed!");
-        }
+        // Update the animation queue
+        self.animation_queue.update(&self.tiles, &mut self.units);
     }
 
     // Draw both the map and the UI
@@ -232,13 +207,13 @@ impl Map {
                         // If the cursor is in fire mode and a squaddie is selected and an enemy is under the cursor
                         if self.cursor.fire && self.selected.is_some() {
                             match self.selected.and_then(|selected| self.units.at_i(x, y).map(|target| (selected, target))) {
-                                Some((selected, target)) => {
-                                    if self.units.get(selected).side != UnitSide::Friendly {
+                                Some((selected_id, target_id)) => {
+                                    if self.units.get(selected_id).side != UnitSide::Friendly {
                                         return;
                                     }
 
-                                    let (selected, target) = self.units.get_two_mut(selected, target);
-                                    selected.fire_at(target, &mut self.animation_queue);
+                                    let (selected, target) = self.units.get_two_mut(selected_id, target_id);
+                                    selected.fire_at(target_id, target, &mut self.animation_queue);
                                 }
                                 _ => {}
                             }

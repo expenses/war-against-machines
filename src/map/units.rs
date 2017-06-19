@@ -144,7 +144,7 @@ impl Unit {
     }
 
     // Fire the units weapon at another unit
-    pub fn fire_at(&mut self, target: &mut Unit, animation_queue: &mut AnimationQueue) {
+    pub fn fire_at(&mut self, target_id: usize, target: &mut Unit, animation_queue: &mut AnimationQueue) {
         // return if the unit cannot fire or the unit is already dead
         if self.moves < self.weapon.cost || !target.alive() {
             return;
@@ -153,10 +153,8 @@ impl Unit {
         self.moves -= self.weapon.cost;
 
         // Get the chance to hit and compare it to a random number
-
         let hit_chance = chance_to_hit(self.x, self.y, target.x, target.y);
         let random = rand::random::<f32>();
-
         let will_hit = hit_chance > random;
 
         // Lower the targets health
@@ -164,8 +162,10 @@ impl Unit {
             target.health -= self.weapon.damage;
         }
 
+        let lethal = !target.alive();
+
         // Add a bullet to the array for drawing
-        animation_queue.push(Bullet::new(self, target, will_hit));
+        animation_queue.push(Bullet::new(self, target_id, target, lethal, will_hit));
     }
 }
 
@@ -182,12 +182,6 @@ impl Units {
 
     pub fn push(&mut self, unit: Unit) {
         self.units.push(unit);
-    }
-
-    pub fn update(&mut self) {
-        for unit in self.iter_mut() {
-            unit.update();
-        }
     }
 
     pub fn iter(&self) -> Iter<Unit> {
