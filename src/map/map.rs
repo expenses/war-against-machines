@@ -5,6 +5,7 @@ use map::tiles::Tiles;
 use map::drawer::Drawer;
 use map::paths::{pathfind, PathPoint};
 use map::animations::AnimationQueue;
+use map::commands::{CommandQueue, FireCommand, WalkCommand};
 use map::units::{Unit, UnitType, UnitSide, Units};
 use map::ai;
 use context::Context;
@@ -31,7 +32,8 @@ pub struct Map {
     pub path: Option<Vec<PathPoint>>,
     turn: u16,
     ui: UI,
-    pub animation_queue: AnimationQueue
+    pub animation_queue: AnimationQueue,
+    pub command_queue: CommandQueue
 }
 
 impl Map {
@@ -79,7 +81,8 @@ impl Map {
             path: None,
             turn: 1,
             ui: ui,
-            animation_queue: AnimationQueue::new()
+            animation_queue: AnimationQueue::new(),
+            command_queue: CommandQueue::new()
         }
     }
 
@@ -123,6 +126,10 @@ impl Map {
         if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED; }
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
+
+        if self.animation_queue.empty() {
+            self.command_queue.update(&mut self.units, &mut self.tiles, &mut self.animation_queue);
+        }
 
         // Update the animation queue
         self.animation_queue.update(&mut self.tiles, &mut self.units);
@@ -196,8 +203,7 @@ impl Map {
                                         return;
                                     }
 
-                                    let (selected, target) = self.units.get_two_mut(selected_id, target_id);
-                                    selected.fire_at(target_id, target, &mut self.animation_queue);
+                                    self.command_queue.add_fire(FireCommand::new(selected_id, target_id));
                                 }
                                 _ => {}
                             }
@@ -222,8 +228,8 @@ impl Map {
                     }
 
                     // Pathfind to get the path points and the cost
-                    let (points, cost) = match pathfind(self.units.get(selected), x, y, &self) {
-                        Some((points, cost)) => (points, cost),
+                    let points = match pathfind(self.units.get(selected), x, y, &self) {
+                        Some((points, _)) => points,
                         _ => {
                             self.path = None;
                             return;
@@ -238,7 +244,7 @@ impl Map {
 
                     // If the paths are the same and the squaddie can move to the destination, get rid of the path
                     self.path = if same_path {
-                        self.units.get_mut(selected).move_to(selected, points, cost, &mut self.animation_queue);
+                        self.command_queue.add_walk(WalkCommand::new(selected, points));
                         None
                     } else {
                         Some(points)
@@ -258,11 +264,11 @@ impl Map {
 
     // End the current turn
     fn end_turn(&mut self) {
-        ai::take_turn(self);
-
         for unit in self.units.iter_mut() {
             unit.moves = unit.max_moves;
         }
+
+        ai::take_turn(self);
 
         self.turn += 1;
     }

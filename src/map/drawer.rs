@@ -141,28 +141,28 @@ impl Drawer {
                         _ => {}
                     }
 
-                    if tile.visibility != Visibility::Foggy {
-                        // Draw the cursor if it's not in fire mode
-                        if !map.cursor.fire {
-                            match map.cursor.position {
-                                Some((cursor_x, cursor_y)) => {
-                                    if cursor_x == x && cursor_y == y {
-                                        // Determine the cursor colour
-                                        let image = if !tile.walkable {
-                                            "cursor_unwalkable"
-                                        } else if map.units.at(x, y).is_some() {
-                                            "cursor_unit"
-                                        } else {
-                                            "cursor"
-                                        };
+                    // Draw the cursor if it's not in fire mode
+                    if !map.cursor.fire {
+                        match map.cursor.position {
+                            Some((cursor_x, cursor_y)) => {
+                                if cursor_x == x && cursor_y == y {
+                                    // Determine the cursor colour
+                                    let image = if !tile.walkable {
+                                        "cursor_unwalkable"
+                                    } else if map.units.at(x, y).is_some() {
+                                        "cursor_unit"
+                                    } else {
+                                        "cursor"
+                                    };
 
-                                        canvas.draw(resources.image(&image.into()), screen_x, screen_y);
-                                    }
-                                },
-                                _ => {}
-                            }
+                                    canvas.draw(resources.image(&image.into()), screen_x, screen_y);
+                                }
+                            },
+                            _ => {}
                         }
+                    }
 
+                    if tile.visibility != Visibility::Foggy {
                         // Draw a squaddie at the position
                         match map.units.at(x, y) {
                             Some((index, unit)) => {
@@ -283,7 +283,7 @@ impl Drawer {
         }
 
         // If a bullet is the first item in the animation queue, draw it
-        match map.animation_queue.first() {
+        match map.animation_queue.first_bullet() {
             Some(bullet) => {
                 // Calculate if the nearest tile to the bullet is visible
                 let visible = map.tiles.tile_at(

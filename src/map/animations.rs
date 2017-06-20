@@ -1,60 +1,29 @@
 use rand;
 use rand::distributions::{IndependentSample, Range};
 
-use map::paths::PathPoint;
 use map::tiles::Tiles;
-use map::units::{Unit, Units};
+use map::units::Units;
 use weapons::WeaponType;
 
 const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
 const WALK_SPEED: f32 = 0.1;
 
-trait Animation {
-    fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool;
-}
-
 pub struct Walk {
-    unit: usize,
-    progress: f32,
-    path: Vec<PathPoint>
+    progress: f32
 }
 
 impl Walk {
-    pub fn new(unit: usize, path: Vec<PathPoint>) -> Walk {
+    pub fn new() -> Walk {
         Walk {
-            unit, path,
             progress: 0.0
         }
     }
-}
 
-impl Animation for Walk {
-    fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool {
+    fn step(&mut self) -> bool {
         self.progress += WALK_SPEED;
-
-        if self.progress > 1.0 {
-            {
-                let point = &self.path[0];
-
-                if units.at(point.x, point.y).is_some() {
-                    return true;
-                }
-
-                let unit = units.get_mut(self.unit);
-                unit.x = point.x;
-                unit.y = point.y;
-                unit.moves -= point.cost;
-            }
-
-            tiles.update_visibility(units);
-
-            self.progress = self.progress % 1.0;
-
-            self.path.remove(0);
-        }
-
-        self.path.len() == 0
+        
+        self.progress > 1.0
     }
 }
 
@@ -75,19 +44,24 @@ pub struct Bullet {
 
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
-    pub fn new(fired_by: &Unit, target_id: usize, target: &mut Unit, lethal: bool, will_hit: bool) -> Bullet {
-        let x = fired_by.x as f32;
-        let y = fired_by.y as f32;
+    pub fn new(unit_id: usize, target_id: usize, will_hit: bool, units: &Units) -> Bullet {
+        let unit = units.get(unit_id);
+        let target = units.get(target_id);
+
+        let x = unit.x as f32;
+        let y = unit.y as f32;
         let target_x = target.x as f32;
         let target_y = target.y as f32;
         // Calculate the direction of the bullet
         let mut direction = (target_y - y).atan2(target_x - x);
 
-        let image = match fired_by.weapon.tag {
+        let image = match unit.weapon.tag {
             WeaponType::Rifle => "rifle_round",
             WeaponType::MachineGun => "machine_gun_round",
             WeaponType::PlasmaRifle => "plasma_round"
         }.into();
+
+        let lethal = !target.alive();
 
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
@@ -103,9 +77,7 @@ impl Bullet {
            x, y, direction, image, left, above, target_id, target_x, target_y, lethal, will_hit
         }
     }
-}
-
-impl Animation for Bullet {
+    
     // Move the bullet
     fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool {        
         self.x += self.direction.cos() * BULLET_SPEED;
@@ -130,42 +102,50 @@ impl Animation for Bullet {
     }
 }
 
+enum Animation {
+    Walk(Walk),
+    Bullet(Bullet)
+}
+
 pub struct AnimationQueue {
-    bullets: Vec<Bullet>,
-    walks: Vec<Walk>
+    animations: Vec<Animation>
 }
 
 impl AnimationQueue {
     pub fn new() -> AnimationQueue {
         AnimationQueue {
-            bullets: Vec::new(),
-            walks: Vec::new()
+            animations: Vec::new()
         }
     }
 
-    pub fn first(&self) -> Option<&Bullet> {
-        self.bullets.first()
+    pub fn first_bullet(&self) -> Option<&Bullet> {
+        match self.animations.first() {
+            Some(&Animation::Bullet(ref bullet)) => Some(bullet),
+            _ => None
+        }
     }
 
     pub fn update(&mut self, tiles: &mut Tiles, units: &mut Units) {
-        if self.bullets.first_mut().map(|bullet| bullet.step(units, tiles)).unwrap_or(false) {
-            self.bullets.remove(0);
-        }
-        
-        if self.walks.first_mut().map(|walk| walk.step(units, tiles)).unwrap_or(false) {
-            self.walks.remove(0);
+        let finished = match self.animations.first_mut() {
+            Some(&mut Animation::Walk(ref mut walk)) => walk.step(),
+            Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(units, tiles),
+            _ => false
+        };
+
+        if finished {
+            self.animations.remove(0);
         }
     }
 
     pub fn add_bullet(&mut self, bullet: Bullet) {
-        self.bullets.push(bullet);
+        self.animations.push(Animation::Bullet(bullet));
     }
 
     pub fn add_walk(&mut self, walk: Walk) {
-        self.walks.push(walk);
+        self.animations.push(Animation::Walk(walk));
     }
 
-    pub fn _empty(&self) -> bool {
-        self.bullets.is_empty()
+    pub fn empty(&self) -> bool {
+        self.animations.is_empty()
     }
 }

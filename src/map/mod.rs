@@ -5,3 +5,4 @@ mod paths;
 mod units;
 mod animations;
 mod ai;
+mod commands;

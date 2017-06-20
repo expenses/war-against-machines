@@ -3,6 +3,7 @@ use ord_subset::OrdSubsetIterExt;
 use map::map::Map;
 use map::units::{Unit, UnitSide};
 use map::paths::{pathfind, PathPoint, WALK_STRAIGHT_COST};
+use map::commands::{WalkCommand, FireCommand};
 use utils::{distance, chance_to_hit};
 
 // A move that the AI could take
@@ -73,12 +74,14 @@ pub fn take_turn(mut map: &mut Map) {
             ai_move
         };
 
-        let (unit, target) = map.units.get_two_mut(unit_id, ai_move.target_id);
+        let unit = map.units.get(unit_id);
 
-        unit.move_to(unit_id, ai_move.path, ai_move.cost, &mut map.animation_queue);
+        if ai_move.path.len() > 0 {
+            map.command_queue.add_walk(WalkCommand::new(unit_id, ai_move.path));
+        }
 
-        for _ in 0 .. unit.moves / unit.weapon.cost {
-            unit.fire_at(ai_move.target_id, target, &mut map.animation_queue);
+        for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.cost {
+            map.command_queue.add_fire(FireCommand::new(unit_id, ai_move.target_id));
         }
     }
 }

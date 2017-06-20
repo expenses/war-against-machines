@@ -3,11 +3,9 @@ use rand::Rng;
 
 use std::slice::{Iter, IterMut};
 
+use map::paths::PathPoint;
 use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
-use utils::chance_to_hit;
-use map::animations::{Bullet, Walk, AnimationQueue};
-use map::paths::PathPoint;
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str; 9] = &[
@@ -131,36 +129,10 @@ impl Unit {
         }
     }
 
-    // Add the movement of the unit along a path to the animation queue
-    pub fn move_to(&mut self, unit_id: usize, path: Vec<PathPoint>, cost: usize, animation_queue: &mut AnimationQueue) {
-        if self.moves >= cost {
-            animation_queue.add_walk(Walk::new(unit_id, path)); 
-        }
-    }
-
-    // Fire the units weapon at another unit
-    pub fn fire_at(&mut self, target_id: usize, target: &mut Unit, animation_queue: &mut AnimationQueue) {
-        // return if the unit cannot fire or the unit is already dead
-        if self.moves < self.weapon.cost || !target.alive() {
-            return;
-        }
-
-        self.moves -= self.weapon.cost;
-
-        // Get the chance to hit and compare it to a random number
-        let hit_chance = chance_to_hit(self.x, self.y, target.x, target.y);
-        let random = rand::random::<f32>();
-        let will_hit = hit_chance > random;
-
-        // Lower the targets health
-        if will_hit {
-            target.health -= self.weapon.damage;
-        }
-
-        let lethal = !target.alive();
-
-        // Add a bullet to the array for drawing
-        animation_queue.add_bullet(Bullet::new(self, target_id, target, lethal, will_hit));
+    pub fn move_to(&mut self, point: &PathPoint) {
+        self.x = point.x;
+        self.y = point.y;
+        self.moves -= point.cost;
     }
 }
 
