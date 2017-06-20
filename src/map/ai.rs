@@ -18,8 +18,7 @@ struct AIMove {
 
 impl AIMove {
     fn from(unit: &Unit, map: &Map) -> AIMove {
-        let target_id = closest_target(unit, map);
-        let target = map.units.get(target_id);
+        let (target_id, target) = closest_target(unit, map);
 
         AIMove {
             x: unit.x,
@@ -44,37 +43,33 @@ impl AIMove {
 }
 
 pub fn take_turn(mut map: &mut Map) {
-    for unit_id in 0 .. map.units.len() {
-        if skip(unit_id, map) {
-            continue;
-        }
+    if !map.units.any_alive(UnitSide::Friendly) {
+        return;
+    }
 
-        let ai_move = {
-            let unit = map.units.get(unit_id);
-            let mut ai_move = AIMove::from(unit, &map);
+    for (unit_id, unit) in map.units.iter()
+        .enumerate()
+        .filter(|&(_, unit)| unit.side == UnitSide::Enemy && unit.alive()) {
+        
+        let mut ai_move = AIMove::from(unit, &map);
 
-            for x in 0 .. map.tiles.cols {
-                for y in 0 .. map.tiles.rows {
-                    if unreachable(unit, x, y) {
-                        continue;
+        for x in 0 .. map.tiles.cols {
+            for y in 0 .. map.tiles.rows {
+                if unreachable(unit, x, y) {
+                    continue;
+                }
+
+                match pathfind(unit, x, y, &map) {
+                    Some((path, cost)) => {
+                        let (target_id, target) = closest_target(unit, &map);
+                        let score = tile_score(x, y, cost, unit, target);
+
+                        ai_move.check_move(x, y, path, cost, target_id, score);
                     }
-
-                    match pathfind(unit, x, y, &map) {
-                        Some((path, cost)) => {
-                            let target_id = closest_target(unit, &map);
-                            let score = tile_score(x, y, cost, unit, map.units.get(target_id));
-
-                            ai_move.check_move(x, y, path, cost, target_id, score);
-                        }
-                        _ => {}
-                    }
+                    _ => {}
                 }
             }
-
-            ai_move
-        };
-
-        let unit = map.units.get(unit_id);
+        }
 
         if ai_move.path.len() > 0 {
             map.command_queue.add_walk(WalkCommand::new(unit_id, ai_move.path));
@@ -86,25 +81,16 @@ pub fn take_turn(mut map: &mut Map) {
     }
 }
 
-fn skip(unit_id: usize, map: &Map) -> bool {
-    let unit = map.units.get(unit_id);
-
-    unit.side != UnitSide::Enemy ||
-    !unit.alive() ||
-    !map.units.any_alive(UnitSide::Friendly)
-}
-
 fn unreachable(unit: &Unit, x: usize, y: usize) -> bool {
     (unit.x as i32 - x as i32).abs() as usize * WALK_STRAIGHT_COST > unit.moves ||
     (unit.y as i32 - y as i32).abs() as usize * WALK_STRAIGHT_COST > unit.moves
 }
 
-fn closest_target(unit: &Unit, map: &Map) -> usize {
+fn closest_target<'a>(unit: &Unit, map: &'a Map) -> (usize, &'a Unit) {
     map.units.iter()
         .enumerate()
         .filter(|&(_, target)| target.side == UnitSide::Friendly && target.alive())
         .ord_subset_min_by_key(|&(_, target)| distance(unit.x, unit.y, target.x, target.y))
-        .map(|(i, _)| i)
         .unwrap()
 }
 

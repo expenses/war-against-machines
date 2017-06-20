@@ -8,7 +8,7 @@ use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 
 // A list of first names to pick from
-const FIRST_NAMES: &[&str; 9] = &[
+const FIRST_NAMES: &[&str] = &[
     "David",
     "Dale",
     "Robert",
@@ -17,18 +17,28 @@ const FIRST_NAMES: &[&str; 9] = &[
     "Mia",
     "JC",
     "Paul",
-    "Heisenberg"
+    "Heisenberg",
+    "John",
+    "Kyle",
+    "Sarah",
+    "Dylan",
+    "Connor",
+    "Hawk"
 ];
 
 // A list of last names to pick from
-const LAST_NAMES: &[&str; 7] = &[
+const LAST_NAMES: &[&str] = &[
     "Cooper",
     "Yang",
     "Smith",
     "Denton",
     "Simons",
     "Rivers",
-    "Savage"
+    "Savage",
+    "Connor",
+    "Reese",
+    "Rhodes",
+    "Zhou"
 ];
 
 // The type of a unit
@@ -183,10 +193,6 @@ impl Units {
 
     pub fn at_i(&self, x: usize, y: usize) -> Option<usize> {
         self.at(x, y).map(|(i, _)| i)
-    }
-
-    pub fn len(&self) -> usize {
-        self.units.len()
     }
 
     pub fn any_alive(&self, side: UnitSide) -> bool {
