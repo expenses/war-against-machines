@@ -287,8 +287,8 @@ impl Drawer {
             Some(bullet) => {
                 // Calculate if the nearest tile to the bullet is visible
                 let visible = map.tiles.tile_at(
-                    bound_float(bullet.x.round(), 0, map.tiles.cols - 1),
-                    bound_float(bullet.y.round(), 0, map.tiles.rows - 1)
+                    bound_float(bullet.x, 0, map.tiles.cols - 1),
+                    bound_float(bullet.y, 0, map.tiles.rows - 1)
                 ).visible();
                 // Get the drawing location of the bullet
                 let (x, y) = canvas.draw_location(bullet.x, bullet.y);
