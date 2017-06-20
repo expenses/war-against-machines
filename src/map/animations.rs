@@ -10,6 +10,10 @@ const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
 const WALK_SPEED: f32 = 0.1;
 
+trait Animation {
+    fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool;
+}
+
 pub struct Walk {
     unit: usize,
     progress: f32,
@@ -23,7 +27,9 @@ impl Walk {
             progress: 0.0
         }
     }
+}
 
+impl Animation for Walk {
     fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool {
         self.progress += WALK_SPEED;
 
@@ -97,22 +103,30 @@ impl Bullet {
            x, y, direction, image, left, above, target_id, target_x, target_y, lethal, will_hit
         }
     }
+}
 
+impl Animation for Bullet {
     // Move the bullet
-    pub fn step(&mut self, tiles: &Tiles) -> bool {        
+    fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool {        
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
         // Work out if the bullet is currently traveling or has reached the destination
 
         // If the bullet won't hit the target or hasn't hit the target
-        (self.will_hit && (
+        let finished = (self.will_hit && (
             self.left  != (self.x < self.target_x as f32) ||
             self.above != (self.y < self.target_y as f32)
         )) ||
         // And if the bullet is within a certain margin of the map
         self.x < -MARGIN || self.x > tiles.cols as f32 + MARGIN ||
-        self.y < -MARGIN || self.y > tiles.rows as f32 + MARGIN
+        self.y < -MARGIN || self.y > tiles.rows as f32 + MARGIN;
+
+        if finished && self.lethal {
+            units.get_mut(self.target_id).update();
+        }
+
+        finished
     }
 }
 
@@ -134,29 +148,11 @@ impl AnimationQueue {
     }
 
     pub fn update(&mut self, tiles: &mut Tiles, units: &mut Units) {
-        let bullet_finished = match self.bullets.first_mut() {
-            Some(bullet) => {
-                let finished = bullet.step(tiles);
-
-                if finished && bullet.lethal {
-                    units.get_mut(bullet.target_id).update();
-                }
-
-                finished
-            }
-            _ => false
-        };
-
-        if bullet_finished {
+        if self.bullets.first_mut().map(|bullet| bullet.step(units, tiles)).unwrap_or(false) {
             self.bullets.remove(0);
         }
         
-        let walk_finished = match self.walks.first_mut() {
-            Some(walk) => walk.step(units, tiles),
-            _ => false
-        };
-
-        if walk_finished {
+        if self.walks.first_mut().map(|walk| walk.step(units, tiles)).unwrap_or(false) {
             self.walks.remove(0);
         }
     }

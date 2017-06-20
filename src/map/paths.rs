@@ -5,8 +5,8 @@ use std::cmp::{min, max};
 use map::map::Map;
 use map::units::Unit;
 
-const WALK_STRAIGHT_COST: usize = 2;
-const WALK_DIAGONAL_COST: usize = 3;
+pub const WALK_STRAIGHT_COST: usize = 2;
+pub const WALK_DIAGONAL_COST: usize = 3;
 
 // Use the A Star algorithm to find a path between a unit and a destination
 pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, usize)> {
@@ -19,10 +19,10 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
         |point| point.neighbours(map),
         |point| point.cost(dest_x, dest_y),
         |point| point.at(dest_x, dest_y)
-    ).and_then(|(mut path, cost)| {
+    ).map(|(mut path, cost)| {
         // Remove the first point
         path.remove(0);
-        Some((path, cost))
+        (path, cost)
     })
 }
 

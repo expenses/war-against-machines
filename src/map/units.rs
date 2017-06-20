@@ -210,7 +210,7 @@ impl Units {
     }
 
     pub fn at_i(&self, x: usize, y: usize) -> Option<usize> {
-        self.at(x, y).and_then(|(i, _)| Some(i))
+        self.at(x, y).map(|(i, _)| i)
     }
 
     pub fn len(&self) -> usize {

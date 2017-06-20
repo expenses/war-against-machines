@@ -7,7 +7,7 @@ use map::units::UnitSide;
 use map::tiles::Visibility;
 use Resources;
 use context::Context;
-use utils::{bound_f, chance_to_hit, convert_rotation};
+use utils::{bound_float, chance_to_hit, convert_rotation};
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -287,8 +287,8 @@ impl Drawer {
             Some(bullet) => {
                 // Calculate if the nearest tile to the bullet is visible
                 let visible = map.tiles.tile_at(
-                    bound_f(bullet.x.round(), 0, map.tiles.cols - 1),
-                    bound_f(bullet.y.round(), 0, map.tiles.rows - 1)
+                    bound_float(bullet.x.round(), 0, map.tiles.cols - 1),
+                    bound_float(bullet.y.round(), 0, map.tiles.rows - 1)
                 ).visible();
                 // Get the drawing location of the bullet
                 let (x, y) = canvas.draw_location(bullet.x, bullet.y);

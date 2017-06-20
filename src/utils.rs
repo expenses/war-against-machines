@@ -6,7 +6,7 @@ pub fn bound(value: usize, lower: usize, upper: usize) -> usize {
 }
 
 // Ensure that a floating point value is between lower and upper as usize
-pub fn bound_f(value: f32, lower: usize, upper: usize) -> usize {
+pub fn bound_float(value: f32, lower: usize, upper: usize) -> usize {
     let value = if value < 0.0 { 0 } else { value as usize };
 
     bound(value, lower, upper)
@@ -15,6 +15,12 @@ pub fn bound_f(value: f32, lower: usize, upper: usize) -> usize {
 // Calculate the distance between two items on the map
 pub fn distance(from_x: usize, from_y: usize, target_x: usize, target_y: usize) -> f32 {
     (from_x as f32 - target_x as f32).hypot(from_y as f32 - target_y as f32)
+}
+
+pub fn distance_under(from_x: usize, from_y: usize, target_x: usize, target_y: usize, value: f32) -> bool {
+    (from_x as f32 - target_x as f32).abs() <= value &&
+    (from_y as f32 - target_y as f32).abs() <= value &&
+    distance(from_x, from_y, target_x, target_y) <= value
 }
 
 // A change to hit function based on a fairly simple sigmoid curve.

@@ -2,7 +2,7 @@ use ord_subset::OrdSubsetIterExt;
 
 use map::map::Map;
 use map::units::{Unit, UnitSide};
-use map::paths::{pathfind, PathPoint};
+use map::paths::{pathfind, PathPoint, WALK_STRAIGHT_COST};
 use utils::{distance, chance_to_hit};
 
 // A move that the AI could take
@@ -11,26 +11,32 @@ struct AIMove {
     y: usize,
     path: Vec<PathPoint>,
     cost: usize,
+    target_id: usize,
     score: f32
 }
 
 impl AIMove {
-    fn from(unit: &Unit, target: &Unit) -> AIMove {
+    fn from(unit: &Unit, map: &Map) -> AIMove {
+        let target_id = closest_target(unit, map);
+        let target = map.units.get(target_id);
+
         AIMove {
             x: unit.x,
             y: unit.y,
             path: Vec::new(),
             cost: 0,
+            target_id,
             score: tile_score(unit.x, unit.y, 0, unit, target)
         }
     }
 
-    fn check_move(&mut self, x: usize, y: usize, path: Vec<PathPoint>, cost: usize, score: f32) {
+    fn check_move(&mut self, x: usize, y: usize, path: Vec<PathPoint>, cost: usize, target_id: usize, score: f32) {
         if score > self.score {
             self.x = x;
             self.y = y;
             self.path = path;
             self.cost = cost;
+            self.target_id = target_id;
             self.score = score;
         }
     }
@@ -42,40 +48,37 @@ pub fn take_turn(mut map: &mut Map) {
             continue;
         }
 
-        let target_id = closest_target(unit_id, map);
+        let ai_move = {
+            let unit = map.units.get(unit_id);
+            let mut ai_move = AIMove::from(unit, &map);
 
-        match target_id {
-            Some(target_id) => {
-                let ai_move = {
-                    let unit = map.units.get(unit_id);
-                    let target = map.units.get(target_id);
-                    let mut ai_move = AIMove::from(unit, target);
-
-                    for x in 0 .. map.tiles.cols {
-                        for y in 0 .. map.tiles.rows {
-                            match pathfind(unit, x, y, &map) {
-                                Some((path, cost)) => {
-                                    let score = tile_score(x, y, cost, unit, target);
-
-                                    ai_move.check_move(x, y, path, cost, score);
-                                }
-                                _ => {}
-                            }
-                        }
+            for x in 0 .. map.tiles.cols {
+                for y in 0 .. map.tiles.rows {
+                    if unreachable(unit, x, y) {
+                        continue;
                     }
 
-                    ai_move
-                };
+                    match pathfind(unit, x, y, &map) {
+                        Some((path, cost)) => {
+                            let target_id = closest_target(unit, &map);
+                            let score = tile_score(x, y, cost, unit, map.units.get(target_id));
 
-                let (unit, target) = map.units.get_two_mut(unit_id, target_id);
-
-                unit.move_to(unit_id, ai_move.path, ai_move.cost, &mut map.animation_queue);
-
-                for _ in 0 .. unit.moves / unit.weapon.cost {
-                    unit.fire_at(target_id, target, &mut map.animation_queue);
+                            ai_move.check_move(x, y, path, cost, target_id, score);
+                        }
+                        _ => {}
+                    }
                 }
             }
-            _ => {}
+
+            ai_move
+        };
+
+        let (unit, target) = map.units.get_two_mut(unit_id, ai_move.target_id);
+
+        unit.move_to(unit_id, ai_move.path, ai_move.cost, &mut map.animation_queue);
+
+        for _ in 0 .. unit.moves / unit.weapon.cost {
+            unit.fire_at(ai_move.target_id, target, &mut map.animation_queue);
         }
     }
 }
@@ -88,16 +91,18 @@ fn skip(unit_id: usize, map: &Map) -> bool {
     !map.units.any_alive(UnitSide::Friendly)
 }
 
-fn closest_target(unit_id: usize, map: &Map) -> Option<usize> {
-    let unit = map.units.get(unit_id);
+fn unreachable(unit: &Unit, x: usize, y: usize) -> bool {
+    (unit.x as i32 - x as i32).abs() as usize * WALK_STRAIGHT_COST > unit.moves ||
+    (unit.y as i32 - y as i32).abs() as usize * WALK_STRAIGHT_COST > unit.moves
+}
 
+fn closest_target(unit: &Unit, map: &Map) -> usize {
     map.units.iter()
         .enumerate()
-        .filter(|&(_, unit)| unit.side == UnitSide::Friendly && unit.alive())
-        .ord_subset_min_by_key(|&(_, target)| {
-            distance(unit.x, unit.y, target.x, target.y)
-        })
-        .and_then(|(i, _)| Some(i))
+        .filter(|&(_, target)| target.side == UnitSide::Friendly && target.alive())
+        .ord_subset_min_by_key(|&(_, target)| distance(unit.x, unit.y, target.x, target.y))
+        .map(|(i, _)| i)
+        .unwrap()
 }
 
 fn tile_score(x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {

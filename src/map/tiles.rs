@@ -2,7 +2,7 @@ use rand;
 use rand::Rng;
 
 use map::units::{UnitSide, Units};
-use utils::distance;
+use utils::distance_under;
 
 const UNIT_SIGHT: f32 = 7.5;
 
@@ -138,7 +138,7 @@ impl Tiles {
 
                 let visible = units.iter()
                     .filter(|unit| unit.side == UnitSide::Friendly)
-                    .any(|unit| distance(unit.x, unit.y, x, y) <= UNIT_SIGHT);
+                    .any(|unit| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT));
                 
                 if visible {
                     tile.visibility = Visibility::Visible;
