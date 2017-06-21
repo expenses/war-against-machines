@@ -26,7 +26,7 @@ use menu::Callback;
 use std::collections::HashMap;
 use std::path::Path;
 
-const TITLE: &str = "Assault";
+const TITLE: &str = "War Against Machines";
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
 

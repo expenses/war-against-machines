@@ -8,6 +8,7 @@ const MIN: usize = 10;
 const MAX: usize = 50;
 const DEFAULT: usize = 20;
 const CHANGE: usize = 5;
+const TITLE_TOP_OFFSET: f32 = 50.0;
 
 // Callbacks that can be returned from key presses
 pub enum Callback {
@@ -98,7 +99,7 @@ impl Menu {
         // Draw the title
         let title = resources.image(&"title".into());
         let center = (ctx.width() - title.query().width) as f32 / 2.0;
-        ctx.draw(title, center, 0.0, 1.0);
+        ctx.draw(title, center, TITLE_TOP_OFFSET, 1.0);
 
         // Draw the selected submenu
         match self.submenu {

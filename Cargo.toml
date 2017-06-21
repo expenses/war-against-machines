@@ -12,5 +12,3 @@ ord_subset = "2.0.0"
 version = "0.30.0"
 features = ["image", "ttf"]
 
-[profile.dev]
-opt-level = 1
