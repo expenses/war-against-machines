@@ -212,14 +212,10 @@ pub fn main() {
     resources.load_image("base_1",  "base/1.png");
     resources.load_image("base_2",  "base/2.png");
     
-    resources.load_image("friendly_squaddie",       "unit/friendly_squaddie.png");
-    resources.load_image("enemy_squaddie",          "unit/enemy_squaddie.png");
-    resources.load_image("dead_friendly_squaddie",  "unit/dead_friendly_squaddie.png");
-    resources.load_image("dead_enemy_squaddie",     "unit/dead_enemy_squaddie.png");
-    resources.load_image("friendly_robot",          "unit/friendly_robot.png");
-    resources.load_image("enemy_robot",             "unit/enemy_robot.png");
-    resources.load_image("dead_friendly_robot",     "unit/dead_friendly_robot.png");
-    resources.load_image("dead_enemy_robot",        "unit/dead_enemy_robot.png");
+    resources.load_image("squaddie",        "unit/squaddie.png");
+    resources.load_image("dead_squaddie",   "unit/dead_squaddie.png");
+    resources.load_image("machine",         "unit/machine.png");
+    resources.load_image("dead_machine",    "unit/dead_machine.png");
     
     resources.load_image("rifle_round",         "bullet/rifle_round.png");
     resources.load_image("machine_gun_round",   "bullet/machine_gun_round.png");

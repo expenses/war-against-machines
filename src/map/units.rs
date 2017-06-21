@@ -44,7 +44,7 @@ const LAST_NAMES: &[&str] = &[
 // The type of a unit
 pub enum UnitType {
     Squaddie,
-    _Robot
+    _Machine
 }
 
 // The which side the unit is on
@@ -80,30 +80,20 @@ impl Unit {
                 let first = rng.choose(FIRST_NAMES).unwrap();
                 let last = rng.choose(LAST_NAMES).unwrap();
 
-                let weapon_type = if rng.gen::<bool>() { Rifle } else { MachineGun };
-
-                let image = match side {
-                    UnitSide::Friendly => "friendly_squaddie",
-                    UnitSide::Enemy => "enemy_squaddie"
-                }.into();
-
+                let weapon = Weapon::new(if rng.gen::<bool>() { Rifle } else { MachineGun });
+                let image = "squaddie".into();
                 let moves = 30;
                 let health = 100;
 
                 Unit {
-                    tag, side, x, y, moves, health, image,
-                    weapon: Weapon::new(weapon_type),
+                    tag, side, x, y, moves, health, image, weapon,
                     name: format!("{} {}", first, last),
                     max_moves: moves,
                     max_health: health
                 }
             },
-            UnitType::_Robot => {
-                let image = match side {
-                    UnitSide::Friendly => "friendly_robot",
-                    UnitSide::Enemy => "enemy_robot"
-                }.into();
-
+            UnitType::_Machine => {
+                let image = "machine".into();
                 let moves = 25;
                 let health = 150;
 
@@ -127,14 +117,8 @@ impl Unit {
     pub fn update(&mut self) {
         if !self.alive() {
             self.image = match self.tag {
-                UnitType::Squaddie => match self.side {
-                    UnitSide::Friendly => "dead_friendly_squaddie",
-                    UnitSide::Enemy => "dead_enemy_squaddie"
-                },
-                UnitType::_Robot => match self.side {
-                    UnitSide::Friendly => "dead_friendly_robot",
-                    UnitSide::Enemy => "dead_enemy_robot"
-                }
+                UnitType::Squaddie => "dead_squaddie",
+                UnitType::_Machine => "dead_machine"
             }.into();
         }
     }

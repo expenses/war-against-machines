@@ -5,7 +5,7 @@ use map::tiles::Tiles;
 use map::drawer::Drawer;
 use map::paths::{pathfind, PathPoint};
 use map::animations::AnimationQueue;
-use map::commands::{CommandQueue, FireCommand, WalkCommand};
+use map::commands::{CommandQueue, Command, FireCommand, WalkCommand};
 use map::units::{Unit, UnitType, UnitSide, Units};
 use map::ai;
 use context::Context;
@@ -88,20 +88,18 @@ impl Map {
 
     // Start up the map
     pub fn start(&mut self, cols: usize, rows: usize) {
-        // Generate tiles
-        self.tiles.generate(cols, rows);
-
         // Add squaddies
         for x in 0 .. 3 {
             self.units.push(Unit::new(UnitType::Squaddie, UnitSide::Friendly, x, 0));
         }
 
         // Add enemies
-        for y in self.tiles.cols - 3 .. self.tiles.cols {
-            self.units.push(Unit::new(UnitType::Squaddie, UnitSide::Enemy, y, self.tiles.rows - 1));
+        for y in cols - 3 .. cols {
+            self.units.push(Unit::new(UnitType::_Machine, UnitSide::Enemy, y, rows - 1));
         }
-
-        self.tiles.update_visibility(&self.units);
+        
+        // Generate tiles
+        self.tiles.generate(cols, rows, &self.units);
     }
 
     // Handle keypresses
@@ -203,7 +201,7 @@ impl Map {
                                         return;
                                     }
 
-                                    self.command_queue.add_fire(FireCommand::new(selected_id, target_id));
+                                    self.command_queue.push(Command::Fire(FireCommand::new(selected_id, target_id)));
                                 }
                                 _ => {}
                             }
@@ -244,7 +242,7 @@ impl Map {
 
                     // If the paths are the same and the squaddie can move to the destination, get rid of the path
                     self.path = if same_path {
-                        self.command_queue.add_walk(WalkCommand::new(selected, points));
+                        self.command_queue.push(Command::Walk(WalkCommand::new(selected, points)));
                         None
                     } else {
                         Some(points)

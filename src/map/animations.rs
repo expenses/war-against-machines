@@ -10,20 +10,45 @@ const BULLET_SPEED: f32 = 0.5;
 const WALK_SPEED: f32 = 0.1;
 
 pub struct Walk {
-    progress: f32
+    status: f32
 }
 
 impl Walk {
     pub fn new() -> Walk {
         Walk {
-            progress: 0.0
+            status: 0.0
         }
     }
 
     fn step(&mut self) -> bool {
-        self.progress += WALK_SPEED;
+        self.status += WALK_SPEED;
         
-        self.progress > 1.0
+        self.status > 1.0
+    }
+}
+
+pub struct Dying {
+    unit_id: usize,
+    status: f32
+}
+
+impl Dying {
+    pub fn new(unit_id: usize) -> Dying {
+        Dying {
+            unit_id,
+            status: 0.0
+        }
+    }
+
+    fn step(&mut self, units: &mut Units) -> bool {
+        self.status += WALK_SPEED;
+        let finished = self.status > 1.0;
+
+        if finished {
+            units.get_mut(self.unit_id).update();
+        }
+
+        finished
     }
 }
 
@@ -35,10 +60,8 @@ pub struct Bullet {
     pub image: String,
     left: bool,
     above: bool,
-    target_id: usize,
     target_x: f32,
     target_y: f32,
-    lethal: bool,
     will_hit: bool
 }
 
@@ -61,8 +84,6 @@ impl Bullet {
             WeaponType::PlasmaRifle => "plasma_round"
         }.into();
 
-        let lethal = !target.alive();
-
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
             let mut rng = rand::thread_rng();
@@ -74,37 +95,32 @@ impl Bullet {
         let above = y < target_y;
 
         Bullet {
-           x, y, direction, image, left, above, target_id, target_x, target_y, lethal, will_hit
+           x, y, direction, image, left, above, target_x, target_y, will_hit
         }
     }
     
     // Move the bullet
-    fn step(&mut self, units: &mut Units, tiles: &mut Tiles) -> bool {        
+    fn step(&mut self, tiles: &mut Tiles) -> bool {        
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
         // Work out if the bullet is currently traveling or has reached the destination
 
         // If the bullet won't hit the target or hasn't hit the target
-        let finished = (self.will_hit && (
+        (self.will_hit && (
             self.left  != (self.x < self.target_x as f32) ||
             self.above != (self.y < self.target_y as f32)
         )) ||
         // And if the bullet is within a certain margin of the map
         self.x < -MARGIN || self.x > tiles.cols as f32 + MARGIN ||
-        self.y < -MARGIN || self.y > tiles.rows as f32 + MARGIN;
-
-        if finished && self.lethal {
-            units.get_mut(self.target_id).update();
-        }
-
-        finished
+        self.y < -MARGIN || self.y > tiles.rows as f32 + MARGIN
     }
 }
 
-enum Animation {
+pub enum Animation {
     Walk(Walk),
-    Bullet(Bullet)
+    Bullet(Bullet),
+    Dying(Dying)
 }
 
 pub struct AnimationQueue {
@@ -128,7 +144,8 @@ impl AnimationQueue {
     pub fn update(&mut self, tiles: &mut Tiles, units: &mut Units) {
         let finished = match self.animations.first_mut() {
             Some(&mut Animation::Walk(ref mut walk)) => walk.step(),
-            Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(units, tiles),
+            Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(tiles),
+            Some(&mut Animation::Dying(ref mut dying)) => dying.step(units),
             _ => false
         };
 
@@ -137,12 +154,8 @@ impl AnimationQueue {
         }
     }
 
-    pub fn add_bullet(&mut self, bullet: Bullet) {
-        self.animations.push(Animation::Bullet(bullet));
-    }
-
-    pub fn add_walk(&mut self, walk: Walk) {
-        self.animations.push(Animation::Walk(walk));
+    pub fn push(&mut self, animation: Animation) {
+        self.animations.push(animation);
     }
 
     pub fn empty(&self) -> bool {

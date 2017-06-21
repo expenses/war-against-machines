@@ -62,7 +62,7 @@ impl Tiles {
     }
 
     // Generate the tiles
-    pub fn generate(&mut self, cols: usize, rows: usize) {
+    pub fn generate(&mut self, cols: usize, rows: usize, units: &Units) {
         self.cols = cols;
         self.rows = rows;
 
@@ -70,8 +70,8 @@ impl Tiles {
         let ruins = &["ruin_1", "ruin_2", "ruin_3"];
         let bases = &["base_1", "base_2"];
 
-        for _ in 0 .. cols {
-            for row in 0 .. rows {
+        for x in 0 .. cols {
+            for y in 0 .. rows {
                 // Choose a random base image
                 let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
@@ -81,7 +81,7 @@ impl Tiles {
                 } 
 
                 // Add in ruins
-                if row != 0 && row != rows - 1 && rand::random::<f32>() < 0.1 {
+                if units.at(x, y).is_none() && rand::random::<f32>() < 0.1 {
                     tile.set_obstacle(*rng.choose(ruins).unwrap());
                 }
 
@@ -118,6 +118,8 @@ impl Tiles {
              self.tile_at_mut(pit_x,             y).set_obstacle("pit_tl");
              self.tile_at_mut(pit_x + pit_width, y).set_obstacle("pit_br");
         }
+
+        self.update_visibility(units);
     }
 
     // Get a reference to a tile

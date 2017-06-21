@@ -3,7 +3,7 @@ extern crate rand;
 use map::paths::PathPoint;
 use map::units::Units;
 use map::tiles::Tiles;
-use map::animations::{Walk, Bullet, AnimationQueue};
+use map::animations::{Walk, Bullet, Dying, Animation, AnimationQueue};
 use utils::chance_to_hit;
 
 pub struct FireCommand {
@@ -19,7 +19,7 @@ impl FireCommand {
     }
 
     fn process(&self, units: &mut Units, animation_queue: &mut AnimationQueue) -> bool {
-        let will_hit = {
+        let (will_hit, lethal) = {
             let (unit, target) = units.get_two_mut(self.unit_id, self.target_id);
 
             if unit.moves < unit.weapon.cost || !target.alive() {
@@ -37,11 +37,15 @@ impl FireCommand {
                 target.health -= unit.weapon.damage;
             }
 
-            will_hit
+            (will_hit, target.health <= 0)
         };
         
         // Add a bullet to the array for drawing
-        animation_queue.add_bullet(Bullet::new(self.unit_id, self.target_id, will_hit, units));
+        animation_queue.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, units)));
+
+        if lethal {
+            animation_queue.push(Animation::Dying(Dying::new(self.target_id)));
+        }
 
         true
     }
@@ -72,7 +76,7 @@ impl WalkCommand {
             if moved {
                 unit.move_to(point);
 
-                animation_queue.add_walk(Walk::new());
+                animation_queue.push(Animation::Walk(Walk::new()));
             } else {
                 return true;
             }
@@ -91,7 +95,7 @@ impl WalkCommand {
     }
 }
 
-enum Command {
+pub enum Command {
     Fire(FireCommand),
     Walk(WalkCommand)
 }
@@ -120,11 +124,7 @@ impl CommandQueue {
         }
     }
 
-    pub fn add_walk(&mut self, walk: WalkCommand) {
-        self.commands.push(Command::Walk(walk));
-    }
-
-    pub fn add_fire(&mut self, fire: FireCommand) {
-        self.commands.push(Command::Fire(fire));
+    pub fn push(&mut self, command: Command) {
+        self.commands.push(command);
     }
 }
