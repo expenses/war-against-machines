@@ -41,10 +41,23 @@ const LAST_NAMES: &[&str] = &[
     "Zhou"
 ];
 
+fn generate_squaddie_name() -> String {
+    let mut rng = rand::thread_rng();
+    let first = rng.choose(FIRST_NAMES).unwrap();
+    let last = rng.choose(LAST_NAMES).unwrap();
+
+    format!("{} {}", first, last)
+}
+
+fn generate_machine_name() -> String {
+    format!("SK{}", rand::thread_rng().gen_range(0, 10000))
+}
+
 // The type of a unit
+#[derive(Copy, Clone)]
 pub enum UnitType {
     Squaddie,
-    _Machine
+    Machine
 }
 
 // The which side the unit is on
@@ -75,24 +88,19 @@ impl Unit {
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
         match tag {
             UnitType::Squaddie => {
-                // Generate a random name
-                let mut rng = rand::thread_rng();
-                let first = rng.choose(FIRST_NAMES).unwrap();
-                let last = rng.choose(LAST_NAMES).unwrap();
-
-                let weapon = Weapon::new(if rng.gen::<bool>() { Rifle } else { MachineGun });
+                let weapon = Weapon::new(if rand::thread_rng().gen::<bool>() { Rifle } else { MachineGun });
                 let image = "squaddie".into();
                 let moves = 30;
                 let health = 100;
 
                 Unit {
                     tag, side, x, y, moves, health, image, weapon,
-                    name: format!("{} {}", first, last),
+                    name: generate_squaddie_name(),
                     max_moves: moves,
                     max_health: health
                 }
             },
-            UnitType::_Machine => {
+            UnitType::Machine => {
                 let image = "machine".into();
                 let moves = 25;
                 let health = 150;
@@ -100,7 +108,7 @@ impl Unit {
                 Unit {
                     tag, side, x, y, moves, health, image,
                     weapon: Weapon::new(PlasmaRifle),
-                    name: format!("ROBOT"),
+                    name: generate_machine_name(),
                     max_moves: moves,
                     max_health: health
                 }
@@ -118,7 +126,7 @@ impl Unit {
         if !self.alive() {
             self.image = match self.tag {
                 UnitType::Squaddie => "dead_squaddie",
-                UnitType::_Machine => "dead_machine"
+                UnitType::Machine => "dead_machine"
             }.into();
         }
     }

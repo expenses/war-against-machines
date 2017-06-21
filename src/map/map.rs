@@ -87,15 +87,15 @@ impl Map {
     }
 
     // Start up the map
-    pub fn start(&mut self, cols: usize, rows: usize) {
+    pub fn start(&mut self, cols: usize, rows: usize, units: usize, enemies: usize, unit_type: UnitType, enemy_type: UnitType) {
         // Add squaddies
-        for x in 0 .. 3 {
-            self.units.push(Unit::new(UnitType::Squaddie, UnitSide::Friendly, x, 0));
+        for x in 0 .. units {
+            self.units.push(Unit::new(unit_type, UnitSide::Friendly, x, 0));
         }
 
         // Add enemies
-        for y in cols - 3 .. cols {
-            self.units.push(Unit::new(UnitType::_Machine, UnitSide::Enemy, y, rows - 1));
+        for y in cols - enemies .. cols {
+            self.units.push(Unit::new(enemy_type, UnitSide::Enemy, y, rows - 1));
         }
         
         // Generate tiles

@@ -2,7 +2,7 @@ pub mod map;
 mod drawer;
 mod tiles;
 mod paths;
-mod units;
+pub mod units;
 mod animations;
 mod ai;
 mod commands;

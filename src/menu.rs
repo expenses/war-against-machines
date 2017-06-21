@@ -3,12 +3,19 @@ use sdl2::keyboard::Keycode;
 use Resources;
 use context::Context;
 use utils::bound;
+use map::units::UnitType;
 
-const MIN: usize = 10;
-const MAX: usize = 50;
-const DEFAULT: usize = 20;
-const CHANGE: usize = 5;
+const MIN_SIZE: usize = 10;
+const MAX_SIZE: usize = 50;
+const DEFAULT_SIZE: usize = 20;
+const SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
+
+const MIN_UNITS: usize = 1;
+const MAX_UNITS: usize = 9;
+const DEFAULT_UNITS: usize = 3;
+const DEFAULT_UNIT_TYPE: UnitType = UnitType::Squaddie;
+const DEFAULT_ENEMY_TYPE: UnitType = UnitType::Machine;
 
 // Callbacks that can be returned from key presses
 pub enum Callback {
@@ -67,18 +74,67 @@ impl Submenu {
     }
 }
 
+pub struct SkirmishSettings {
+    pub cols: usize,
+    pub rows: usize,
+    pub units: usize,
+    pub enemies: usize,
+    pub unit_type: UnitType,
+    pub enemy_type: UnitType
+}
+
+impl SkirmishSettings {
+    fn new() -> SkirmishSettings {
+        SkirmishSettings {
+            cols: DEFAULT_SIZE,
+            rows: DEFAULT_SIZE,
+            units: DEFAULT_UNITS,
+            enemies: DEFAULT_UNITS,
+            unit_type: DEFAULT_UNIT_TYPE,
+            enemy_type: DEFAULT_ENEMY_TYPE
+        }
+    }
+
+    fn bound(&mut self) {
+        self.cols = bound(self.cols, MIN_SIZE, MAX_SIZE);
+        self.rows = bound(self.rows, MIN_SIZE, MAX_SIZE);
+        self.units = bound(self.units, MIN_UNITS, MAX_UNITS);
+        self.enemies = bound(self.enemies, MIN_UNITS, MAX_UNITS);
+    }
+
+    fn change_unit_type(&mut self) {
+        self.unit_type = match self.unit_type {
+            UnitType::Squaddie => UnitType::Machine,
+            UnitType::Machine => UnitType::Squaddie
+        }
+    }
+
+    fn change_enemy_type(&mut self) {
+        self.enemy_type = match self.enemy_type {
+            UnitType::Squaddie => UnitType::Machine,
+            UnitType::Machine => UnitType::Squaddie
+        }
+    }
+}
+
+fn type_to_str(unit_type: &UnitType) -> String {
+    match unit_type {
+        &UnitType::Squaddie => "Squaddie",
+        &UnitType::Machine => "Machine"
+    }.into()
+}
+
 // Which submenu is selected
 enum Selected {
     Main,
-    Settings
+    Skirmish
 }
 
 // The main menu
 pub struct Menu {
-    pub cols: usize,
-    pub rows: usize,
+    pub skirmish_settings: SkirmishSettings,
     main: Submenu,
-    settings: Submenu,
+    skirmish: Submenu,
     submenu: Selected
 }
 
@@ -86,10 +142,18 @@ impl Menu {
     // Create a new menu
     pub fn new() -> Menu {
         Menu {
-            cols: DEFAULT,
-            rows: DEFAULT,
-            main: Submenu::new(vec!["Play Game".into(), "Settings".into(), "Quit".into()]),
-            settings: Submenu::new(vec!["Back".into(), format!("Cols: {}", DEFAULT), format!("Rows: {}", DEFAULT)]),
+            skirmish_settings: SkirmishSettings::new(),
+            main: Submenu::new(vec!["Skirmish".into(), "Quit".into()]),
+            skirmish: Submenu::new(vec![
+                    "Play".into(),
+                    format!("Cols: {}", DEFAULT_SIZE),
+                    format!("Rows: {}", DEFAULT_SIZE),
+                    format!("Units: {}", DEFAULT_UNITS),
+                    format!("Enemies: {}", DEFAULT_UNITS),
+                    format!("Unit type: {}", type_to_str(&DEFAULT_UNIT_TYPE)),
+                    format!("Enemy type: {}", type_to_str(&DEFAULT_ENEMY_TYPE)),
+                    "Back".into()
+            ]),
             submenu: Selected::Main
         }
     }
@@ -104,14 +168,19 @@ impl Menu {
         // Draw the selected submenu
         match self.submenu {
             Selected::Main => self.main.draw(ctx, resources),
-            Selected::Settings => self.settings.draw(ctx, resources)
+            Selected::Skirmish => self.skirmish.draw(ctx, resources)
         }
     }
 
-    // Refresh the settings submenu
-    fn refresh_settings(&mut self) {
-        self.settings.set_item(1, format!("Cols: {}", self.cols));
-        self.settings.set_item(2, format!("Rows: {}", self.rows));
+    // Refresh the skirmish submenu
+    fn refresh_skirmish(&mut self) {
+        self.skirmish_settings.bound();
+        self.skirmish.set_item(1, format!("Cols: {}", self.skirmish_settings.cols));
+        self.skirmish.set_item(2, format!("Rows: {}", self.skirmish_settings.rows));
+        self.skirmish.set_item(3, format!("Units: {}", self.skirmish_settings.units));
+        self.skirmish.set_item(4, format!("Enemies: {}", self.skirmish_settings.enemies));
+        self.skirmish.set_item(5, format!("Unit type: {}", type_to_str(&self.skirmish_settings.unit_type)));
+        self.skirmish.set_item(6, format!("Enemy type: {}", type_to_str(&self.skirmish_settings.enemy_type)));
     }
 
     // Handle key presses
@@ -120,40 +189,48 @@ impl Menu {
             // Rotate the selections up
             Keycode::Up => match self.submenu {
                 Selected::Main => self.main.rotate_up(),
-                Selected::Settings => self.settings.rotate_up()
+                Selected::Skirmish => self.skirmish.rotate_up()
             },
             // Rotate the selections down
             Keycode::Down => match self.submenu {
                 Selected::Main => self.main.rotate_down(),
-                Selected::Settings => self.settings.rotate_down()
+                Selected::Skirmish => self.skirmish.rotate_down()
             },
             // Perform actions on the selection 
             Keycode::Return => match self.submenu {
                 Selected::Main => match self.main.selection {
-                    0 => return Some(Callback::Play),
-                    1 => self.submenu = Selected::Settings,
-                    2 => ctx.quit(),
+                    0 => self.submenu = Selected::Skirmish,
+                    1 => ctx.quit(),
                     _ => {}
                 },
-                Selected::Settings => match self.settings.selection {
-                    0 => self.submenu = Selected::Main,
+                Selected::Skirmish => match self.skirmish.selection {
+                    0 => return Some(Callback::Play),
+                    7 => self.submenu = Selected::Main,
                     _ => {}
                 }
             },
             // Lower the cols/rows values
             Keycode::Left => match self.submenu {
-                Selected::Settings => match self.settings.selection {
-                    1 => { self.cols = bound(self.cols - CHANGE, MIN, MAX); self.refresh_settings(); },
-                    2 => { self.rows = bound(self.rows - CHANGE, MIN, MAX); self.refresh_settings(); },
+                Selected::Skirmish => match self.skirmish.selection {
+                    1 => { self.skirmish_settings.cols -= SIZE_CHANGE; self.refresh_skirmish(); },
+                    2 => { self.skirmish_settings.rows -= SIZE_CHANGE; self.refresh_skirmish(); },
+                    3 => { self.skirmish_settings.units -= 1; self.refresh_skirmish(); },
+                    4 => { self.skirmish_settings.enemies -= 1; self.refresh_skirmish(); },
+                    5 => { self.skirmish_settings.change_unit_type(); self.refresh_skirmish(); },
+                    6 => { self.skirmish_settings.change_enemy_type(); self.refresh_skirmish(); },
                     _ => {}
                 },
                 _ => {}
             },
             // Raise the cols/rows values
             Keycode::Right => match self.submenu {
-                Selected::Settings => match self.settings.selection {
-                    1 => { self.cols = bound(self.cols + CHANGE, MIN, MAX); self.refresh_settings(); },
-                    2 => { self.rows = bound(self.rows + CHANGE, MIN, MAX); self.refresh_settings(); },
+                Selected::Skirmish => match self.skirmish.selection {
+                    1 => { self.skirmish_settings.cols += SIZE_CHANGE; self.refresh_skirmish(); },
+                    2 => { self.skirmish_settings.rows += SIZE_CHANGE; self.refresh_skirmish(); },
+                    3 => { self.skirmish_settings.units += 1; self.refresh_skirmish(); },
+                    4 => { self.skirmish_settings.enemies += 1; self.refresh_skirmish(); },
+                    5 => { self.skirmish_settings.change_unit_type(); self.refresh_skirmish(); },
+                    6 => { self.skirmish_settings.change_enemy_type(); self.refresh_skirmish(); },
                     _ => {}
                 },
                 _ => {}

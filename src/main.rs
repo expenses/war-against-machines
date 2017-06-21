@@ -149,8 +149,9 @@ impl<'a> State<'a> {
             Mode::Menu => match self.menu.handle_key(&mut self.ctx, key) {
                 Some(callback) => match callback {
                     Callback::Play => {
+                        let settings = &self.menu.skirmish_settings;
                         self.mode = Mode::Game;
-                        self.map.start(self.menu.rows, self.menu.cols);
+                        self.map.start(settings.rows, settings.cols, settings.units, settings.enemies, settings.unit_type, settings.enemy_type);
                     }
                 },
                 _ => {}
