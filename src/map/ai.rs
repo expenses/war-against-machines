@@ -81,11 +81,13 @@ pub fn take_turn(mut map: &mut Map) {
     }
 }
 
+// If the tile cannot be reached by the unit walking in a linear direction
 fn unreachable(unit: &Unit, x: usize, y: usize) -> bool {
     (unit.x as i32 - x as i32).abs() as usize * WALK_STRAIGHT_COST > unit.moves ||
     (unit.y as i32 - y as i32).abs() as usize * WALK_STRAIGHT_COST > unit.moves
 }
 
+// Find the closest target unit to unit on the map
 fn closest_target<'a>(unit: &Unit, map: &'a Map) -> (usize, &'a Unit) {
     map.units.iter()
         .enumerate()
@@ -94,6 +96,7 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> (usize, &'a Unit) {
         .unwrap()
 }
 
+// Calculate the score for a tile
 fn tile_score(x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {
     if cost > unit.moves {
         return 0.0
