@@ -1,5 +1,6 @@
 use Resources;
 use context::Context;
+use colours::WHITE;
 
 // The vertical alignment of an item
 pub enum VerticalAlignment {
@@ -101,7 +102,7 @@ impl TextDisplay {
 
     // Draw the text display on the screen
     fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let rendered = resources.render("main", &self.text);
+        let rendered = resources.render("main", &self.text, WHITE);
         let query = rendered.query();
         let (width, height) = (query.width as f32, query.height as f32);
         let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
@@ -158,12 +159,9 @@ impl UI {
 
     // Get the first active clicked button at a location
     pub fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> Option<usize> {
-        for (i, button) in self.buttons.iter().enumerate() {
-            if button.active && button.clicked(ctx, x, y) {
-                return Some(i);
-            }
-        }
-
-        None
+        self.buttons.iter()
+            .enumerate()
+            .find(|&(_, button)| button.active && button.clicked(ctx, x, y))
+            .map(|(i, _)| i)
     }
 }

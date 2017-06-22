@@ -1,4 +1,5 @@
 use sdl2::keyboard::Keycode;
+use colours::WHITE;
 
 use Resources;
 use context::Context;
@@ -45,7 +46,7 @@ impl Submenu {
             if i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let rendered = resources.render("main", &string);
+            let rendered = resources.render("main", &string, WHITE);
 
             // Get the center of the rendered string
             let center = (ctx.width() - rendered.query().width) as f32 / 2.0;

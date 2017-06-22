@@ -3,6 +3,7 @@ use rand::Rng;
 
 use map::units::{UnitSide, Units};
 use utils::distance_under;
+use items::{Item, ItemType};
 
 const UNIT_SIGHT: f32 = 7.5;
 
@@ -19,7 +20,9 @@ pub struct Tile {
     pub base: String,
     pub decoration: Option<String>,
     pub walkable: bool,
-    pub visibility: Visibility
+    pub unit_visibility: Visibility,
+    pub enemy_visibility: Visibility,
+    pub items: Vec<Item>
 }
 
 impl Tile {
@@ -29,19 +32,28 @@ impl Tile {
             base: base.into(),
             decoration: None,
             walkable: true,
-            visibility: Visibility::Invisible
+            unit_visibility: Visibility::Invisible,
+            enemy_visibility: Visibility::Invisible,
+            items: Vec::new()
         }
     }
 
     // Set the decoration of the tile and make it unwalkable
     fn set_obstacle(&mut self, decoration: &str) {
         self.decoration = Some(decoration.into());
+        self.items = Vec::new();
         self.walkable = false;        
     }
 
     pub fn visible(&self) -> bool {
-        self.visibility != Visibility::Invisible
+        self.unit_visibility != Visibility::Invisible
     }
+}
+
+fn visible(x: usize, y: usize, side: UnitSide, units: &Units) -> bool {
+    units.iter()
+        .filter(|&(_, unit)| unit.side == side)
+        .any(|(_, unit)| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
 }
 
 // A 2D array of tiles
@@ -69,6 +81,7 @@ impl Tiles {
         let mut rng = rand::thread_rng();
         let ruins = &["ruin_1", "ruin_2", "ruin_3"];
         let bases = &["base_1", "base_2"];
+        let items = &[ItemType::Weapon, ItemType::Scrap];
 
         for x in 0 .. cols {
             for y in 0 .. rows {
@@ -80,10 +93,15 @@ impl Tiles {
                     tile.decoration = Some("skull".into());
                 } 
 
+                // Randomly drop items
+                if rand::random::<f32>() < 0.05 {
+                    tile.items.push(Item::new(*rng.choose(items).unwrap()));
+                }
+
                 // Add in ruins
                 if units.at(x, y).is_none() && rand::random::<f32>() < 0.1 {
                     tile.set_obstacle(*rng.choose(ruins).unwrap());
-                }
+                } 
 
                 // Push the tile
                 self.tiles.push(tile);
@@ -138,16 +156,26 @@ impl Tiles {
             for y in 0 .. self.rows {
                 let tile = self.tile_at_mut(x, y);
 
-                let visible = units.iter()
-                    .filter(|unit| unit.side == UnitSide::Friendly)
-                    .any(|unit| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT));
+                let unit_visible = visible(x, y, UnitSide::Friendly, units);
                 
-                if visible {
-                    tile.visibility = Visibility::Visible;
-                } else if tile.visible() {
-                    tile.visibility = Visibility::Foggy;
+                if unit_visible {
+                    tile.unit_visibility = Visibility::Visible;
+                } else if tile.unit_visibility != Visibility::Invisible {
+                    tile.unit_visibility = Visibility::Foggy;
+                }
+
+                let enemy_visible = visible(x, y, UnitSide::Enemy, units);
+                
+                if enemy_visible {
+                    tile.enemy_visibility = Visibility::Visible;
+                } else if tile.enemy_visibility != Visibility::Invisible {
+                    tile.enemy_visibility = Visibility::Foggy;
                 }
             }
         }
+    }
+
+    pub fn drop(&mut self, x: usize, y: usize, item: Item) {
+        self.tile_at_mut(x, y).items.push(item);
     }
 }

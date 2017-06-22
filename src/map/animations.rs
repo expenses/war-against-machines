@@ -2,28 +2,45 @@ use rand;
 use rand::distributions::{IndependentSample, Range};
 
 use map::tiles::Tiles;
-use map::units::Units;
+use map::units::{UnitType, Units};
 use weapons::WeaponType;
+use items::{Item, ItemType};
 
 const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
 const WALK_SPEED: f32 = 0.1;
 
 pub struct Walk {
-    status: f32
+    status: f32,
+    unit_id: usize,
+    x: usize,
+    y: usize,
+    cost: usize
 }
 
 impl Walk {
-    pub fn new() -> Walk {
+    pub fn new(unit_id: usize, x: usize, y: usize, cost: usize) -> Walk {
         Walk {
+            unit_id, x, y, cost,
             status: 0.0
         }
     }
 
-    fn step(&mut self) -> bool {
+    fn step(&mut self, tiles: &mut Tiles, units: &mut Units) -> bool {
         self.status += WALK_SPEED;
         
-        self.status > 1.0
+        let finished = self.status > 1.0;
+
+        if finished {
+            match units.get_mut(self.unit_id) {
+                Some(unit) => unit.move_to(self.x, self.y, self.cost),
+                _ => return true
+            }
+
+            tiles.update_visibility(units);
+        }
+
+        finished
     }
 }
 
@@ -40,12 +57,24 @@ impl Dying {
         }
     }
 
-    fn step(&mut self, units: &mut Units) -> bool {
+    fn step(&mut self, tiles: &mut Tiles, units: &mut Units) -> bool {
         self.status += WALK_SPEED;
         let finished = self.status > 1.0;
 
         if finished {
-            units.get_mut(self.unit_id).update();
+            let (x, y) = match units.get(self.unit_id) {
+                Some(unit) => (unit.x, unit.y),
+                _ => return true
+            };
+
+            let corpse = Item::new(match units.get(self.unit_id).unwrap().tag {
+                UnitType::Squaddie => ItemType::SquaddieCorpse,
+                UnitType::Machine => ItemType::MachineCorpse
+            });
+
+            units.kill(self.unit_id);
+            tiles.drop(x, y, corpse);
+            tiles.update_visibility(units);
         }
 
         finished
@@ -68,8 +97,8 @@ pub struct Bullet {
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
     pub fn new(unit_id: usize, target_id: usize, will_hit: bool, units: &Units) -> Bullet {
-        let unit = units.get(unit_id);
-        let target = units.get(target_id);
+        let unit = units.get(unit_id).unwrap();
+        let target = units.get(target_id).unwrap();
 
         let x = unit.x as f32;
         let y = unit.y as f32;
@@ -143,9 +172,9 @@ impl AnimationQueue {
 
     pub fn update(&mut self, tiles: &mut Tiles, units: &mut Units) {
         let finished = match self.animations.first_mut() {
-            Some(&mut Animation::Walk(ref mut walk)) => walk.step(),
+            Some(&mut Animation::Walk(ref mut walk)) => walk.step(tiles, units),
             Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(tiles),
-            Some(&mut Animation::Dying(ref mut dying)) => dying.step(units),
+            Some(&mut Animation::Dying(ref mut dying)) => dying.step(tiles, units),
             _ => false
         };
 

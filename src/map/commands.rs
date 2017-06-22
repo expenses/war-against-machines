@@ -2,7 +2,6 @@ extern crate rand;
 
 use map::paths::PathPoint;
 use map::units::Units;
-use map::tiles::Tiles;
 use map::animations::{Walk, Bullet, Dying, Animation, AnimationQueue};
 use utils::chance_to_hit;
 
@@ -18,36 +17,45 @@ impl FireCommand {
         }
     }
 
-    fn process(&self, units: &mut Units, animation_queue: &mut AnimationQueue) -> bool {
-        let (will_hit, lethal) = {
-            let (unit, target) = units.get_two_mut(self.unit_id, self.target_id);
-
-            if unit.moves < unit.weapon.cost || !target.alive() {
-                return true;
-            }
-
-            unit.moves -= unit.weapon.cost;
-
-            let hit_chance = chance_to_hit(unit.x, unit.y, target.x, target.y);
-            let random = rand::random::<f32>();
-            let will_hit = hit_chance > random;
-
-            // Lower the targets health
-            if will_hit {
-                target.health -= unit.weapon.damage;
-            }
-
-            (will_hit, target.health <= 0)
+    fn process(&self, units: &mut Units, animation_queue: &mut AnimationQueue) {
+        let (target_x, target_y) = match units.get(self.target_id) {
+            Some(target) => (target.x, target.y),
+            _ => return
         };
-        
+
+        let (will_hit, damage) = match units.get_mut(self.unit_id) {
+            Some(unit) => {
+                if unit.moves < unit.weapon.cost {
+                    return;
+                }
+
+                unit.moves -= unit.weapon.cost;
+
+                let hit_chance = chance_to_hit(unit.x, unit.y, target_x, target_y);
+                let random = rand::random::<f32>();
+
+                (hit_chance > random, unit.weapon.damage)
+            }
+            _ => return
+        };
+
+        let lethal = match units.get_mut(self.target_id) {
+            Some(target) => {
+                if will_hit {
+                    target.health -= damage;
+                }
+
+                target.health <= 0
+            }
+            _ => return
+        };
+
         // Add a bullet to the array for drawing
         animation_queue.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, units)));
 
         if lethal {
             animation_queue.push(Animation::Dying(Dying::new(self.target_id)));
         }
-
-        true
     }
 }
 
@@ -63,31 +71,22 @@ impl WalkCommand {
         }
     }
 
-    fn process(&mut self, units: &mut Units, tiles: &mut Tiles, animation_queue: &mut AnimationQueue) -> bool {
-        let moved = {
+    fn process(&mut self, units: &mut Units, animation_queue: &mut AnimationQueue) -> bool {
+        {
             let point = &self.path[0];
 
-            let empty = units.at(point.x, point.y).is_none();
-
-            let unit = units.get_mut(self.unit_id);
-
-            let moved = unit.moves >= point.cost && empty;
-
-            if moved {
-                unit.move_to(point);
-
-                animation_queue.push(Animation::Walk(Walk::new()));
-            } else {
-                return true;
-            }
-
-            moved
-        };
-
-        if moved {
-            tiles.update_visibility(units);
+            match units.get(self.unit_id) {
+                Some(unit) => {
+                    if unit.moves >= point.cost &&
+                       units.at(point.x, point.y).is_none() {
+                        animation_queue.push(Animation::Walk(Walk::new(self.unit_id, point.x, point.y, point.cost)));
+                    } else {
+                        return true;
+                    }
+                }
+                _ => {}
+            }            
         }
-
 
         self.path.remove(0);
         
@@ -112,10 +111,10 @@ impl CommandQueue {
         }
     }
 
-    pub fn update(&mut self, units: &mut Units, tiles: &mut Tiles, animation_queue: &mut AnimationQueue) {
+    pub fn update(&mut self, units: &mut Units, animation_queue: &mut AnimationQueue) {
         let finished = match self.commands.first_mut() {
-            Some(&mut Command::Fire(ref mut fire)) => fire.process(units, animation_queue),
-            Some(&mut Command::Walk(ref mut walk)) => walk.process(units, tiles, animation_queue),
+            Some(&mut Command::Fire(ref mut fire)) => {fire.process(units, animation_queue); true},
+            Some(&mut Command::Walk(ref mut walk)) => walk.process(units, animation_queue),
             _ => false
         };
 

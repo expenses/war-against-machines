@@ -126,7 +126,7 @@ impl Map {
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
         if self.animation_queue.empty() {
-            self.command_queue.update(&mut self.units, &mut self.tiles, &mut self.animation_queue);
+            self.command_queue.update(&mut self.units, &mut self.animation_queue);
         }
 
         // Update the animation queue
@@ -142,10 +142,8 @@ impl Map {
     // Draw the UI
     pub fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
         // Get  string of info about the selected unit
-        let selected = match self.selected {
-            Some(i) => {
-                let unit = self.units.get(i);
-
+        let selected = match self.selected.and_then(|id| self.units.get(id)) {
+            Some(unit) => {
                 if unit.side == UnitSide::Friendly {
                     format!(
                         "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
@@ -195,13 +193,13 @@ impl Map {
 
                         // If the cursor is in fire mode and a squaddie is selected and an enemy is under the cursor
                         if self.cursor.fire && self.selected.is_some() {
-                            match self.selected.and_then(|selected| self.units.at_i(x, y).map(|target| (selected, target))) {
-                                Some((selected_id, target_id)) => {
-                                    if self.units.get(selected_id).side != UnitSide::Friendly {
+                            match self.selected.and_then(|id| self.units.at_i(x, y).map(|target| (id, target))) {
+                                Some((id, target_id)) => {
+                                    if self.units.get(id).unwrap().side != UnitSide::Friendly {
                                         return;
                                     }
 
-                                    self.command_queue.push(Command::Fire(FireCommand::new(selected_id, target_id)));
+                                    self.command_queue.push(Command::Fire(FireCommand::new(id, target_id)));
                                 }
                                 _ => {}
                             }
@@ -214,10 +212,12 @@ impl Map {
                 }
             },
             // Check if the cursor has a position and a unit is selected
-            MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|selected| (x, y, selected))) {
-                Some((x, y, selected)) => {
+            MouseButton::Right => match self.cursor.position.and_then(|(x, y)| self.selected.map(|id| (x, y, id))) {
+                Some((x, y, id)) => {
+                    let unit = self.units.get(id).unwrap();
+
                     // Do nothing if fire mode is on or if the unit isn't friendly
-                    if self.cursor.fire || self.units.get(selected).side != UnitSide::Friendly {
+                    if self.cursor.fire || unit.side != UnitSide::Friendly {
                         return;
                     // Or the the target location is selected
                     } else if self.taken(x, y) {
@@ -226,7 +226,7 @@ impl Map {
                     }
 
                     // Pathfind to get the path points and the cost
-                    let points = match pathfind(self.units.get(selected), x, y, &self) {
+                    let points = match pathfind(unit, x, y, &self) {
                         Some((points, _)) => points,
                         _ => {
                             self.path = None;
@@ -242,7 +242,7 @@ impl Map {
 
                     // If the paths are the same and the squaddie can move to the destination, get rid of the path
                     self.path = if same_path {
-                        self.command_queue.push(Command::Walk(WalkCommand::new(selected, points)));
+                        self.command_queue.push(Command::Walk(WalkCommand::new(id, points)));
                         None
                     } else {
                         Some(points)
@@ -262,7 +262,7 @@ impl Map {
 
     // End the current turn
     fn end_turn(&mut self) {
-        for unit in self.units.iter_mut() {
+        for (_, unit) in self.units.iter_mut() {
             unit.moves = unit.max_moves;
         }
 

@@ -10,7 +10,7 @@ use sdl2::event::Event;
 use sdl2::ttf;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
-use sdl2::pixels::PixelFormatEnum;
+use sdl2::pixels::{PixelFormatEnum, Color};
 
 mod map;
 mod menu;
@@ -18,6 +18,8 @@ mod ui;
 mod weapons;
 mod context;
 mod utils;
+mod colours;
+mod items;
 
 use context::Context;
 use map::map::Map;
@@ -66,10 +68,7 @@ impl<'a> Resources<'a> {
 
     // Get an image from the hashmap or panic
     fn image(&self, name: &String) -> &Texture {
-        match self.images.get(name) {
-            Some(texture) => &texture,
-            None => panic!("Loaded image '{}' could not be found.", name)
-        }
+        self.images.get(name).expect(&format!("Loaded image '{}' could not be found.", name))
     }
 
     // Create a new texture using the texture creator
@@ -85,9 +84,7 @@ impl<'a> Resources<'a> {
     }
 
     // Render a string of text using a font
-    fn render(&self, font: &str, text: &String) -> Texture {
-        let colour = sdl2::pixels::Color {r: 255, g: 255, b: 255, a: 255};
-
+    fn render(&self, font: &str, text: &String, colour: Color) -> Texture {
         let rendered = self.fonts[font].render(text).solid(colour).unwrap();
 
         self.texture_creator.create_texture_from_surface(rendered).unwrap()
@@ -214,9 +211,7 @@ pub fn main() {
     resources.load_image("base_2",  "base/2.png");
     
     resources.load_image("squaddie",        "unit/squaddie.png");
-    resources.load_image("dead_squaddie",   "unit/dead_squaddie.png");
     resources.load_image("machine",         "unit/machine.png");
-    resources.load_image("dead_machine",    "unit/dead_machine.png");
     
     resources.load_image("rifle_round",         "bullet/rifle_round.png");
     resources.load_image("machine_gun_round",   "bullet/machine_gun_round.png");
@@ -256,6 +251,11 @@ pub fn main() {
     
     resources.load_image("end_turn_button", "button/end_turn.png");
     resources.load_image("fire_button",     "button/fire.png");
+
+    resources.load_image("scrap",           "items/scrap.png");
+    resources.load_image("weapon",          "items/weapon.png");
+    resources.load_image("squaddie_corpse", "items/squaddie_corpse.png");
+    resources.load_image("machine_corpse",  "items/machine_corpse.png");
     
     // Load the font
     resources.load_font("main", "font.ttf", 35);

@@ -1,9 +1,9 @@
 use rand;
 use rand::Rng;
 
-use std::slice::{Iter, IterMut};
+use std::collections::HashMap;
+use std::collections::hash_map::{Iter, IterMut};
 
-use map::paths::PathPoint;
 use weapons::Weapon;
 use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
 
@@ -50,7 +50,13 @@ fn generate_squaddie_name() -> String {
 }
 
 fn generate_machine_name() -> String {
-    format!("SK{}", rand::thread_rng().gen_range(0, 10000))
+    let mut serial = format!("{}", rand::thread_rng().gen_range(0, 100_000));
+
+    while serial.len() < 5 {
+        serial.insert(0, '0');
+    }
+
+    format!("SK{}", serial)
 }
 
 // The type of a unit
@@ -116,71 +122,51 @@ impl Unit {
         }
     }
 
-    // Is the unit alive
-    pub fn alive(&self) -> bool {
-        self.health > 0
-    }
-
-    // Update the image of the unit
-    pub fn update(&mut self) {
-        if !self.alive() {
-            self.image = match self.tag {
-                UnitType::Squaddie => "dead_squaddie",
-                UnitType::Machine => "dead_machine"
-            }.into();
-        }
-    }
-
-    pub fn move_to(&mut self, point: &PathPoint) {
-        self.x = point.x;
-        self.y = point.y;
-        self.moves -= point.cost;
+    pub fn move_to(&mut self, x: usize, y: usize, cost: usize) {
+        self.x = x;
+        self.y = y;
+        self.moves -= cost;
     }
 }
 
 pub struct Units {
-    units: Vec<Unit>
+    index: usize,
+    units: HashMap<usize, Unit>
 }
 
 impl Units {
     pub fn new() -> Units {
         Units {
-            units: Vec::new()
+            index: 0,
+            units: HashMap::new()
         }
     }
 
     pub fn push(&mut self, unit: Unit) {
-        self.units.push(unit);
+        self.units.insert(self.index, unit);
+        self.index += 1;
     }
 
-    pub fn iter(&self) -> Iter<Unit> {
+    pub fn iter(&self) -> Iter<usize, Unit> {
         self.units.iter()
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<Unit> {
+    pub fn iter_mut(&mut self) -> IterMut<usize, Unit> {
         self.units.iter_mut()
     }
 
-    pub fn get(&self, id: usize) -> &Unit {
-        &self.units[id]
+    pub fn get(&self, id: usize) -> Option<&Unit> {
+        self.units.get(&id)
     }
 
-    pub fn get_mut(&mut self, id: usize) -> &mut Unit {
-        &mut self.units[id]
-    }
-
-    pub fn get_two_mut(&mut self, a: usize, b: usize) -> (&mut Unit, &mut Unit) {
-        if a < b {
-            let (slice_1, slice_2) = self.units.split_at_mut(b);
-            (&mut slice_1[a], &mut slice_2[0])
-        } else {
-            let (slice_1, slice_2) = self.units.split_at_mut(a);
-            (&mut slice_2[0], &mut slice_1[b])
-        }
+    pub fn get_mut(&mut self, id: usize) -> Option<&mut Unit> {
+        self.units.get_mut(&id)
     }
 
     pub fn at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
-        self.units.iter().enumerate().find(|&(_, unit)| unit.x == x && unit.y == y)
+        self.iter()
+            .find(|&(_, unit)| unit.x == x && unit.y == y)
+            .map(|(i, unit)| (*i, unit))
     }
 
     pub fn at_i(&self, x: usize, y: usize) -> Option<usize> {
@@ -188,6 +174,10 @@ impl Units {
     }
 
     pub fn any_alive(&self, side: UnitSide) -> bool {
-        self.iter().any(|unit| unit.side == side && unit.alive())
+        self.iter().any(|(_, unit)| unit.side == side)
+    }
+
+    pub fn kill(&mut self, id: usize) {
+        self.units.remove(&id);
     }
 }

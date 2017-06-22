@@ -48,8 +48,8 @@ pub fn take_turn(mut map: &mut Map) {
     }
 
     for (unit_id, unit) in map.units.iter()
-        .enumerate()
-        .filter(|&(_, unit)| unit.side == UnitSide::Enemy && unit.alive()) {
+        .filter(|&(_, unit)| unit.side == UnitSide::Enemy)
+        .map(|(i, unit)| (*i, unit)) {
         
         let mut ai_move = AIMove::from(unit, &map);
 
@@ -90,9 +90,9 @@ fn unreachable(unit: &Unit, x: usize, y: usize) -> bool {
 // Find the closest target unit to unit on the map
 fn closest_target<'a>(unit: &Unit, map: &'a Map) -> (usize, &'a Unit) {
     map.units.iter()
-        .enumerate()
-        .filter(|&(_, target)| target.side == UnitSide::Friendly && target.alive())
+        .filter(|&(_, target)| target.side == UnitSide::Friendly)
         .ord_subset_min_by_key(|&(_, target)| distance(unit.x, unit.y, target.x, target.y))
+        .map(|(i, unit)| (*i, unit))
         .unwrap()
 }
 

@@ -1,25 +1,32 @@
 // The type of an item
+#[derive(Copy, Clone)]
 pub enum ItemType {
     Scrap,
-    Weapon
+    Weapon,
+    SquaddieCorpse,
+    MachineCorpse
 }
 
 // An item with a weight value
 pub struct Item {
     pub tag: ItemType,
-    pub weight: usize
+    pub weight: usize,
+    pub image: String
 }
 
 impl Item {
     // Create a new item
     pub fn new(tag: ItemType) -> Item {
-        let weight = match tag {
-            ItemType::Scrap => 5,
-            ItemType::Weapon => 4
+        let (weight, image) = match tag {
+            ItemType::Scrap => (5, "scrap"),
+            ItemType::Weapon => (4, "weapon"),
+            ItemType::SquaddieCorpse => (6, "squaddie_corpse"),
+            ItemType::MachineCorpse => (8, "machine_corpse")
         };
 
         Item {
-            tag, weight
+            tag, weight,
+            image: image.into()
         }
     }
 }

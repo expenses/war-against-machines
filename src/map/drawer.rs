@@ -8,6 +8,7 @@ use map::tiles::Visibility;
 use Resources;
 use context::Context;
 use utils::{bound_float, chance_to_hit, convert_rotation};
+use colours::WHITE;
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -162,7 +163,7 @@ impl Drawer {
                         }
                     }
 
-                    if tile.visibility != Visibility::Foggy {
+                    if tile.unit_visibility != Visibility::Foggy {
                         // Draw a squaddie at the position
                         match map.units.at(x, y) {
                             Some((index, unit)) => {
@@ -177,6 +178,10 @@ impl Drawer {
                                 canvas.draw(resources.image(&unit.image), screen_x, screen_y);
                             },
                             _ => {}
+                        }
+
+                        for item in &tile.items {
+                            canvas.draw(resources.image(&item.image), screen_x, screen_y);
                         }
                     } else {
                         canvas.draw(resources.image(&"fog".into()), screen_x, screen_y);
@@ -219,7 +224,7 @@ impl Drawer {
                 let mut total_cost = 0;
 
                 // Get the squaddie the path if for
-                let unit = map.units.get(map.selected.unwrap());
+                let unit = map.units.get(map.selected.unwrap()).unwrap();
 
                 for point in points {
                     total_cost += point.cost;
@@ -237,7 +242,7 @@ impl Drawer {
                         };
 
                         // Rendet the path cost
-                        let cost = resources.render("main", &format!("{}", total_cost));
+                        let cost = resources.render("main", &format!("{}", total_cost), WHITE);
                         let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
                         canvas.draw(&cost, x + center as i32, y);
@@ -261,15 +266,15 @@ impl Drawer {
                         // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
                         match map.selected.and_then(|selected| map.units.at_i(x, y).map(|target| (selected, target))) {
                             Some((selected, target)) => {
-                                let firing = map.units.get(selected);
-                                let target = map.units.get(target);
+                                let firing = map.units.get(selected).unwrap();
+                                let target = map.units.get(target).unwrap();
 
                                 if firing.side == UnitSide::Friendly && target.side == UnitSide::Enemy {
                                     // Get the chance to hit as a percentage
                                     let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
 
                                     // Render it and draw it at the center
-                                    let chance = resources.render("main", &format!("{:0.3}%", hit_chance));
+                                    let chance = resources.render("main", &format!("{:0.3}%", hit_chance), WHITE);
                                     let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
                                     canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
                                 }
