@@ -1,8 +1,8 @@
 use rand;
 use rand::distributions::{IndependentSample, Range};
 
-use map::tiles::Tiles;
-use map::units::{UnitType, Units};
+use battle::map::Map;
+use battle::units::{UnitType, Units};
 use weapons::WeaponType;
 use items::{Item, ItemType};
 
@@ -26,18 +26,18 @@ impl Walk {
         }
     }
 
-    fn step(&mut self, tiles: &mut Tiles, units: &mut Units) -> bool {
+    fn step(&mut self, map: &mut Map) -> bool {
         self.status += WALK_SPEED;
         
         let finished = self.status > 1.0;
 
         if finished {
-            match units.get_mut(self.unit_id) {
+            match map.units.get_mut(self.unit_id) {
                 Some(unit) => unit.move_to(self.x, self.y, self.cost),
                 _ => return true
             }
 
-            tiles.update_visibility(units);
+            map.tiles.update_visibility(&map.units);
         }
 
         finished
@@ -57,24 +57,25 @@ impl Dying {
         }
     }
 
-    fn step(&mut self, tiles: &mut Tiles, units: &mut Units) -> bool {
+    fn step(&mut self, map: &mut Map) -> bool {
         self.status += WALK_SPEED;
         let finished = self.status > 1.0;
 
         if finished {
-            let (x, y) = match units.get(self.unit_id) {
+            let (x, y) = match map.units.get(self.unit_id) {
                 Some(unit) => (unit.x, unit.y),
                 _ => return true
             };
 
-            let corpse = Item::new(match units.get(self.unit_id).unwrap().tag {
-                UnitType::Squaddie => ItemType::SquaddieCorpse,
-                UnitType::Machine => ItemType::MachineCorpse
+            let corpse = Item::new(match map.units.get(self.unit_id).map(|unit| unit.tag) {
+                Some(UnitType::Squaddie) => ItemType::SquaddieCorpse,
+                Some(UnitType::Machine) => ItemType::MachineCorpse,
+                _ => return true
             });
 
-            units.kill(self.unit_id);
-            tiles.drop(x, y, corpse);
-            tiles.update_visibility(units);
+            map.units.kill(self.unit_id);
+            map.tiles.drop(x, y, corpse);
+            map.tiles.update_visibility(&map.units);
         }
 
         finished
@@ -129,7 +130,7 @@ impl Bullet {
     }
     
     // Move the bullet
-    fn step(&mut self, tiles: &mut Tiles) -> bool {        
+    fn step(&mut self, map: &Map) -> bool {        
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
@@ -141,8 +142,8 @@ impl Bullet {
             self.above != (self.y < self.target_y as f32)
         )) ||
         // And if the bullet is within a certain margin of the map
-        self.x < -MARGIN || self.x > tiles.cols as f32 + MARGIN ||
-        self.y < -MARGIN || self.y > tiles.rows as f32 + MARGIN
+        self.x < -MARGIN || self.x > map.tiles.cols as f32 + MARGIN ||
+        self.y < -MARGIN || self.y > map.tiles.rows as f32 + MARGIN
     }
 }
 
@@ -170,11 +171,11 @@ impl AnimationQueue {
         }
     }
 
-    pub fn update(&mut self, tiles: &mut Tiles, units: &mut Units) {
+    pub fn update(&mut self, map: &mut Map) {
         let finished = match self.animations.first_mut() {
-            Some(&mut Animation::Walk(ref mut walk)) => walk.step(tiles, units),
-            Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(tiles),
-            Some(&mut Animation::Dying(ref mut dying)) => dying.step(tiles, units),
+            Some(&mut Animation::Walk(ref mut walk)) => walk.step(map),
+            Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(map),
+            Some(&mut Animation::Dying(ref mut dying)) => dying.step(map),
             _ => false
         };
 

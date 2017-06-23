@@ -4,7 +4,7 @@ use colours::WHITE;
 use Resources;
 use context::Context;
 use utils::bound;
-use map::units::UnitType;
+use battle::units::UnitType;
 
 const MIN_SIZE: usize = 10;
 const MAX_SIZE: usize = 50;

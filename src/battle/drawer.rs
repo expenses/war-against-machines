@@ -2,9 +2,9 @@ use sdl2::render::{Texture, Canvas};
 use sdl2::rect::Rect;
 use sdl2::video::Window;
 
-use map::map::Map;
-use map::units::UnitSide;
-use map::tiles::Visibility;
+use battle::battle::Battle;
+use battle::units::UnitSide;
+use battle::tiles::Visibility;
 use Resources;
 use context::Context;
 use utils::{bound_float, chance_to_hit, convert_rotation};
@@ -123,12 +123,14 @@ impl Drawer {
     }
 
     // Draw the map onto a CanvasTexture
-    pub fn draw_to_canvas(&self, canvas: &mut CanvasTexture, resources: &Resources, map: &Map) {
+    pub fn draw_to_canvas(&self, canvas: &mut CanvasTexture, resources: &Resources, battle: &Battle) {
+        let map = &battle.map;
+
         // Loop through tiles
         for x in 0 .. map.tiles.cols {
             for y in 0 .. map.tiles.rows {
                 // Get the tile
-                let tile = map.tiles.tile_at(x, y);
+                let tile = map.tiles.at(x, y);
                 // Get the position of the tile in the screen
                 let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
@@ -137,47 +139,39 @@ impl Drawer {
                     canvas.draw(resources.image(&tile.base), screen_x, screen_y);
 
                     // Draw the tile decoration
-                    match tile.decoration {
-                        Some(ref decoration) => canvas.draw(resources.image(&decoration), screen_x, screen_y),
-                        _ => {}
+                    if let Some(ref obstacle) = tile.obstacle {
+                        canvas.draw(resources.image(&obstacle), screen_x, screen_y);
                     }
 
                     // Draw the cursor if it's not in fire mode
-                    if !map.cursor.fire {
-                        match map.cursor.position {
-                            Some((cursor_x, cursor_y)) => {
-                                if cursor_x == x && cursor_y == y {
-                                    // Determine the cursor colour
-                                    let image = if !tile.walkable {
-                                        "cursor_unwalkable"
-                                    } else if map.units.at(x, y).is_some() {
-                                        "cursor_unit"
-                                    } else {
-                                        "cursor"
-                                    };
+                    if !battle.cursor_on_enemy() {
+                        if let Some((cursor_x, cursor_y)) = battle.cursor.position {
+                            if cursor_x == x && cursor_y == y {
+                                // Determine the cursor colour
+                                let image = if !tile.walkable() {
+                                    "cursor_unwalkable"
+                                } else if map.units.at(x, y).is_some() {
+                                    "cursor_unit"
+                                } else {
+                                    "cursor"
+                                };
 
-                                    canvas.draw(resources.image(&image.into()), screen_x, screen_y);
-                                }
-                            },
-                            _ => {}
+                                canvas.draw(resources.image(&image.into()), screen_x, screen_y);
+                            }
                         }
                     }
 
                     if tile.unit_visibility != Visibility::Foggy {
                         // Draw a squaddie at the position
-                        match map.units.at(x, y) {
-                            Some((index, unit)) => {
-                                // Draw the cursor to show that the unit is selected
-                                match map.selected {
-                                    Some(selected) => if selected == index {
-                                        canvas.draw(resources.image(&"cursor_unit".into()), screen_x, screen_y);
-                                    },
-                                    _ => {}
+                        if let Some((index, unit)) = map.units.at(x, y) {
+                            // Draw the cursor to show that the unit is selected
+                            if let Some(selected) = battle.selected {
+                                if selected == index {
+                                    canvas.draw(resources.image(&"cursor_unit".into()), screen_x, screen_y);
                                 }
+                            }
 
-                                canvas.draw(resources.image(&unit.image), screen_x, screen_y);
-                            },
-                            _ => {}
+                            canvas.draw(resources.image(&unit.image), screen_x, screen_y);
                         }
 
                         for item in &tile.items {
@@ -192,122 +186,114 @@ impl Drawer {
 
         // Draw the edge corners if visible
 
-        if map.tiles.tile_at(0, map.tiles.rows - 1).visible() {
+        if map.tiles.at(0, map.tiles.rows - 1).visible() {
             canvas.draw_tile(resources.image(&"edge_left_corner".into()), 0, map.tiles.rows);
         }
         
-        if map.tiles.tile_at(map.tiles.cols - 1, map.tiles.rows - 1).visible() {
+        if map.tiles.at(map.tiles.cols - 1, map.tiles.rows - 1).visible() {
             canvas.draw_tile(resources.image(&"edge_corner".into()), map.tiles.cols, map.tiles.rows);
         }
 
-        if map.tiles.tile_at(map.tiles.cols - 1, 0).visible() {
+        if map.tiles.at(map.tiles.cols - 1, 0).visible() {
             canvas.draw_tile(resources.image(&"edge_right_corner".into()), map.tiles.cols, 0);
         }
 
         // Draw the edges
 
         for x in 1 .. map.tiles.cols {
-            if map.tiles.tile_at(x, map.tiles.rows - 1).visible() {
+            if map.tiles.at(x, map.tiles.rows - 1).visible() {
                 canvas.draw_tile(resources.image(&"edge_left".into()), x, map.tiles.rows);
             }
         }
 
         for y in 1 .. map.tiles.rows {
-            if map.tiles.tile_at(map.tiles.cols - 1, y).visible() {
+            if map.tiles.at(map.tiles.cols - 1, y).visible() {
                 canvas.draw_tile(resources.image(&"edge_right".into()), map.tiles.cols, y);
             }
         }
 
         // Draw the path
-        match map.path {
-            Some(ref points) => {
-                let mut total_cost = 0;
+        if let Some(ref points) = battle.path {
+            let mut total_cost = 0;
 
-                // Get the squaddie the path if for
-                let unit = map.units.get(map.selected.unwrap()).unwrap();
+            // Get the squaddie the path if for
+            let unit = map.units.get(battle.selected.unwrap()).unwrap();
 
-                for point in points {
-                    total_cost += point.cost;
+            for point in points {
+                total_cost += point.cost;
 
-                    let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
+                let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
 
-                    if canvas.on_screen(x, y) {
-                        // Get the image for the path
-                        let image = if total_cost > unit.moves {
-                            "path_unreachable"
-                        } else if total_cost + unit.weapon.cost > unit.moves {
-                            "path_no_weapon"
-                        } else {
-                            "path"
-                        };
+                if canvas.on_screen(x, y) {
+                    // Get the image for the path
+                    let image = if total_cost > unit.moves {
+                        "path_unreachable"
+                    } else if total_cost + unit.weapon.cost > unit.moves {
+                        "path_no_weapon"
+                    } else {
+                        "path"
+                    };
 
-                        // Rendet the path cost
-                        let cost = resources.render("main", &format!("{}", total_cost), WHITE);
-                        let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
+                    // Rendet the path cost
+                    let cost = resources.render("main", &format!("{}", total_cost), WHITE);
+                    let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
-                        canvas.draw(&cost, x + center as i32, y);
-                        canvas.draw(resources.image(&image.into()), x, y);
-                    }
+                    canvas.draw(&cost, x + center as i32, y);
+                    canvas.draw(resources.image(&image.into()), x, y);
                 }
             }
-            _ => {}
         }
 
         // Draw the fire crosshair
-        if map.cursor.fire {
-            match map.cursor.position {
-                Some((x, y)) => {
-                    let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
+        if battle.cursor_on_enemy() {
+            if let Some((x, y)) = battle.cursor.position {
+                let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
-                    if canvas.on_screen(screen_x, screen_y) {
-                        // Draw the crosshair
-                        canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
+                if canvas.on_screen(screen_x, screen_y) {
+                    // Draw the crosshair
+                    canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
 
-                        // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
-                        match map.selected.and_then(|selected| map.units.at_i(x, y).map(|target| (selected, target))) {
-                            Some((selected, target)) => {
-                                let firing = map.units.get(selected).unwrap();
-                                let target = map.units.get(target).unwrap();
+                    // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
+                    if let Some((selected, target)) = battle.selected.and_then(|selected|
+                        map.units.at_i(x, y).map(|target|
+                            (selected, target)
+                        )
+                    ) {
+                        let firing = map.units.get(selected).unwrap();
+                        let target = map.units.get(target).unwrap();
 
-                                if firing.side == UnitSide::Friendly && target.side == UnitSide::Enemy {
-                                    // Get the chance to hit as a percentage
-                                    let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
+                        if firing.side == UnitSide::Friendly && target.side == UnitSide::Enemy {
+                            // Get the chance to hit as a percentage
+                            let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
 
-                                    // Render it and draw it at the center
-                                    let chance = resources.render("main", &format!("{:0.3}%", hit_chance), WHITE);
-                                    let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
-                                    canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
-                                }
-                            }
-                            _ => {}
+                            // Render it and draw it at the center
+                            let chance = resources.render("main", &format!("{:0.3}%", hit_chance), WHITE);
+                            let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
+                            canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
                         }
-                    }                    
-                },
-                _ => {}
+                    }
+                }
             }
         }
 
         // If a bullet is the first item in the animation queue, draw it
-        match map.animation_queue.first_bullet() {
-            Some(bullet) => {
-                // Calculate if the nearest tile to the bullet is visible
-                let visible = map.tiles.tile_at(
-                    bound_float(bullet.x, 0, map.tiles.cols - 1),
-                    bound_float(bullet.y, 0, map.tiles.rows - 1)
-                ).visible();
-                // Get the drawing location of the bullet
-                let (x, y) = canvas.draw_location(bullet.x, bullet.y);
+        if let Some(bullet) = battle.animation_queue.first_bullet() {
+            // Calculate if the nearest tile to the bullet is visible
+            let visible = map.tiles.at(
+                bound_float(bullet.x, 0, map.tiles.cols - 1),
+                bound_float(bullet.y, 0, map.tiles.rows - 1)
+            ).visible();
+            // Get the drawing location of the bullet
+            let (x, y) = canvas.draw_location(bullet.x, bullet.y);
 
-                // If the bullet is visable and on screen, draw it with the right rotation
-                if visible && canvas.on_screen(x, y) {
-                    canvas.draw_with_rotation(resources.image(&bullet.image), x, y, convert_rotation(bullet.direction));
-                }
+            // If the bullet is visable and on screen, draw it with the right rotation
+            if visible && canvas.on_screen(x, y) {
+                canvas.draw_with_rotation(resources.image(&bullet.image), x, y, convert_rotation(bullet.direction));
             }
-            _ => {}
         }
     }
 
-    pub fn draw_map(&self, ctx: &mut Context, resources: &Resources, map: &Map) {
+    pub fn draw_map(&self, ctx: &mut Context, resources: &Resources, battle: &Battle) {
         // Get the width and height of the screen
         let (width, height) = (ctx.width(), ctx.height());
 
@@ -324,7 +310,7 @@ impl Drawer {
             canvas.clear();
 
             // And draw to it
-            self.draw_to_canvas(&mut canvas, resources, map);
+            self.draw_to_canvas(&mut canvas, resources, battle);
         }).unwrap(); 
 
         // Work out the center of the screen

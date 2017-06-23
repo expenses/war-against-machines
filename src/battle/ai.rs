@@ -1,9 +1,9 @@
 use ord_subset::OrdSubsetIterExt;
 
-use map::map::Map;
-use map::units::{Unit, UnitSide};
-use map::paths::{pathfind, PathPoint, WALK_STRAIGHT_COST};
-use map::commands::{Command, WalkCommand, FireCommand};
+use battle::map::Map;
+use battle::units::{Unit, UnitSide};
+use battle::paths::{pathfind, PathPoint, WALK_STRAIGHT_COST};
+use battle::commands::{CommandQueue, Command, WalkCommand, FireCommand};
 use utils::{distance, chance_to_hit};
 
 // A move that the AI could take
@@ -42,7 +42,7 @@ impl AIMove {
     }
 }
 
-pub fn take_turn(mut map: &mut Map) {
+pub fn take_turn(map: &mut Map, command_queue: &mut CommandQueue) {
     if !map.units.any_alive(UnitSide::Friendly) {
         return;
     }
@@ -59,24 +59,21 @@ pub fn take_turn(mut map: &mut Map) {
                     continue;
                 }
 
-                match pathfind(unit, x, y, &map) {
-                    Some((path, cost)) => {
-                        let (target_id, target) = closest_target(unit, &map);
-                        let score = tile_score(x, y, cost, unit, target);
+                if let Some((path, cost)) = pathfind(unit, x, y, &map) {
+                    let (target_id, target) = closest_target(unit, &map);
+                    let score = tile_score(x, y, cost, unit, target);
 
-                        ai_move.check_move(x, y, path, cost, target_id, score);
-                    }
-                    _ => {}
+                    ai_move.check_move(x, y, path, cost, target_id, score);
                 }
             }
         }
 
         if ai_move.path.len() > 0 {
-            map.command_queue.push(Command::Walk(WalkCommand::new(unit_id, ai_move.path)));
+            command_queue.push(Command::Walk(WalkCommand::new(unit_id, ai_move.path)));
         }
 
         for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.cost {
-            map.command_queue.push(Command::Fire(FireCommand::new(unit_id, ai_move.target_id)));
+            command_queue.push(Command::Fire(FireCommand::new(unit_id, ai_move.target_id)));
         }
     }
 }

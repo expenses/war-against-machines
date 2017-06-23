@@ -1,8 +1,9 @@
-pub mod map;
+pub mod battle;
+pub mod units;
 mod drawer;
+mod map;
 mod tiles;
 mod paths;
-pub mod units;
 mod animations;
 mod ai;
 mod commands;

@@ -2,8 +2,8 @@ use pathfinding;
 
 use std::cmp::{min, max};
 
-use map::map::Map;
-use map::units::Unit;
+use battle::map::Map;
+use battle::units::Unit;
 
 pub const WALK_STRAIGHT_COST: usize = 2;
 pub const WALK_DIAGONAL_COST: usize = 3;

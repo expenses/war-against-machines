@@ -1,7 +1,7 @@
 use rand;
 use rand::Rng;
 
-use map::units::{UnitSide, Units};
+use battle::units::{UnitSide, Units};
 use utils::distance_under;
 use items::{Item, ItemType};
 
@@ -18,8 +18,7 @@ pub enum Visibility {
 // A tile in the map
 pub struct Tile {
     pub base: String,
-    pub decoration: Option<String>,
-    pub walkable: bool,
+    pub obstacle: Option<String>,
     pub unit_visibility: Visibility,
     pub enemy_visibility: Visibility,
     pub items: Vec<Item>
@@ -30,8 +29,7 @@ impl Tile {
     fn new(base: &str) -> Tile {
         Tile {
             base: base.into(),
-            decoration: None,
-            walkable: true,
+            obstacle: None,
             unit_visibility: Visibility::Invisible,
             enemy_visibility: Visibility::Invisible,
             items: Vec::new()
@@ -40,13 +38,16 @@ impl Tile {
 
     // Set the decoration of the tile and make it unwalkable
     fn set_obstacle(&mut self, decoration: &str) {
-        self.decoration = Some(decoration.into());
+        self.obstacle = Some(decoration.into());
         self.items = Vec::new();
-        self.walkable = false;        
     }
 
     pub fn visible(&self) -> bool {
         self.unit_visibility != Visibility::Invisible
+    }
+
+    pub fn walkable(&self) -> bool {
+        self.obstacle.is_none()
     }
 }
 
@@ -81,20 +82,15 @@ impl Tiles {
         let mut rng = rand::thread_rng();
         let ruins = &["ruin_1", "ruin_2", "ruin_3"];
         let bases = &["base_1", "base_2"];
-        let items = &[ItemType::Weapon, ItemType::Scrap];
+        let items = &[ItemType::Weapon, ItemType::Scrap, ItemType::Skeleton];
 
         for x in 0 .. cols {
             for y in 0 .. rows {
                 // Choose a random base image
                 let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
-                // Add in skulls
-                if rand::random::<f32>() < 0.025 {
-                    tile.decoration = Some("skull".into());
-                } 
-
                 // Randomly drop items
-                if rand::random::<f32>() < 0.05 {
+                if rand::random::<f32>() < 0.075 {
                     tile.items.push(Item::new(*rng.choose(items).unwrap()));
                 }
 
@@ -116,37 +112,37 @@ impl Tiles {
         let pit_y = rng.gen_range(1, rows - 1 - pit_height);
 
         // Add pit corners
-        self.tile_at_mut(pit_x,             pit_y             ).set_obstacle("pit_top");
-        self.tile_at_mut(pit_x,             pit_y + pit_height).set_obstacle("pit_left");
-        self.tile_at_mut(pit_x + pit_width, pit_y             ).set_obstacle("pit_right");
-        self.tile_at_mut(pit_x + pit_width, pit_y + pit_height).set_obstacle("pit_bottom");
+        self.at_mut(pit_x,             pit_y             ).set_obstacle("pit_top");
+        self.at_mut(pit_x,             pit_y + pit_height).set_obstacle("pit_left");
+        self.at_mut(pit_x + pit_width, pit_y             ).set_obstacle("pit_right");
+        self.at_mut(pit_x + pit_width, pit_y + pit_height).set_obstacle("pit_bottom");
 
         // Add pit edges and center
 
         for x in pit_x + 1 .. pit_x + pit_width {
-            self.tile_at_mut(x, pit_y             ).set_obstacle("pit_tr");
-            self.tile_at_mut(x, pit_y + pit_height).set_obstacle("pit_bl");
+            self.at_mut(x, pit_y             ).set_obstacle("pit_tr");
+            self.at_mut(x, pit_y + pit_height).set_obstacle("pit_bl");
 
             for y in pit_y + 1 .. pit_y + pit_height {
-                self.tile_at_mut(x, y).set_obstacle("pit_center");
+                self.at_mut(x, y).set_obstacle("pit_center");
             }
         }
 
         for y in pit_y + 1 .. pit_y + pit_height {
-             self.tile_at_mut(pit_x,             y).set_obstacle("pit_tl");
-             self.tile_at_mut(pit_x + pit_width, y).set_obstacle("pit_br");
+             self.at_mut(pit_x,             y).set_obstacle("pit_tl");
+             self.at_mut(pit_x + pit_width, y).set_obstacle("pit_br");
         }
 
         self.update_visibility(units);
     }
 
     // Get a reference to a tile
-    pub fn tile_at(&self, x: usize, y: usize) -> &Tile {
+    pub fn at(&self, x: usize, y: usize) -> &Tile {
         &self.tiles[x * self.rows + y]
     }
 
     // Get a mutable reference to a tile
-    pub fn tile_at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
+    pub fn at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[x * self.rows + y]
     }
 
@@ -154,7 +150,7 @@ impl Tiles {
     pub fn update_visibility(&mut self, units: &Units) {
         for x in 0 .. self.cols {
             for y in 0 .. self.rows {
-                let tile = self.tile_at_mut(x, y);
+                let tile = self.at_mut(x, y);
 
                 let unit_visible = visible(x, y, UnitSide::Friendly, units);
                 
@@ -176,6 +172,6 @@ impl Tiles {
     }
 
     pub fn drop(&mut self, x: usize, y: usize, item: Item) {
-        self.tile_at_mut(x, y).items.push(item);
+        self.at_mut(x, y).items.push(item);
     }
 }

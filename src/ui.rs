@@ -130,10 +130,9 @@ pub struct UI {
 }
 
 impl UI {
-    pub fn new() -> UI {
+    pub fn new(buttons: Vec<Button>, text_displays: Vec<TextDisplay>) -> UI {
         UI {
-            buttons: Vec::new(),
-            text_displays: Vec::new()
+            buttons, text_displays
         }
     }
 

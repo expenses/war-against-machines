@@ -4,8 +4,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::collections::hash_map::{Iter, IterMut};
 
-use weapons::Weapon;
-use weapons::WeaponType::{Rifle, MachineGun, PlasmaRifle};
+use weapons::{Weapon, WeaponType};
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str] = &[
@@ -94,7 +93,7 @@ impl Unit {
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
         match tag {
             UnitType::Squaddie => {
-                let weapon = Weapon::new(if rand::thread_rng().gen::<bool>() { Rifle } else { MachineGun });
+                let weapon = Weapon::new(if rand::thread_rng().gen::<bool>() { WeaponType::Rifle } else { WeaponType::MachineGun });
                 let image = "squaddie".into();
                 let moves = 30;
                 let health = 100;
@@ -113,7 +112,7 @@ impl Unit {
 
                 Unit {
                     tag, side, x, y, moves, health, image,
-                    weapon: Weapon::new(PlasmaRifle),
+                    weapon: Weapon::new(WeaponType::PlasmaRifle),
                     name: generate_machine_name(),
                     max_moves: moves,
                     max_health: health

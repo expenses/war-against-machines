@@ -12,7 +12,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{PixelFormatEnum, Color};
 
-mod map;
+mod battle;
 mod menu;
 mod ui;
 mod weapons;
@@ -22,7 +22,7 @@ mod colours;
 mod items;
 
 use context::Context;
-use map::map::Map;
+use battle::battle::Battle;
 use menu::Callback;
 
 use std::collections::HashMap;
@@ -34,7 +34,7 @@ const WINDOW_HEIGHT: u32 = 600;
 
 enum Mode {
     Menu,
-    Game
+    Skirmish
 }
 
 // A struct to hold resources for the game such as images and fonts
@@ -97,7 +97,7 @@ struct State<'a> {
     resources: Resources<'a>,
     mode: Mode,
     menu: menu::Menu,
-    map: Map,
+    skirmish: Battle,
 }
 
 impl<'a> State<'a> {
@@ -106,7 +106,7 @@ impl<'a> State<'a> {
         let mut state = State {
             mode: Mode::Menu,
             menu: menu::Menu::new(),
-            map: Map::new(&resources),
+            skirmish: Battle::new(&resources),
             ctx, resources,
         };
 
@@ -134,7 +134,7 @@ impl<'a> State<'a> {
     // Update the parts of the game
     fn update(&mut self) {
         match self.mode {
-            Mode::Game => self.map.update(),
+            Mode::Skirmish => self.skirmish.update(),
             _ => {}
         }
     }
@@ -143,24 +143,22 @@ impl<'a> State<'a> {
     fn handle_key_down(&mut self, key: Keycode) {
         match self.mode {
             // If the mode is the menu, respond to callbacks
-            Mode::Menu => match self.menu.handle_key(&mut self.ctx, key) {
-                Some(callback) => match callback {
+            Mode::Menu => if let Some(callback) = self.menu.handle_key(&mut self.ctx, key) {
+                match callback {
                     Callback::Play => {
-                        let settings = &self.menu.skirmish_settings;
-                        self.mode = Mode::Game;
-                        self.map.start(settings.rows, settings.cols, settings.units, settings.enemies, settings.unit_type, settings.enemy_type);
+                        self.mode = Mode::Skirmish;
+                        self.skirmish.start(&self.menu.skirmish_settings);
                     }
-                },
-                _ => {}
+                }  
             },
-            Mode::Game => self.map.handle_key(&mut self.ctx, key, true)
+            Mode::Skirmish => self.skirmish.handle_key(&mut self.ctx, key, true)
         }
     }
 
     // Handle key releases
     fn handle_key_up(&mut self, key: Keycode) {
         match self.mode {
-            Mode::Game => self.map.handle_key(&mut self.ctx, key, false),
+            Mode::Skirmish => self.skirmish.handle_key(&mut self.ctx, key, false),
             _ => {}
         }
     }
@@ -168,7 +166,7 @@ impl<'a> State<'a> {
     // Handle mouse motion
     fn handle_mouse_motion(&mut self, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.move_cursor(&mut self.ctx, x as f32, y as f32),
+            Mode::Skirmish => self.skirmish.move_cursor(&mut self.ctx, x as f32, y as f32),
             _ => {}
         }
     }
@@ -176,7 +174,7 @@ impl<'a> State<'a> {
     // Handle mouse button presses
     fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
         match self.mode {
-            Mode::Game => self.map.mouse_button(&mut self.ctx, button, x as f32, y as f32),
+            Mode::Skirmish => self.skirmish.mouse_button(&mut self.ctx, button, x as f32, y as f32),
             _ => {}
         }
     }
@@ -186,7 +184,7 @@ impl<'a> State<'a> {
         self.ctx.clear();
 
         match self.mode {
-            Mode::Game => self.map.draw(&mut self.ctx, &self.resources),
+            Mode::Skirmish => self.skirmish.draw(&mut self.ctx, &self.resources),
             Mode::Menu => self.menu.draw(&mut self.ctx, &self.resources)
         }
 
@@ -209,6 +207,7 @@ pub fn main() {
 
     resources.load_image("base_1",  "base/1.png");
     resources.load_image("base_2",  "base/2.png");
+    resources.load_image("fog",     "base/fog.png");
     
     resources.load_image("squaddie",        "unit/squaddie.png");
     resources.load_image("machine",         "unit/machine.png");
@@ -245,10 +244,7 @@ pub fn main() {
     resources.load_image("edge_left_corner",    "edge/left_corner.png");
     resources.load_image("edge_right_corner",   "edge/right_corner.png");
     resources.load_image("edge_corner",         "edge/corner.png");
-    
-    resources.load_image("skull",   "decoration/skull.png");
-    resources.load_image("fog",     "decoration/fog.png");
-    
+        
     resources.load_image("end_turn_button", "button/end_turn.png");
     resources.load_image("fire_button",     "button/fire.png");
 
@@ -256,6 +252,7 @@ pub fn main() {
     resources.load_image("weapon",          "items/weapon.png");
     resources.load_image("squaddie_corpse", "items/squaddie_corpse.png");
     resources.load_image("machine_corpse",  "items/machine_corpse.png");
+    resources.load_image("skeleton",        "items/skeleton.png");
     
     // Load the font
     resources.load_font("main", "font.ttf", 35);

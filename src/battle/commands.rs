@@ -1,8 +1,8 @@
 extern crate rand;
 
-use map::paths::PathPoint;
-use map::units::Units;
-use map::animations::{Walk, Bullet, Dying, Animation, AnimationQueue};
+use battle::map::Map;
+use battle::paths::PathPoint;
+use battle::animations::{Walk, Bullet, Dying, Animation, AnimationQueue};
 use utils::chance_to_hit;
 
 pub struct FireCommand {
@@ -17,13 +17,13 @@ impl FireCommand {
         }
     }
 
-    fn process(&self, units: &mut Units, animation_queue: &mut AnimationQueue) {
-        let (target_x, target_y) = match units.get(self.target_id) {
+    fn process(&self, map: &mut Map, animation_queue: &mut AnimationQueue) {
+        let (target_x, target_y) = match map.units.get(self.target_id) {
             Some(target) => (target.x, target.y),
             _ => return
         };
 
-        let (will_hit, damage) = match units.get_mut(self.unit_id) {
+        let (will_hit, damage) = match map.units.get_mut(self.unit_id) {
             Some(unit) => {
                 if unit.moves < unit.weapon.cost {
                     return;
@@ -39,22 +39,17 @@ impl FireCommand {
             _ => return
         };
 
-        let lethal = match units.get_mut(self.target_id) {
-            Some(target) => {
-                if will_hit {
-                    target.health -= damage;
-                }
-
-                target.health <= 0
-            }
-            _ => return
-        };
-
         // Add a bullet to the array for drawing
-        animation_queue.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, units)));
+        animation_queue.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, &map.units)));
 
-        if lethal {
-            animation_queue.push(Animation::Dying(Dying::new(self.target_id)));
+        if let Some(target) = map.units.get_mut(self.target_id) {
+            if will_hit {
+                target.health -= damage;
+            }
+
+            if target.health <= 0 {
+                animation_queue.push(Animation::Dying(Dying::new(self.target_id)));
+            }
         }
     }
 }
@@ -71,22 +66,19 @@ impl WalkCommand {
         }
     }
 
-    fn process(&mut self, units: &mut Units, animation_queue: &mut AnimationQueue) -> bool {
-        {
+    fn process(&mut self, map: &mut Map, animation_queue: &mut AnimationQueue) -> bool {
+        let (x, y, cost) = {
             let point = &self.path[0];
+            (point.x, point.y, point.cost)
+        };
 
-            match units.get(self.unit_id) {
-                Some(unit) => {
-                    if unit.moves >= point.cost &&
-                       units.at(point.x, point.y).is_none() {
-                        animation_queue.push(Animation::Walk(Walk::new(self.unit_id, point.x, point.y, point.cost)));
-                    } else {
-                        return true;
-                    }
-                }
-                _ => {}
-            }            
-        }
+        if let Some(unit) = map.units.get(self.unit_id) {
+            if unit.moves >= cost && map.units.at(x, y).is_none() {
+                animation_queue.push(Animation::Walk(Walk::new(self.unit_id, x, y, cost)));
+            } else {
+                return true;
+            }
+        }            
 
         self.path.remove(0);
         
@@ -111,10 +103,10 @@ impl CommandQueue {
         }
     }
 
-    pub fn update(&mut self, units: &mut Units, animation_queue: &mut AnimationQueue) {
+    pub fn update(&mut self, map: &mut Map, animation_queue: &mut AnimationQueue) {
         let finished = match self.commands.first_mut() {
-            Some(&mut Command::Fire(ref mut fire)) => {fire.process(units, animation_queue); true},
-            Some(&mut Command::Walk(ref mut walk)) => walk.process(units, animation_queue),
+            Some(&mut Command::Fire(ref mut fire)) => {fire.process(map, animation_queue); true},
+            Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animation_queue),
             _ => false
         };
 
