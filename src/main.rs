@@ -2,6 +2,7 @@ extern crate sdl2;
 extern crate rand;
 extern crate pathfinding;
 extern crate ord_subset;
+extern crate odds;
 
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::video::WindowContext;
@@ -246,7 +247,6 @@ pub fn main() {
     resources.load_image("edge_corner",         "edge/corner.png");
         
     resources.load_image("end_turn_button", "button/end_turn.png");
-    resources.load_image("fire_button",     "button/fire.png");
 
     resources.load_image("scrap",           "items/scrap.png");
     resources.load_image("weapon",          "items/weapon.png");

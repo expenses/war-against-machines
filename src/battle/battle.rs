@@ -3,7 +3,7 @@ use sdl2::mouse::MouseButton;
 
 use battle::drawer::Drawer;
 use battle::paths::{pathfind, PathPoint};
-use battle::animations::AnimationQueue;
+use battle::animations::Animations;
 use battle::commands::{CommandQueue, Command, FireCommand, WalkCommand};
 use battle::units::{Unit, UnitSide};
 use battle::map::Map;
@@ -31,7 +31,7 @@ pub struct Battle {
     pub path: Option<Vec<PathPoint>>,
     turn: u16,
     ui: UI,
-    pub animation_queue: AnimationQueue,
+    pub animations: Animations,
     pub command_queue: CommandQueue
 }
 
@@ -68,7 +68,7 @@ impl Battle {
             path: None,
             turn: 1,
             ui: ui,
-            animation_queue: AnimationQueue::new(),
+            animations: Animations::new(),
             command_queue: CommandQueue::new()
         }
     }
@@ -112,12 +112,12 @@ impl Battle {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
-        if self.animation_queue.empty() {
-            self.command_queue.update(&mut self.map, &mut self.animation_queue);
+        if self.animations.empty() {
+            self.command_queue.update(&mut self.map, &mut self.animations);
         }
 
         // Update the animation queue
-        self.animation_queue.update(&mut self.map);
+        self.animations.update(&mut self.map);
     }
 
     // Draw both the map and the UI
@@ -183,6 +183,7 @@ impl Battle {
                 match self.map.units.at_i(x, y) {
                     Some(enemy_id) => {
                         if self.map.units.get(enemy_id).unwrap().side == UnitSide::Enemy {
+                            self.path = None;
                             self.command_queue.push(Command::Fire(FireCommand::new(id, enemy_id)));
                         }
                     }

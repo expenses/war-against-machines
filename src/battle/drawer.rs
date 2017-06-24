@@ -5,6 +5,7 @@ use sdl2::video::Window;
 use battle::battle::Battle;
 use battle::units::UnitSide;
 use battle::tiles::Visibility;
+use battle::animations::Animation;
 use Resources;
 use context::Context;
 use utils::{bound_float, chance_to_hit, convert_rotation};
@@ -162,6 +163,10 @@ impl Drawer {
                     }
 
                     if tile.unit_visibility != Visibility::Foggy {
+                        for item in &tile.items {
+                            canvas.draw(resources.image(&item.image), screen_x, screen_y);
+                        }
+
                         // Draw a squaddie at the position
                         if let Some((index, unit)) = map.units.at(x, y) {
                             // Draw the cursor to show that the unit is selected
@@ -172,10 +177,6 @@ impl Drawer {
                             }
 
                             canvas.draw(resources.image(&unit.image), screen_x, screen_y);
-                        }
-
-                        for item in &tile.items {
-                            canvas.draw(resources.image(&item.image), screen_x, screen_y);
                         }
                     } else {
                         canvas.draw(resources.image(&"fog".into()), screen_x, screen_y);
@@ -277,7 +278,10 @@ impl Drawer {
         }
 
         // If a bullet is the first item in the animation queue, draw it
-        if let Some(bullet) = battle.animation_queue.first_bullet() {
+        for bullet in battle.animations.iter().filter_map(|animation| match animation {
+            &Animation::Bullet(ref bullet) => Some(bullet),
+            _ => None
+        }) {
             // Calculate if the nearest tile to the bullet is visible
             let visible = map.tiles.at(
                 bound_float(bullet.x, 0, map.tiles.cols - 1),

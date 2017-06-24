@@ -1,5 +1,8 @@
 use rand;
 use rand::distributions::{IndependentSample, Range};
+use odds::vec::VecExt;
+
+use std::slice::Iter;
 
 use battle::map::Map;
 use battle::units::{UnitType, Units};
@@ -29,9 +32,9 @@ impl Walk {
     fn step(&mut self, map: &mut Map) -> bool {
         self.status += WALK_SPEED;
         
-        let finished = self.status > 1.0;
+        let still_going = self.status <= 1.0;
 
-        if finished {
+        if !still_going {
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => unit.move_to(self.x, self.y, self.cost),
                 _ => return true
@@ -40,7 +43,7 @@ impl Walk {
             map.tiles.update_visibility(&map.units);
         }
 
-        finished
+        still_going
     }
 }
 
@@ -59,9 +62,9 @@ impl Dying {
 
     fn step(&mut self, map: &mut Map) -> bool {
         self.status += WALK_SPEED;
-        let finished = self.status > 1.0;
+        let still_going = self.status <= 1.0;
 
-        if finished {
+        if !still_going {
             let (x, y) = match map.units.get(self.unit_id) {
                 Some(unit) => (unit.x, unit.y),
                 _ => return true
@@ -78,7 +81,7 @@ impl Dying {
             map.tiles.update_visibility(&map.units);
         }
 
-        finished
+        still_going
     }
 }
 
@@ -130,20 +133,20 @@ impl Bullet {
     }
     
     // Move the bullet
-    fn step(&mut self, map: &Map) -> bool {        
+    fn step(&mut self, map: &Map) -> bool {
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
         // Work out if the bullet is currently traveling or has reached the destination
 
         // If the bullet won't hit the target or hasn't hit the target
-        (self.will_hit && (
-            self.left  != (self.x < self.target_x as f32) ||
-            self.above != (self.y < self.target_y as f32)
-        )) ||
+        (!self.will_hit || (
+            self.left  == (self.x < self.target_x as f32) &&
+            self.above == (self.y < self.target_y as f32)
+        )) &&
         // And if the bullet is within a certain margin of the map
-        self.x < -MARGIN || self.x > map.tiles.cols as f32 + MARGIN ||
-        self.y < -MARGIN || self.y > map.tiles.rows as f32 + MARGIN
+        self.x >= -MARGIN && self.x <= map.tiles.cols as f32 + MARGIN &&
+        self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN
     }
 }
 
@@ -153,35 +156,27 @@ pub enum Animation {
     Dying(Dying)
 }
 
-pub struct AnimationQueue {
+pub struct Animations {
     animations: Vec<Animation>
 }
 
-impl AnimationQueue {
-    pub fn new() -> AnimationQueue {
-        AnimationQueue {
+impl Animations {
+    pub fn new() -> Animations {
+        Animations {
             animations: Vec::new()
         }
     }
 
-    pub fn first_bullet(&self) -> Option<&Bullet> {
-        match self.animations.first() {
-            Some(&Animation::Bullet(ref bullet)) => Some(bullet),
-            _ => None
-        }
+    pub fn iter(&self) -> Iter<Animation> {
+        self.animations.iter()
     }
 
     pub fn update(&mut self, map: &mut Map) {
-        let finished = match self.animations.first_mut() {
-            Some(&mut Animation::Walk(ref mut walk)) => walk.step(map),
-            Some(&mut Animation::Bullet(ref mut bullet)) => bullet.step(map),
-            Some(&mut Animation::Dying(ref mut dying)) => dying.step(map),
-            _ => false
-        };
-
-        if finished {
-            self.animations.remove(0);
-        }
+        self.animations.retain_mut(|mut animation| match animation {
+            &mut Animation::Walk(ref mut walk) => walk.step(map),
+            &mut Animation::Bullet(ref mut bullet) => bullet.step(map),
+            &mut Animation::Dying(ref mut dying) => dying.step(map)
+        });
     }
 
     pub fn push(&mut self, animation: Animation) {

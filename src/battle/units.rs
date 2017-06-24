@@ -4,6 +4,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::collections::hash_map::{Iter, IterMut};
 
+use items::Item;
 use weapons::{Weapon, WeaponType};
 
 // A list of first names to pick from
@@ -85,7 +86,8 @@ pub struct Unit {
     pub moves: usize,
     pub max_moves: usize,
     pub health: i16,
-    pub max_health: i16
+    pub max_health: i16,
+    pub inventory: Vec<Item>
 }
 
 impl Unit {
@@ -102,7 +104,8 @@ impl Unit {
                     tag, side, x, y, moves, health, image, weapon,
                     name: generate_squaddie_name(),
                     max_moves: moves,
-                    max_health: health
+                    max_health: health,
+                    inventory: Vec::new()
                 }
             },
             UnitType::Machine => {
@@ -115,7 +118,8 @@ impl Unit {
                     weapon: Weapon::new(WeaponType::PlasmaRifle),
                     name: generate_machine_name(),
                     max_moves: moves,
-                    max_health: health
+                    max_health: health,
+                    inventory: Vec::new()
                 }
             }
         }

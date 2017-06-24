@@ -2,7 +2,7 @@ extern crate rand;
 
 use battle::map::Map;
 use battle::paths::PathPoint;
-use battle::animations::{Walk, Bullet, Dying, Animation, AnimationQueue};
+use battle::animations::{Walk, Bullet, Dying, Animation, Animations};
 use utils::chance_to_hit;
 
 pub struct FireCommand {
@@ -17,7 +17,7 @@ impl FireCommand {
         }
     }
 
-    fn process(&self, map: &mut Map, animation_queue: &mut AnimationQueue) {
+    fn process(&self, map: &mut Map, animations: &mut Animations) {
         let (target_x, target_y) = match map.units.get(self.target_id) {
             Some(target) => (target.x, target.y),
             _ => return
@@ -40,7 +40,7 @@ impl FireCommand {
         };
 
         // Add a bullet to the array for drawing
-        animation_queue.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, &map.units)));
+        animations.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, &map.units)));
 
         if let Some(target) = map.units.get_mut(self.target_id) {
             if will_hit {
@@ -48,7 +48,7 @@ impl FireCommand {
             }
 
             if target.health <= 0 {
-                animation_queue.push(Animation::Dying(Dying::new(self.target_id)));
+                animations.push(Animation::Dying(Dying::new(self.target_id)));
             }
         }
     }
@@ -66,7 +66,7 @@ impl WalkCommand {
         }
     }
 
-    fn process(&mut self, map: &mut Map, animation_queue: &mut AnimationQueue) -> bool {
+    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations) -> bool {
         let (x, y, cost) = {
             let point = &self.path[0];
             (point.x, point.y, point.cost)
@@ -103,10 +103,10 @@ impl CommandQueue {
         }
     }
 
-    pub fn update(&mut self, map: &mut Map, animation_queue: &mut AnimationQueue) {
+    pub fn update(&mut self, map: &mut Map, animations: &mut Animations) {
         let finished = match self.commands.first_mut() {
-            Some(&mut Command::Fire(ref mut fire)) => {fire.process(map, animation_queue); true},
-            Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animation_queue),
+            Some(&mut Command::Fire(ref mut fire)) => {fire.process(map, animations); true},
+            Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations),
             _ => false
         };
 
