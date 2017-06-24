@@ -4,11 +4,16 @@ version = "0.1.0"
 authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]
+# Random number generation
 rand = "*"
+# Unit pathfinding
 pathfinding = "*"
+# For the ability to use 'min_by_key' with f32s
 ord_subset = "*"
+# For 'retain_mut'
 odds = "*"
 
+# SDL2 with features
 [dependencies.sdl2]
 version = "*"
 features = ["image", "ttf"]
