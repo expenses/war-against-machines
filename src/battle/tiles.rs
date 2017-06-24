@@ -5,10 +5,10 @@ use battle::units::{UnitSide, Units};
 use utils::distance_under;
 use items::{Item, ItemType};
 
-const UNIT_SIGHT: f32 = 7.5;
+pub const UNIT_SIGHT: f32 = 7.5;
 
 // The visibility of the tile
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub enum Visibility {
     Visible,
     Foggy,
@@ -151,18 +151,14 @@ impl Tiles {
         for x in 0 .. self.cols {
             for y in 0 .. self.rows {
                 let tile = self.at_mut(x, y);
-
-                let unit_visible = visible(x, y, UnitSide::Friendly, units);
                 
-                if unit_visible {
+                if visible(x, y, UnitSide::Friendly, units) {
                     tile.unit_visibility = Visibility::Visible;
                 } else if tile.unit_visibility != Visibility::Invisible {
                     tile.unit_visibility = Visibility::Foggy;
                 }
-
-                let enemy_visible = visible(x, y, UnitSide::Enemy, units);
                 
-                if enemy_visible {
+                if visible(x, y, UnitSide::Enemy, units) {
                     tile.enemy_visibility = Visibility::Visible;
                 } else if tile.enemy_visibility != Visibility::Invisible {
                     tile.enemy_visibility = Visibility::Foggy;

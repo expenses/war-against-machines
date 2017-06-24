@@ -12,8 +12,6 @@ const DEFAULT_SIZE: usize = 20;
 const SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
 
-const MIN_UNITS: usize = 1;
-const MAX_UNITS: usize = 9;
 const DEFAULT_UNITS: usize = 3;
 const DEFAULT_UNIT_TYPE: UnitType = UnitType::Squaddie;
 const DEFAULT_ENEMY_TYPE: UnitType = UnitType::Machine;
@@ -99,8 +97,8 @@ impl SkirmishSettings {
     fn bound(&mut self) {
         self.cols = bound(self.cols, MIN_SIZE, MAX_SIZE);
         self.rows = bound(self.rows, MIN_SIZE, MAX_SIZE);
-        self.units = bound(self.units, MIN_UNITS, MAX_UNITS);
-        self.enemies = bound(self.enemies, MIN_UNITS, MAX_UNITS);
+        self.units = bound(self.units, 1, self.cols);
+        self.enemies = bound(self.enemies, 1, self.cols);
     }
 
     fn change_unit_type(&mut self) {

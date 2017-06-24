@@ -1,9 +1,29 @@
-extern crate rand;
+use rand;
 
 use battle::map::Map;
+use battle::units::UnitSide;
 use battle::paths::PathPoint;
 use battle::animations::{Walk, Bullet, Dying, Animation, Animations};
 use utils::chance_to_hit;
+
+pub struct FinishedCommand {
+    unit_id: usize
+}
+
+impl FinishedCommand {
+    pub fn new(unit_id: usize) -> FinishedCommand {
+        FinishedCommand {
+            unit_id
+        }
+    }
+
+    fn process(&self, map: &mut Map) {
+        if let Some(unit) = map.units.get_mut(self.unit_id) {
+            unit.moves = 0;
+        }
+    }
+}
+
 
 pub struct FireCommand {
     unit_id: usize,
@@ -56,13 +76,19 @@ impl FireCommand {
 
 pub struct WalkCommand {
     unit_id: usize,
+    visible_units: usize,
     path: Vec<PathPoint>,
 }
 
 impl WalkCommand {
-    pub fn new(unit_id: usize, path: Vec<PathPoint>) -> WalkCommand {
+    pub fn new(unit_id: usize, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
+        let visible_units = match map.units.get(unit_id).unwrap().side {
+            UnitSide::Friendly => map.visible(UnitSide::Enemy),
+            UnitSide::Enemy => map.visible(UnitSide::Friendly)
+        };
+
         WalkCommand {
-            unit_id, path
+            unit_id, path, visible_units
         }
     }
 
@@ -73,6 +99,13 @@ impl WalkCommand {
         };
 
         if let Some(unit) = map.units.get(self.unit_id) {
+            if match unit.side {
+                UnitSide::Friendly => map.visible(UnitSide::Enemy),
+                UnitSide::Enemy => map.visible(UnitSide::Friendly)
+            } > self.visible_units {
+                return true;
+            }
+
             if unit.moves >= cost && map.units.at(x, y).is_none() {
                 animation_queue.push(Animation::Walk(Walk::new(self.unit_id, x, y, cost)));
             } else {
@@ -88,7 +121,8 @@ impl WalkCommand {
 
 pub enum Command {
     Fire(FireCommand),
-    Walk(WalkCommand)
+    Walk(WalkCommand),
+    Finished(FinishedCommand)
 }
 
 
@@ -107,6 +141,7 @@ impl CommandQueue {
         let finished = match self.commands.first_mut() {
             Some(&mut Command::Fire(ref mut fire)) => {fire.process(map, animations); true},
             Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations),
+            Some(&mut Command::Finished(ref mut finished)) => {finished.process(map); true}
             _ => false
         };
 
@@ -117,5 +152,9 @@ impl CommandQueue {
 
     pub fn push(&mut self, command: Command) {
         self.commands.push(command);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.commands.is_empty()
     }
 }

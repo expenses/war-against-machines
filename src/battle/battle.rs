@@ -1,6 +1,8 @@
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 
+use std::fmt;
+
 use battle::drawer::Drawer;
 use battle::paths::{pathfind, PathPoint};
 use battle::animations::Animations;
@@ -21,6 +23,21 @@ pub struct Cursor {
     pub position: Option<(usize, usize)>
 }
 
+#[derive(Eq, PartialEq)]
+enum Controller {
+    Player,
+    AI
+}
+
+impl fmt::Display for Controller {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            &Controller::Player => "Player",
+            &Controller::AI => "AI"
+        })
+    }
+}
+
 // The Map struct
 pub struct Battle {
     pub map: Map,
@@ -32,7 +49,8 @@ pub struct Battle {
     turn: u16,
     ui: UI,
     pub animations: Animations,
-    pub command_queue: CommandQueue
+    pub command_queue: CommandQueue,
+    controller: Controller
 }
 
 impl Battle {
@@ -69,7 +87,8 @@ impl Battle {
             turn: 1,
             ui: ui,
             animations: Animations::new(),
-            command_queue: CommandQueue::new()
+            command_queue: CommandQueue::new(),
+            controller: Controller::Player
         }
     }
 
@@ -112,9 +131,19 @@ impl Battle {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
 
-        if self.animations.empty() {
+        if self.controller == Controller::AI && self.command_queue.is_empty() && self.animations.is_empty() {
+            if !ai::make_move(&self.map, &mut self.command_queue) {
+                self.controller = Controller::Player;
+                self.turn += 1;
+            }
+        }
+
+
+        if self.animations.is_empty() {
             self.command_queue.update(&mut self.map, &mut self.animations);
         }
+
+
 
         // Update the animation queue
         self.animations.update(&mut self.map);
@@ -144,7 +173,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.set_text(0, format!("Turn: {}, Selected: {}", self.turn, selected));
+        self.ui.set_text(0, format!("Turn: {} - {}, Selected: {}", self.turn, self.controller, selected));
 
         // Draw the UI
         self.ui.draw(ctx, resources);
@@ -216,7 +245,7 @@ impl Battle {
 
                         // If the paths are the same and the squaddie can move to the destination, get rid of the path
                         self.path = if same_path {
-                            self.command_queue.push(Command::Walk(WalkCommand::new(id, points)));
+                            self.command_queue.push(Command::Walk(WalkCommand::new(id, &self.map, points)));
                             None
                         } else {
                             Some(points)
@@ -237,12 +266,12 @@ impl Battle {
 
     // End the current turn
     fn end_turn(&mut self) {
-        for (_, unit) in self.map.units.iter_mut() {
-            unit.moves = unit.max_moves;
-        }
+        if self.controller == Controller::Player {
+            for (_, unit) in self.map.units.iter_mut() {
+                unit.moves = unit.max_moves;
+            }
 
-        ai::take_turn(&mut self.map, &mut self.command_queue);
-
-        self.turn += 1;
+            self.controller = Controller::AI;
+        }   
     }
 }

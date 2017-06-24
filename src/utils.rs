@@ -28,10 +28,10 @@ pub fn distance_under(from_x: usize, from_y: usize, target_x: usize, target_y: u
 }
 
 // A change to hit function based on a fairly simple sigmoid curve.
-pub fn chance_to_hit(from_x: usize, from_y: usize, target_x: usize, target_y: usize) -> f32 {
-    let distance = distance(from_x, from_y, target_x, target_y);
+pub fn chance_to_hit(firing_x: usize, firing_y: usize, target_x: usize, target_y: usize) -> f32 {
+    let distance = distance(firing_x, firing_y, target_x, target_y);
 
-    1.0 / (1.0 + 0.02 * 4.0_f32.powf(distance / 3.0))
+    (1.0 / (1.0 + 0.02 * 4.0_f32.powf(distance / 3.0)))
 }
 
 // Convert rotation for the map

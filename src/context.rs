@@ -1,5 +1,4 @@
-extern crate sdl2;
-
+use sdl2;
 use sdl2::rect::Rect;
 use sdl2::video::{WindowContext, Window};
 use sdl2::render::{Texture, TextureCreator};

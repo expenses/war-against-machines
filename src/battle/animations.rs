@@ -183,7 +183,7 @@ impl Animations {
         self.animations.push(animation);
     }
 
-    pub fn empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.animations.is_empty()
     }
 }
