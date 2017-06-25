@@ -6,13 +6,19 @@ rust:
   - beta
   - nightly
 
+# Cache packages
+cache: cargo
+
 # And both OSes
 os:
   - linux
   - osx
 
-# Breakages in nightly do not fail the overall build
 matrix:
+  # Finish once the required builds complete
+  fast_finish: true
+
+  # Breakages in nightly do not fail the overall build
   allow_failures:
     - rust: nightly
 
