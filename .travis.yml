@@ -18,6 +18,10 @@ matrix:
 
 before_install:
   # Install sdl2 on OSX
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]] then
-  - brew install sdl2 sdl2_image sdl2_ttf
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]
+  - then brew install sdl2 sdl2_image sdl2_ttf
   - fi
+  # Install sdl2 on Linux
+  # - if [ "$TRAVIS_OS_NAME" == "linux" ]
+  # - then ...
+  # - fi
