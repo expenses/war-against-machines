@@ -20,4 +20,4 @@ before_install:
   # Install sdl2 on OSX
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install sdl2 sdl2_image sdl2_ttf; fi
   # Install sdl2 on Linux
-  # - if [ "$TRAVIS_OS_NAME" == "linux" ]; then ...; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -qq libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev; fi
