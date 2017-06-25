@@ -6,11 +6,18 @@ rust:
   - beta
   - nightly
 
+# And both OSes
+os:
+  - linux
+  - osx
+
 # Breakages in nightly do not fail the overall build
 matrix:
   allow_failures:
     - rust: nightly
 
-os:
-  - linux
-  - osx
+before_install:
+  # Install sdl2 on OSX
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]] then
+  - brew install sdl2 sdl2_image sdl2_ttf
+  - fi
