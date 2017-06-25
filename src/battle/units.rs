@@ -38,7 +38,8 @@ const LAST_NAMES: &[&str] = &[
     "Connor",
     "Reese",
     "Rhodes",
-    "Zhou"
+    "Zhou",
+    "Jensen"
 ];
 
 fn generate_squaddie_name() -> String {

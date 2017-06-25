@@ -1,8 +1,8 @@
 // The type of an item
 #[derive(Copy, Clone)]
 pub enum ItemType {
-    Scrap,
-    Weapon,
+    _Scrap,
+    _Weapon,
     SquaddieCorpse,
     MachineCorpse,
     Skeleton
@@ -19,8 +19,8 @@ impl Item {
     // Create a new item
     pub fn new(tag: ItemType) -> Item {
         let (weight, image) = match tag {
-            ItemType::Scrap => (5, "scrap"),
-            ItemType::Weapon => (4, "weapon"),
+            ItemType::_Scrap => (5, "scrap"),
+            ItemType::_Weapon => (4, "weapon"),
             ItemType::SquaddieCorpse => (6, "squaddie_corpse"),
             ItemType::MachineCorpse => (8, "machine_corpse"),
             ItemType::Skeleton => (4, "skeleton")

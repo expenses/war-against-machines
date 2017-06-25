@@ -68,19 +68,14 @@ impl Context {
         self.canvas.present()
     }
 
-    // Get the size of the canvas
-    pub fn size(&self) -> (u32, u32) {
-        self.canvas.output_size().unwrap()
-    }
-
     // Get the width of the canvas
     pub fn width(&self) -> u32 {
-        self.size().0
+        self.canvas.output_size().unwrap().0
     }
 
     // Get the height of the canvas
     pub fn height(&self) -> u32 {
-        self.size().1
+        self.canvas.output_size().unwrap().1
     }
 
     // 'Quit' the game

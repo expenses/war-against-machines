@@ -145,7 +145,7 @@ impl Drawer {
                     }
 
                     // Draw the cursor if it's not in fire mode
-                    if !battle.cursor_on_enemy() {
+                    if !battle.cursor_on_enemy() || battle.selected.is_none() {
                         if let Some((cursor_x, cursor_y)) = battle.cursor.position {
                             if cursor_x == x && cursor_y == y {
                                 // Determine the cursor colour
@@ -246,7 +246,7 @@ impl Drawer {
         }
 
         // Draw the fire crosshair
-        if battle.cursor_on_enemy() {
+        if battle.cursor_on_enemy() && battle.selected.is_some() {
             if let Some((x, y)) = battle.cursor.position {
                 let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 

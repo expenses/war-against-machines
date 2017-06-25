@@ -82,7 +82,6 @@ impl Tiles {
         let mut rng = rand::thread_rng();
         let ruins = &["ruin_1", "ruin_2", "ruin_3"];
         let bases = &["base_1", "base_2"];
-        let items = &[ItemType::Weapon, ItemType::Scrap, ItemType::Skeleton];
 
         for x in 0 .. cols {
             for y in 0 .. rows {
@@ -90,8 +89,8 @@ impl Tiles {
                 let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
                 // Randomly drop items
-                if rand::random::<f32>() < 0.075 {
-                    tile.items.push(Item::new(*rng.choose(items).unwrap()));
+                if rand::random::<f32>() < 0.025 {
+                    tile.items.push(Item::new(ItemType::Skeleton));
                 }
 
                 // Add in ruins

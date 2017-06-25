@@ -1,0 +1,16 @@
+language: rust
+
+# Test all 3 channels
+rust:
+  - stable
+  - beta
+  - nightly
+
+# Breakages in nightly do not fail the overall build
+matrix:
+  allow_failures:
+    - rust: nightly
+
+os:
+  - linux
+  - osx
