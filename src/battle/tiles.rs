@@ -18,8 +18,8 @@ pub enum Visibility {
 pub struct Tile {
     pub base: String,
     pub obstacle: Option<String>,
-    pub unit_visibility: Visibility,
-    pub enemy_visibility: Visibility,
+    pub player_visibility: Visibility,
+    pub ai_visibility: Visibility,
     pub items: Vec<Item>
 }
 
@@ -29,8 +29,8 @@ impl Tile {
         Tile {
             base: base.into(),
             obstacle: None,
-            unit_visibility: Visibility::Invisible,
-            enemy_visibility: Visibility::Invisible,
+            player_visibility: Visibility::Invisible,
+            ai_visibility: Visibility::Invisible,
             items: Vec::new()
         }
     }
@@ -43,7 +43,7 @@ impl Tile {
 
     /// return if the tile is visible to the player
     pub fn visible(&self) -> bool {
-        self.unit_visibility != Visibility::Invisible
+        self.player_visibility != Visibility::Invisible
     }
 
     /// return if the tile can be walked on
@@ -146,16 +146,16 @@ impl Tiles {
             for y in 0 .. self.rows {
                 let tile = self.at_mut(x, y);
                 
-                if units.visible(x, y, UnitSide::Friendly) {
-                    tile.unit_visibility = Visibility::Visible;
-                } else if tile.unit_visibility != Visibility::Invisible {
-                    tile.unit_visibility = Visibility::Foggy;
+                if units.visible(x, y, UnitSide::Player) {
+                    tile.player_visibility = Visibility::Visible;
+                } else if tile.player_visibility != Visibility::Invisible {
+                    tile.player_visibility = Visibility::Foggy;
                 }
                 
-                if units.visible(x, y, UnitSide::Enemy) {
-                    tile.enemy_visibility = Visibility::Visible;
-                } else if tile.enemy_visibility != Visibility::Invisible {
-                    tile.enemy_visibility = Visibility::Foggy;
+                if units.visible(x, y, UnitSide::AI) {
+                    tile.ai_visibility = Visibility::Visible;
+                } else if tile.ai_visibility != Visibility::Invisible {
+                    tile.ai_visibility = Visibility::Foggy;
                 }
             }
         }

@@ -97,14 +97,14 @@ impl Battle {
 
     /// Start up the map
     pub fn start(&mut self, settings: &SkirmishSettings) {
-        // Add squaddies
-        for x in 0 .. settings.units {
-            self.map.units.push(Unit::new(settings.player_unit_type, UnitSide::Friendly, x, 0));
+        // Add player units
+        for x in 0 .. settings.player_units {
+            self.map.units.push(Unit::new(settings.player_unit_type, UnitSide::Player, x, 0));
         }
 
-        // Add enemies
-        for y in settings.cols - settings.enemies .. settings.cols {
-            self.map.units.push(Unit::new(settings.ai_unit_type, UnitSide::Enemy, y, settings.rows - 1));
+        // Add ai units
+        for y in settings.cols - settings.ai_units .. settings.cols {
+            self.map.units.push(Unit::new(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1));
         }
         
         // Generate tiles
@@ -159,10 +159,10 @@ impl Battle {
 
     /// Draw the UI
     pub fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
-        // Get  string of info about the selected unit
+        // Get a string of info about the selected unit
         let selected = match self.selected.and_then(|id| self.map.units.get(id)) {
             Some(unit) => {
-                if unit.side == UnitSide::Friendly {
+                if unit.side == UnitSide::Player {
                     format!(
                         "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
                         unit.name, unit.moves, unit.health, unit.weapon.name
@@ -209,20 +209,20 @@ impl Battle {
                 }
             },
             // Check if the cursor has a position and a unit is selected
-            MouseButton::Right => if let Some((x, y, id)) = self.cursor.position.and_then(|(x, y)|
-                                                                self.selected.map(|id| (x, y, id))) {
+            MouseButton::Right => if let Some((x, y, player_unit_id)) = self.cursor.position.and_then(|(x, y)|
+                                                                        self.selected.map(|player_unit_id| (x, y, player_unit_id))) {
                 match self.map.units.at_i(x, y) {
-                    Some(enemy_id) => {
-                        if self.map.units.get(enemy_id).unwrap().side == UnitSide::Enemy {
+                    Some(ai_unit_id) => {
+                        if self.map.units.get(ai_unit_id).unwrap().side == UnitSide::AI {
                             self.path = None;
-                            self.command_queue.push(Command::Fire(FireCommand::new(id, enemy_id)));
+                            self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit_id)));
                         }
                     }
                     _ => {
-                        let unit = self.map.units.get(id).unwrap();
+                        let unit = self.map.units.get(player_unit_id).unwrap();
 
-                        // Do nothing if fire mode is on or if the unit isn't friendly
-                        if unit.side != UnitSide::Friendly {
+                        // Do nothing if the unit isn't a player unit
+                        if unit.side != UnitSide::Player {
                             return;
                         // Or the the target location is selected
                         } else if self.map.taken(x, y) {
@@ -245,9 +245,9 @@ impl Battle {
                             _ => false
                         };
 
-                        // If the paths are the same and the squaddie can move to the destination, get rid of the path
+                        // If the paths are the same and the player unit can move to the destination, get rid of the path
                         self.path = if same_path {
-                            self.command_queue.push(Command::Walk(WalkCommand::new(id, &self.map, points)));
+                            self.command_queue.push(Command::Walk(WalkCommand::new(player_unit_id, &self.map, points)));
                             None
                         } else {
                             Some(points)
@@ -259,11 +259,11 @@ impl Battle {
         }
     }
 
-    /// Work out if the cursor is on an enemy
-    pub fn cursor_on_enemy(&self) -> bool {
+    /// Work out if the cursor is on an ai unit
+    pub fn cursor_on_ai_unit(&self) -> bool {
         self.cursor.position
             .and_then(|(x, y)| self.map.units.at(x, y))
-            .map(|(_, unit)| unit.side == UnitSide::Enemy)
+            .map(|(_, unit)| unit.side == UnitSide::AI)
             .unwrap_or(false)
     }
 

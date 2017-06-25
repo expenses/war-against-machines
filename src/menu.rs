@@ -9,14 +9,15 @@ use utils::bound;
 use battle::units::UnitType;
 
 const MIN_SIZE: usize = 10;
-const MAX_SIZE: usize = 50;
-const DEFAULT_SIZE: usize = 20;
+const MAX_SIZE: usize = 60;
+const DEFAULT_SIZE: usize = 30;
 const SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
 
-const DEFAULT_UNITS: usize = 3;
-const DEFAULT_UNIT_TYPE: UnitType = UnitType::Squaddie;
-const DEFAULT_ENEMY_TYPE: UnitType = UnitType::Machine;
+const DEFAULT_PLAYER_UNITS: usize = 6;
+const DEFAULT_AI_UNITS: usize = 4;
+const DEFAULT_PLAYER_UNIT_TYPE: UnitType = UnitType::Squaddie;
+const DEFAULT_AI_UNIT_TYPE: UnitType = UnitType::Machine;
 
 /// Callbacks that can be returned from key presses
 pub enum Callback {
@@ -80,8 +81,8 @@ impl Submenu {
 pub struct SkirmishSettings {
     pub cols: usize,
     pub rows: usize,
-    pub units: usize,
-    pub enemies: usize,
+    pub player_units: usize,
+    pub ai_units: usize,
     pub player_unit_type: UnitType,
     pub ai_unit_type: UnitType
 }
@@ -92,10 +93,10 @@ impl SkirmishSettings {
         SkirmishSettings {
             cols: DEFAULT_SIZE,
             rows: DEFAULT_SIZE,
-            units: DEFAULT_UNITS,
-            enemies: DEFAULT_UNITS,
-            player_unit_type: DEFAULT_UNIT_TYPE,
-            ai_unit_type: DEFAULT_ENEMY_TYPE
+            player_units: DEFAULT_PLAYER_UNITS,
+            ai_units: DEFAULT_AI_UNITS,
+            player_unit_type: DEFAULT_PLAYER_UNIT_TYPE,
+            ai_unit_type: DEFAULT_AI_UNIT_TYPE
         }
     }
 
@@ -103,8 +104,8 @@ impl SkirmishSettings {
     pub fn bound(&mut self) {
         self.cols = bound(self.cols, MIN_SIZE, MAX_SIZE);
         self.rows = bound(self.rows, MIN_SIZE, MAX_SIZE);
-        self.units = bound(self.units, 1, self.cols);
-        self.enemies = bound(self.enemies, 1, self.cols);
+        self.player_units = bound(self.player_units, 1, self.cols);
+        self.ai_units = bound(self.ai_units, 1, self.cols);
     }
 
     /// Switch the player unit type
@@ -141,20 +142,22 @@ pub struct Menu {
 impl Menu {
     /// Create a new `Menu`
     pub fn new() -> Menu {
+        let skirmish_settings = SkirmishSettings::new();
+
         Menu {
-            skirmish_settings: SkirmishSettings::new(),
             main: Submenu::new(vec!["Skirmish".into(), "Quit".into()]),
             skirmish: Submenu::new(vec![
                     "Play".into(),
-                    format!("Cols: {}", DEFAULT_SIZE),
-                    format!("Rows: {}", DEFAULT_SIZE),
-                    format!("Units: {}", DEFAULT_UNITS),
-                    format!("Enemies: {}", DEFAULT_UNITS),
-                    format!("Unit type: {}", DEFAULT_UNIT_TYPE),
-                    format!("Enemy type: {}", DEFAULT_ENEMY_TYPE),
+                    format!("Cols: {}", skirmish_settings.cols),
+                    format!("Rows: {}", skirmish_settings.rows),
+                    format!("Player units: {}", skirmish_settings.player_units),
+                    format!("AI units: {}", skirmish_settings.ai_units),
+                    format!("Player unit type: {}", skirmish_settings.player_unit_type),
+                    format!("AI unit type: {}", skirmish_settings.ai_unit_type),
                     "Back".into()
             ]),
-            submenu: Selected::Main
+            submenu: Selected::Main,
+            skirmish_settings,
         }
     }
 
@@ -177,22 +180,22 @@ impl Menu {
         self.skirmish_settings.bound();
         self.skirmish.set_item(1, format!("Cols: {}", self.skirmish_settings.cols));
         self.skirmish.set_item(2, format!("Rows: {}", self.skirmish_settings.rows));
-        self.skirmish.set_item(3, format!("Units: {}", self.skirmish_settings.units));
-        self.skirmish.set_item(4, format!("Enemies: {}", self.skirmish_settings.enemies));
-        self.skirmish.set_item(5, format!("Unit type: {}", self.skirmish_settings.player_unit_type));
-        self.skirmish.set_item(6, format!("Enemy type: {}", self.skirmish_settings.ai_unit_type));
+        self.skirmish.set_item(3, format!("Player units: {}", self.skirmish_settings.player_units));
+        self.skirmish.set_item(4, format!("AI units: {}", self.skirmish_settings.ai_units));
+        self.skirmish.set_item(5, format!("Player unit type: {}", self.skirmish_settings.player_unit_type));
+        self.skirmish.set_item(6, format!("AI unit type: {}", self.skirmish_settings.ai_unit_type));
     }
 
     /// Handle key presses, returning an optional callback
     pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode) -> Option<Callback> {
         match key {
             // Rotate the selections up
-            Keycode::Up => match self.submenu {
+            Keycode::Up | Keycode::W => match self.submenu {
                 Selected::Main => self.main.rotate_up(),
                 Selected::Skirmish => self.skirmish.rotate_up()
             },
             // Rotate the selections down
-            Keycode::Down => match self.submenu {
+            Keycode::Down | Keycode::S => match self.submenu {
                 Selected::Main => self.main.rotate_down(),
                 Selected::Skirmish => self.skirmish.rotate_down()
             },
@@ -209,32 +212,33 @@ impl Menu {
                     _ => {}
                 }
             },
-            // Lower the cols/rows values
-            Keycode::Left => match self.submenu {
+            // Lower the skimish settings
+            Keycode::Left | Keycode::A => match self.submenu {
                 Selected::Skirmish => match self.skirmish.selection {
                     1 => { self.skirmish_settings.cols -= SIZE_CHANGE; self.refresh_skirmish(); },
                     2 => { self.skirmish_settings.rows -= SIZE_CHANGE; self.refresh_skirmish(); },
-                    3 => { self.skirmish_settings.units -= 1; self.refresh_skirmish(); },
-                    4 => { self.skirmish_settings.enemies -= 1; self.refresh_skirmish(); },
+                    3 => { self.skirmish_settings.player_units -= 1; self.refresh_skirmish(); },
+                    4 => { self.skirmish_settings.ai_units -= 1; self.refresh_skirmish(); },
                     5 => { self.skirmish_settings.change_player_unit_type(); self.refresh_skirmish(); },
                     6 => { self.skirmish_settings.change_ai_unit_type(); self.refresh_skirmish(); },
                     _ => {}
                 },
                 _ => {}
             },
-            // Raise the cols/rows values
-            Keycode::Right => match self.submenu {
+            // Raise the skimish settings
+            Keycode::Right | Keycode::D => match self.submenu {
                 Selected::Skirmish => match self.skirmish.selection {
                     1 => { self.skirmish_settings.cols += SIZE_CHANGE; self.refresh_skirmish(); },
                     2 => { self.skirmish_settings.rows += SIZE_CHANGE; self.refresh_skirmish(); },
-                    3 => { self.skirmish_settings.units += 1; self.refresh_skirmish(); },
-                    4 => { self.skirmish_settings.enemies += 1; self.refresh_skirmish(); },
+                    3 => { self.skirmish_settings.player_units += 1; self.refresh_skirmish(); },
+                    4 => { self.skirmish_settings.ai_units += 1; self.refresh_skirmish(); },
                     5 => { self.skirmish_settings.change_player_unit_type(); self.refresh_skirmish(); },
                     6 => { self.skirmish_settings.change_ai_unit_type(); self.refresh_skirmish(); },
                     _ => {}
                 },
                 _ => {}
             },
+            Keycode::Escape => ctx.quit(),
             _ => {}
         }
 

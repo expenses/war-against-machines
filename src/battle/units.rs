@@ -30,7 +30,10 @@ pub const FIRST_NAMES: &[&str] = &[
     "Sarah",
     "Dylan",
     "Connor",
-    "Hawk"
+    "Hawk",
+    "Laura",
+    "Bobby",
+    "Jane"
 ];
 
 /// A list of last names to pick from
@@ -46,7 +49,11 @@ pub const LAST_NAMES: &[&str] = &[
     "Reese",
     "Rhodes",
     "Zhou",
-    "Jensen"
+    "Jensen",
+    "Palmer",
+    "Mason",
+    "Johnson",
+    "Briggs"
 ];
 
 /// Generate a new random squaddie name
@@ -88,9 +95,9 @@ impl fmt::Display for UnitType {
 /// Which side the unit is on
 #[derive(Eq, PartialEq)]
 pub enum UnitSide {
-    Friendly,
+    Player,
     // Neutral,
-    Enemy
+    AI
 }
 
 /// A struct for a unit in the game

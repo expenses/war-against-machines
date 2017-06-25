@@ -93,8 +93,8 @@ impl WalkCommand {
     /// Create a new walk command
     pub fn new(unit_id: usize, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
         let visible_units = match map.units.get(unit_id).unwrap().side {
-            UnitSide::Friendly => map.visible(UnitSide::Enemy),
-            UnitSide::Enemy => map.visible(UnitSide::Friendly)
+            UnitSide::Player => map.visible(UnitSide::AI),
+            UnitSide::AI => map.visible(UnitSide::Player)
         };
 
         WalkCommand {
@@ -112,8 +112,8 @@ impl WalkCommand {
 
         if let Some(unit) = map.units.get(self.unit_id) {
             if match unit.side {
-                UnitSide::Friendly => map.visible(UnitSide::Enemy),
-                UnitSide::Enemy => map.visible(UnitSide::Friendly)
+                UnitSide::Player => map.visible(UnitSide::AI),
+                UnitSide::AI => map.visible(UnitSide::Player)
             } > self.visible_units {
                 return true;
             }

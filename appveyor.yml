@@ -1,0 +1,58 @@
+# Set up environment
+environment:
+  global:
+    NAME: war-against-machines
+    TOOLCHAIN: x86_64-pc-windows-msvc
+    LIB: C:\Users\appveyor\.multirust\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\x86_64-pc-windows-msvc\lib
+
+install:
+  # Install Rust (following https://github.com/BurntSushi/ripgrep/blob/master/appveyor.yml)
+  - curl -sSf -o rustup-init.exe https://win.rustup.rs/
+  - rustup-init.exe -y --default-host %TOOLCHAIN%
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - rustc --version
+  - cargo --version
+  # Install SDL2 (following https://github.com/AngryLawyer/rust-sdl2#windows-msvc)
+  - mkdir release
+  # SDL2
+  - appveyor DownloadFile http://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip
+  - 7z x SDL2-devel-2.0.5-VC.zip
+  - copy SDL2-2.0.5\lib\x64\*.lib %LIB%
+  - copy SDL2-2.0.5\lib\x64\*.dll release
+  # SDL2 ttf
+  - appveyor DownloadFile https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.14-VC.zip
+  - 7z x SDL2_ttf-devel-2.0.14-VC.zip
+  - copy SDL2_ttf-2.0.14\lib\x64\*.lib %LIB%
+  - copy SDL2_ttf-2.0.14\lib\x64\*.dll release
+  # SDL2 image
+  - appveyor DownloadFile https://www.libsdl.org/projects/SDL_image/release/SDL2_image-devel-2.0.1-VC.zip
+  - 7z x SDL2_image-devel-2.0.1-VC.zip
+  - copy SDL2_image-2.0.1\lib\x64\*.lib %LIB%
+  - copy SDL2_image-2.0.1\lib\x64\*.dll release
+
+# Don't build the project (because we're using cargo test)
+build: false
+
+# Build and test the project
+test_script:
+  - cargo build --verbose
+  - cargo test --verbose
+
+# Build and zip the release
+before_deploy:
+  - cargo build --release
+  - move target\release\%NAME%.exe release
+  - move resources release
+  - cd release
+  - 7z a -r %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip %NAME%.exe resources *.dll
+  - appveyor PushArtifact %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip
+
+# Deploy the release to github
+deploy:
+  description: "Automatically deployed release"
+  artifact: "%NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip"
+  provider: GitHub
+  auth_token:
+    secure: FLGM60dWmIBfbJpCN4eUPB/PAZm2lV5Ft8ZuNoCWkXAO+y6n1VV2E21pP4d/CEl8
+  on:
+    appveyor_repo_tag: true

@@ -1,35 +1,59 @@
 language: rust
 
-# Test all 3 channels
-rust:
-  - stable
-  - beta
-  - nightly
-
-# Cache packages
-cache: cargo
-
-# And both OSes
+# Test both OSes
 os:
   - linux
   - osx
 
-# Store build artifacts
-addons:
-  artifacts: true
+# Cache packages
+cache: cargo
 
-matrix:
-  # Finish once the required builds complete
-  fast_finish: true
-
-  # Breakages in nightly do not fail the overall build
-  allow_failures:
-    - rust: nightly
+# Use Trusty Ubuntu (14.04 LTS), not Precise (12.04 LTS)
+dist: trusty
 
 before_install:
-  # Install sdl2 on OSX
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install sdl2 sdl2_image sdl2_ttf; fi
-  # Install sdl2 on Linux
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then yes | sudo add-apt-repository ppa:zoogie/sdl2-snapshots; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update -qq; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -qq libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev; fi
+  # Install SDL2 on OS X
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      brew install
+        sdl2
+        sdl2_image
+        sdl2_ttf;
+    fi
+  # Install SDL2 on Linux
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      yes | sudo add-apt-repository ppa:zoogie/sdl2-snapshots;
+      sudo apt-get update -qq;
+      sudo apt-get install -qq
+        libsdl2-dev
+        libsdl2-image-dev
+        libsdl2-ttf-dev;
+    fi
+
+# Build and zip the release
+before_deploy:
+  - cargo build --release
+  - mkdir release
+  - mv target/release/war-against-machines release
+  - mv resources release
+  - cd release
+  - zip -r war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip war-against-machines resources
+
+# And deploy it
+deploy:
+  # Deploy using Github Releases
+  provider: releases
+  # Use an encrypted api key
+  api_key:
+    secure: "diyX6CZzBqK8E1gvO41tbPrXzGBL1ATs5VNIa9UpvBUl90BEu3GXNP45p5xxGrqsU+T4psznd6B41dyk4yn99MmXdhusZvkfGx3UD8qIUCn+gPa+FS1JHTtVhLWt3GQU/
+AMLl0rNTHTd7A/w9n2M7OSgQrXuB/hDtKHbC+v7QEunE9VCN8ZT3IpMxr4aF9MEEoTFHJBRsXTY4iJLNtKqtrOJFhUMfLf73Baxnkis+H8U4Wp1NDBHnmlmYmUeX+r4VjPPqr4zNgELb
+lSrt+gAeyB8NWcJ9VxYddun0U8buVaI11s0OHWfJXmJq5EEMrP8XaloAMZnqekLrZtslmyvTh6yABysTHVPLGFDXHsF+7gsulH+qCA5jnWx6tno8qCRQ0nspR2yRLMMlXrtwP3Eswz/l
+H0Ms5Wlx46v08CkvjA8RtHNXZxNzdMs7xJh+4TxCGFQai+GPBY59E48mqXpAgH6mify8bXAVoSvvuP9A4C7zmTHFU0jouWOwuF3e4vXEflN5wIOJeqy3oDXXh+CtNHze3nU2VxeIYYHU
+bJbh2RZdOmDnWY9Xow+F+u0tbcrMSukhOexBg5aCWdMCAto3anh4AYlFerMnze3he8Vx9wKGHmOpspVOyGQLGaV+nmh5cuNcUy3X+9NOBy1zTDVrVC4DtP5h/2rDXnVOTPgCkU="
+  # The file to upload
+  file: $TRAVIS_BUILD_DIR/release/war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip
+  # Don't clean up the directory
+  skip_cleanup: true
+  # Only deploy on tagged releases to the main repo
+  on:
+    repo: expenses/war-against-machines
+    tags: true

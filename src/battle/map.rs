@@ -28,8 +28,8 @@ impl Map {
     pub fn visible(&self, side: UnitSide) -> usize {
         self.units.iter()
             .filter(|&(_, unit)| unit.side == side && match side {
-                UnitSide::Friendly => self.tiles.at(unit.x, unit.y).enemy_visibility,
-                UnitSide::Enemy => self.tiles.at(unit.x, unit.y).unit_visibility
+                UnitSide::Player => self.tiles.at(unit.x, unit.y).ai_visibility,
+                UnitSide::AI => self.tiles.at(unit.x, unit.y).player_visibility
             } == Visibility::Visible)
             .count()
     }

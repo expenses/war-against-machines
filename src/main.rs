@@ -212,8 +212,8 @@ pub fn main() {
     resources.load_image("base_2",  "base/2.png");
     resources.load_image("fog",     "base/fog.png");
     
-    resources.load_image("squaddie",        "unit/squaddie.png");
-    resources.load_image("machine",         "unit/machine.png");
+    resources.load_image("squaddie",    "unit/squaddie.png");
+    resources.load_image("machine",     "unit/machine.png");
     
     resources.load_image("rifle_round",         "bullet/rifle_round.png");
     resources.load_image("machine_gun_round",   "bullet/machine_gun_round.png");

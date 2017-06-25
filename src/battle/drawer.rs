@@ -146,8 +146,8 @@ impl Drawer {
                         canvas.draw(resources.image(&obstacle), screen_x, screen_y);
                     }
 
-                    // Draw the cursor if it's not in fire mode
-                    if !battle.cursor_on_enemy() || battle.selected.is_none() {
+                    // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
+                    if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
                         if let Some((cursor_x, cursor_y)) = battle.cursor.position {
                             if cursor_x == x && cursor_y == y {
                                 // Determine the cursor colour
@@ -164,12 +164,12 @@ impl Drawer {
                         }
                     }
 
-                    if tile.unit_visibility != Visibility::Foggy {
+                    if tile.player_visibility != Visibility::Foggy {
                         for item in &tile.items {
                             canvas.draw(resources.image(&item.image), screen_x, screen_y);
                         }
 
-                        // Draw a squaddie at the position
+                        // Draw a unit at the position
                         if let Some((index, unit)) = map.units.at(x, y) {
                             // Draw the cursor to show that the unit is selected
                             if let Some(selected) = battle.selected {
@@ -219,7 +219,7 @@ impl Drawer {
         if let Some(ref points) = battle.path {
             let mut total_cost = 0;
 
-            // Get the squaddie the path if for
+            // Get the unit the path if for
             let unit = map.units.get(battle.selected.unwrap()).unwrap();
 
             for point in points {
@@ -247,8 +247,8 @@ impl Drawer {
             }
         }
 
-        // Draw the fire crosshair
-        if battle.cursor_on_enemy() && battle.selected.is_some() {
+        // Draw the firing crosshair if the cursor is on an ai unit and a unit is selected
+        if battle.cursor_on_ai_unit() && battle.selected.is_some() {
             if let Some((x, y)) = battle.cursor.position {
                 let (screen_x, screen_y) = canvas.draw_location(x as f32, y as f32);
 
@@ -256,7 +256,7 @@ impl Drawer {
                     // Draw the crosshair
                     canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
 
-                    // Draw the chance-to-hit if a squaddie is selected and an enemy is at the cursor position
+                    // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
                     if let Some((selected, target)) = battle.selected.and_then(|selected|
                         map.units.at_i(x, y).map(|target|
                             (selected, target)
@@ -265,7 +265,7 @@ impl Drawer {
                         let firing = map.units.get(selected).unwrap();
                         let target = map.units.get(target).unwrap();
 
-                        if firing.side == UnitSide::Friendly && target.side == UnitSide::Enemy {
+                        if firing.side == UnitSide::Player && target.side == UnitSide::AI {
                             // Get the chance to hit as a percentage
                             let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
 

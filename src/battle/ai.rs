@@ -113,12 +113,12 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
     }
 }
 
-/// Find the next enemy unit that can be moved, if any
+/// Find the next ai unit that can be moved, if any
 pub fn next_unit(map: &Map) -> Option<(usize, &Unit)> {
     map.units.iter()
-        // Make sure that there is a friendly unit alive and find enemy units with avaliable moves
-        .find(|&(_, unit)| map.units.any_alive(UnitSide::Friendly) &&
-                           unit.side == UnitSide::Enemy && unit.moves > 0)
+        // Make sure that there is a player unit alive and find ai units with avaliable moves
+        .find(|&(_, unit)| map.units.any_alive(UnitSide::Player) &&
+                           unit.side == UnitSide::AI && unit.moves > 0)
         .map(|(unit_id, unit)| (*unit_id, unit))
 }
 
@@ -199,7 +199,7 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
 
 /// Return if the tile cannot be reached by the unit walking in a lateral direction or is invisible
 pub fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
-    map.tiles.at(x, y).enemy_visibility == Visibility::Invisible ||
+    map.tiles.at(x, y).ai_visibility == Visibility::Invisible ||
     (unit.x as i32 - x as i32).abs() as usize * WALK_LATERAL_COST > unit.moves ||
     (unit.y as i32 - y as i32).abs() as usize * WALK_LATERAL_COST > unit.moves
 }
@@ -207,8 +207,8 @@ pub fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
 /// Find the closest target unit to a unit on the map, if any
 pub fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<(usize, &'a Unit)> {
     map.units.iter()
-        .filter(|&(_, target)| target.side == UnitSide::Friendly &&
-                               map.tiles.at(target.x, target.y).enemy_visibility == Visibility::Visible)
+        .filter(|&(_, target)| target.side == UnitSide::Player &&
+                               map.tiles.at(target.x, target.y).ai_visibility == Visibility::Visible)
         .ord_subset_max_by_key(|&(_, target)| chance_to_hit(unit.x, unit.y, target.x, target.y))
         .map(|(i, unit)| (*i, unit))
 }
@@ -232,7 +232,7 @@ pub fn search_score(x: usize, y: usize, map: &Map) -> f32 {
         for tile_y in 0 .. map.tiles.rows {
             // If the tile would be visible, add the score
             if distance_under(x, y, tile_x, tile_y, UNIT_SIGHT) {
-                score += match map.tiles.at(tile_x, tile_y).enemy_visibility {
+                score += match map.tiles.at(tile_x, tile_y).ai_visibility {
                     Visibility::Invisible => 1.0,
                     Visibility::Foggy => 0.1,
                     Visibility::Visible => 0.0
