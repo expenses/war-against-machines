@@ -1,9 +1,11 @@
+//! A battle in the game
+
 pub mod battle;
 pub mod units;
-mod drawer;
-mod map;
-mod tiles;
-mod paths;
-mod animations;
-mod ai;
-mod commands;
+pub mod drawer;
+pub mod map;
+pub mod tiles;
+pub mod paths;
+pub mod animations;
+pub mod ai;
+pub mod commands;

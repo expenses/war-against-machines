@@ -1,22 +1,24 @@
+//! A UI struct to display clickable buttons and text fields
+
 use Resources;
 use context::Context;
 use colours::WHITE;
 
-// The vertical alignment of an item
+/// The vertical alignment of an item
 pub enum VerticalAlignment {
     _Left,
     Middle,
     Right
 }
 
-// The horizontal alignment of an item
+/// The horizontal alignment of an item
 pub enum HorizontalAlignment {
     Top,
     _Middle,
     Bottom
 }
 
-// A button on the UI
+/// A button on the UI
 pub struct Button {
     image: String,
     x: f32,
@@ -30,7 +32,7 @@ pub struct Button {
 }
 
 impl Button {
-    // Add a new button
+    /// Add a new button
     pub fn new(image: String, x: f32, y: f32, scale: f32, resources: &Resources,
                v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {
         let image_resource = resources.image(&image);
@@ -45,8 +47,8 @@ impl Button {
         }
     }
 
-    // Get the location of the button
-    fn get_location(&self, ctx: &mut Context) -> (f32, f32) {
+    /// Get the location of the button
+    pub fn get_location(&self, ctx: &mut Context) -> (f32, f32) {
         let (width, height) = (ctx.width() as f32, ctx.height() as f32);
 
         let x = match self.v_align {
@@ -64,15 +66,15 @@ impl Button {
         (x, y)
     }
 
-    // Draw the button at its location and scale
-    fn draw(&self, ctx: &mut Context, resources: &Resources) {
+    /// Draw the button at its location and scale
+    pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         let (x, y) = self.get_location(ctx);
 
         ctx.draw(resources.image(&self.image), x, y, self.scale);
     }
 
-    // Calculate if the button was pressed
-    fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> bool {
+    /// Calculate if the button was pressed
+    pub fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> bool {
         let (pos_x, pos_y) = self.get_location(ctx);
 
         x >= pos_x && x <= pos_x + self.width &&
@@ -80,7 +82,7 @@ impl Button {
     }
 }
 
-// A text display on the ui
+/// A text display on the UI
 pub struct TextDisplay {
     x: f32,
     y: f32,
@@ -91,7 +93,7 @@ pub struct TextDisplay {
 }
 
 impl TextDisplay {
-    // Create a new text display
+    /// Create a new text display
     pub fn new(x: f32, y: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> TextDisplay {
         TextDisplay {
             x, y, v_align, h_align,
@@ -100,8 +102,8 @@ impl TextDisplay {
         }
     }
 
-    // Draw the text display on the screen
-    fn draw(&self, ctx: &mut Context, resources: &Resources) {
+    /// Draw the text display on the screen
+    pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         let rendered = resources.render("main", &self.text, WHITE);
         let query = rendered.query();
         let (width, height) = (query.width as f32, query.height as f32);
@@ -123,25 +125,26 @@ impl TextDisplay {
     }
 }
 
-// A UI strucy
+/// The UI struct
 pub struct UI {
     pub buttons: Vec<Button>,
     pub text_displays: Vec<TextDisplay>
 }
 
 impl UI {
+    /// Create a new `UI` with vecs of buttons and text displays
     pub fn new(buttons: Vec<Button>, text_displays: Vec<TextDisplay>) -> UI {
         UI {
             buttons, text_displays
         }
     }
 
-    // Set the text of a text display
+    /// Set the text of a text display
     pub fn set_text(&mut self, display: usize, text: String) {
         self.text_displays[display].text = text;
     }
 
-    // Draw all the active buttons and text displays
+    /// Draw all the active buttons and text displays
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         for button in &self.buttons {
             if button.active {
@@ -156,7 +159,7 @@ impl UI {
         }
     }
 
-    // Get the first active clicked button at a location
+    /// Get the first active clicked button at a location
     pub fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> Option<usize> {
         self.buttons.iter()
             .enumerate()

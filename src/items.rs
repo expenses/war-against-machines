@@ -1,4 +1,6 @@
-// The type of an item
+//! The different items in the game
+
+/// The type of an item
 #[derive(Copy, Clone)]
 pub enum ItemType {
     _Scrap,
@@ -8,7 +10,7 @@ pub enum ItemType {
     Skeleton
 }
 
-// An item with a weight value
+/// An item with a weight value
 pub struct Item {
     pub tag: ItemType,
     pub weight: usize,
@@ -16,7 +18,7 @@ pub struct Item {
 }
 
 impl Item {
-    // Create a new item
+    /// Create a new item
     pub fn new(tag: ItemType) -> Item {
         let (weight, image) = match tag {
             ItemType::_Scrap => (5, "scrap"),

@@ -1,3 +1,5 @@
+//! A drawer struct for drawing the map and battle items
+
 use sdl2::render::{Texture, Canvas};
 use sdl2::rect::Rect;
 use sdl2::video::Window;
@@ -19,17 +21,17 @@ const DEFAULT_ZOOM: f32 = 2.0;
 const ZOOM_MAX: f32 = 10.0;
 const ZOOM_MIN: f32 = 1.0;
 
-// Convert coordinates from isometric
-fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
+/// Convert coordinates from isometric
+pub fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
     (x - y, x + y)
 }
 
-// Convert coordinates to isometric
-fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
+/// Convert coordinates to isometric
+pub fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
     (y + x, y - x)
 }
 
-// A struct for writing to a canvas
+/// A struct to abstract drawing to a canvas
 pub struct CanvasTexture<'a> {
     canvas: &'a mut Canvas<Window>,
     width: u32,
@@ -38,27 +40,27 @@ pub struct CanvasTexture<'a> {
 }
 
 impl<'a> CanvasTexture<'a> {
-    // Create a new CanvasTexture
-    fn new(canvas: &'a mut Canvas<Window>, width: u32, height: u32, camera: &'a Camera) -> CanvasTexture<'a> {
+    /// Create a new `CanvasTexture`
+    pub fn new(canvas: &'a mut Canvas<Window>, width: u32, height: u32, camera: &'a Camera) -> CanvasTexture<'a> {
         CanvasTexture {
             canvas, width, height, camera
         }
     }
 
-    // Clear the canvas
-    fn clear(&mut self) {
+    /// Clear the canvas
+    pub fn clear(&mut self) {
         self.canvas.clear();
     }
 
-    // Draw a texture on the canvas at (x, y) at the same size as the image
-    fn draw(&mut self, image: &Texture, x: i32, y: i32) {
+    /// Draw a texture on the canvas at (x, y) at the same size as the image
+    pub fn draw(&mut self, image: &Texture, x: i32, y: i32) {
         let query = image.query();
 
         self.canvas.copy(image, None, Some(Rect::new(x, y, query.width, query.height))).unwrap();
     }
 
-    // Draw a tile at the correct location if it is on screen
-    fn draw_tile(&mut self, image: &Texture, x: usize, y: usize) {
+    /// Draw a tile at the correct location if it is on screen
+    pub fn draw_tile(&mut self, image: &Texture, x: usize, y: usize) {
         let (x, y) = self.draw_location(x as f32, y as f32);
 
         if self.on_screen(x, y) {
@@ -66,16 +68,16 @@ impl<'a> CanvasTexture<'a> {
         }
     }
 
-    // Draw a texture with a particular rotation
-    fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f64) {
+    /// Draw a texture with a particular rotation
+    pub fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f64) {
         let query = image.query();
 
         self.canvas.copy_ex(image, None, Some(Rect::new(x, y, query.width, query.height)),
                             angle, None, false, false).unwrap();
     }
 
-    // Calculate if a tile is on screen
-    fn on_screen(&self, x: i32, y: i32) -> bool {
+    /// Calculate if a tile is on screen
+    pub fn on_screen(&self, x: i32, y: i32) -> bool {
         let min = (-(TILE_IMAGE_SIZE as f32) * self.camera.zoom) as i32;
         let max_x = ((self.width  + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom) as i32;
         let max_y = ((self.height + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom) as i32;
@@ -83,8 +85,8 @@ impl<'a> CanvasTexture<'a> {
         x > min && x < max_x && y > min && y < max_y
     }
 
-    // Calculate the correct position to draw a tile on the screen
-    fn draw_location(&self, x: f32, y: f32) -> (i32, i32) {
+    /// Calculate the correct position to draw a tile on the screen
+    pub fn draw_location(&self, x: f32, y: f32) -> (i32, i32) {
         let (x, y) = from_map_coords(x, y);
         let (tile_width, tile_height) = (TILE_WIDTH as f32, TILE_HEIGHT as f32);
 
@@ -95,27 +97,27 @@ impl<'a> CanvasTexture<'a> {
     }
 }
 
-// A simple camera for what the user is looking at
+/// A simple camera for what the user is looking at
 pub struct Camera {
     pub x: f32,
     pub y: f32,
     pub zoom: f32
 }
 
-// The drawer object
+/// The drawer struct
 pub struct Drawer {
     pub camera: Camera,
 }
 
 impl Drawer {
-    // Create a new Drawer
+    /// Create a new `Drawer`
     pub fn new() -> Drawer {
         Drawer {
             camera: Camera { x: 0.0, y: 0.0, zoom: DEFAULT_ZOOM }
         }
     }
 
-    // Zoom in the camera by a particular amount, checking if it's zoomed in/out too far
+    /// Zoom in the camera by a particular amount, checking if it's zoomed in/out too far
     pub fn zoom(&mut self, amount: f32) {
         self.camera.zoom += amount * self.camera.zoom;
 
@@ -123,7 +125,7 @@ impl Drawer {
         if self.camera.zoom < ZOOM_MIN { self.camera.zoom = ZOOM_MIN; }
     }
 
-    // Draw the map onto a CanvasTexture
+    /// Draw the map onto a `CanvasTexture`
     pub fn draw_to_canvas(&self, canvas: &mut CanvasTexture, resources: &Resources, battle: &Battle) {
         let map = &battle.map;
 
@@ -297,7 +299,8 @@ impl Drawer {
         }
     }
 
-    pub fn draw_map(&self, ctx: &mut Context, resources: &Resources, battle: &Battle) {
+    /// Draw the battle
+    pub fn draw_battle(&self, ctx: &mut Context, resources: &Resources, battle: &Battle) {
         // Get the width and height of the screen
         let (width, height) = (ctx.width(), ctx.height());
 
@@ -324,6 +327,7 @@ impl Drawer {
         ctx.draw(&texture, center_x - center_x * self.camera.zoom, center_y - center_y * self.camera.zoom, self.camera.zoom);
     }
 
+    /// Work out which tile is under the cursor
     pub fn tile_under_cursor(&self, ctx: &mut Context, x: f32, y: f32) -> (usize, usize) {
         // Get the center of the window
         let center_x = ctx.width()  as f32 / 2.0;

@@ -13,14 +13,14 @@ use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{PixelFormatEnum, Color};
 
-mod battle;
-mod menu;
-mod ui;
-mod weapons;
-mod context;
-mod utils;
-mod colours;
-mod items;
+pub mod battle;
+pub mod menu;
+pub mod ui;
+pub mod weapons;
+pub mod context;
+pub mod utils;
+pub mod colours;
+pub mod items;
 
 use context::Context;
 use battle::battle::Battle;
@@ -33,12 +33,13 @@ const TITLE: &str = "War Against Machines";
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
 
-enum Mode {
+/// Which mode the game is in
+pub enum Mode {
     Menu,
     Skirmish
 }
 
-// A struct to hold resources for the game such as images and fonts
+/// A struct to hold resources for the game such as images and fonts
 pub struct Resources<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
     directory: &'a Path,
@@ -48,8 +49,8 @@ pub struct Resources<'a> {
 }
 
 impl<'a> Resources<'a> {
-    // Create a new resource struct with a texture creator, font context and directory string
-    fn new(texture_creator: &'a TextureCreator<WindowContext>,
+    /// Create a new resource struct with a texture creator, font context and directory string
+    pub fn new(texture_creator: &'a TextureCreator<WindowContext>,
            font_context: &'a ttf::Sdl2TtfContext, directory: &'a str) -> Resources<'a> {        
         Resources {
             texture_creator,
@@ -60,39 +61,39 @@ impl<'a> Resources<'a> {
         }
     }
 
-    // Load an image into the images hashmap
-    fn load_image(&mut self, name: &str, path: &str) {
+    /// Load an image into the images hashmap
+    pub fn load_image(&mut self, name: &str, path: &str) {
         let path = self.directory.join(path);
 
         self.images.insert(name.into(), self.texture_creator.load_texture(path).unwrap());
     }
 
-    // Get an image from the hashmap or panic
-    fn image(&self, name: &String) -> &Texture {
+    /// Get an image from the hashmap or panic
+    pub fn image(&self, name: &String) -> &Texture {
         self.images.get(name).expect(&format!("Loaded image '{}' could not be found.", name))
     }
 
-    // Create a new texture using the texture creator
-    fn create_texture(&self, width: u32, height: u32) -> Texture {
+    /// Create a new texture using the texture creator
+    pub fn create_texture(&self, width: u32, height: u32) -> Texture {
         self.texture_creator.create_texture_target(PixelFormatEnum::ARGB8888, width, height).unwrap()
     }
 
-    // Load a font into the fonts hashmap
-    fn load_font(&mut self, name: &str, path: &str, size: u16) {
+    /// Load a font into the fonts hashmap
+    pub fn load_font(&mut self, name: &str, path: &str, size: u16) {
         let path = self.directory.join(path);
 
         self.fonts.insert(name.into(), self.font_context.load_font(path, size).unwrap());
     }
 
-    // Render a string of text using a font
-    fn render(&self, font: &str, text: &String, colour: Color) -> Texture {
+    /// Render a string of text using a font
+    pub fn render(&self, font: &str, text: &String, colour: Color) -> Texture {
         let rendered = self.fonts[font].render(text).solid(colour).unwrap();
 
         self.texture_creator.create_texture_from_surface(rendered).unwrap()
     }
 }
 
-// A struct for holding the game state
+/// A struct for holding the game state
 struct State<'a> {
     ctx: Context,
     resources: Resources<'a>,
@@ -102,8 +103,8 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    // Create a new state, starting on the menu
-    fn run(ctx: Context, resources: Resources<'a>) {
+    /// Create a new state, starting on the menu
+    pub fn run(ctx: Context, resources: Resources<'a>) {
         let mut state = State {
             mode: Mode::Menu,
             menu: menu::Menu::new(),
@@ -132,16 +133,16 @@ impl<'a> State<'a> {
         }
     }
 
-    // Update the parts of the game
-    fn update(&mut self) {
+    /// Update the game
+    pub fn update(&mut self) {
         match self.mode {
             Mode::Skirmish => self.skirmish.update(),
             _ => {}
         }
     }
 
-    // Handle key presses
-    fn handle_key_down(&mut self, key: Keycode) {
+    /// Handle key presses
+    pub fn handle_key_down(&mut self, key: Keycode) {
         match self.mode {
             // If the mode is the menu, respond to callbacks
             Mode::Menu => if let Some(callback) = self.menu.handle_key(&mut self.ctx, key) {
@@ -156,32 +157,32 @@ impl<'a> State<'a> {
         }
     }
 
-    // Handle key releases
-    fn handle_key_up(&mut self, key: Keycode) {
+    /// Handle key releases
+    pub fn handle_key_up(&mut self, key: Keycode) {
         match self.mode {
             Mode::Skirmish => self.skirmish.handle_key(&mut self.ctx, key, false),
             _ => {}
         }
     }
 
-    // Handle mouse motion
-    fn handle_mouse_motion(&mut self, x: i32, y: i32) {
+    /// Handle mouse movement
+    pub fn handle_mouse_motion(&mut self, x: i32, y: i32) {
         match self.mode {
             Mode::Skirmish => self.skirmish.move_cursor(&mut self.ctx, x as f32, y as f32),
             _ => {}
         }
     }
 
-    // Handle mouse button presses
-    fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
+    /// Handle mouse button presses
+    pub fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
         match self.mode {
             Mode::Skirmish => self.skirmish.mouse_button(&mut self.ctx, button, x as f32, y as f32),
             _ => {}
         }
     }
 
-    // Draw on the canvas
-    fn draw(&mut self) {
+    /// Clear, draw and present the canvas
+    pub fn draw(&mut self) {
         self.ctx.clear();
 
         match self.mode {
@@ -193,6 +194,7 @@ impl<'a> State<'a> {
     }
 }
 
+/// The main function
 pub fn main() {
     // Create the context
     let ctx = Context::new(TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);

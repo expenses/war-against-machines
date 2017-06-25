@@ -1,11 +1,13 @@
-// The type of weapon
+//! The different weapons in the game
+
+/// The type of weapon
 pub enum WeaponType {
     Rifle,
     MachineGun,
     PlasmaRifle,
 }
 
-// The struct for a weapon
+/// The struct for a weapon
 pub struct Weapon {
     pub tag: WeaponType,
     pub cost: usize,
@@ -14,7 +16,7 @@ pub struct Weapon {
 }
 
 impl Weapon {
-    // Create a new weapon based off the weapon type
+    /// Create a new weapon based of the weapon type
     pub fn new(tag: WeaponType) -> Weapon {
         let (cost, damage, name) = match tag {
             WeaponType::Rifle       => (10, 40, "Rifle"),
