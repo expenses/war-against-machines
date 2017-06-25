@@ -4,7 +4,6 @@ use rand;
 use rand::Rng;
 
 use battle::units::{UnitSide, Units};
-use utils::distance_under;
 use items::{Item, ItemType};
 
 /// The visibility of the tile
