@@ -42,9 +42,9 @@ test_script:
 before_deploy:
   - cargo build --release
   - move target\release\%NAME%.exe release
-  - move resources release
+  - move LICENCE release
   - cd release
-  - 7z a -r %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip %NAME%.exe resources *.dll
+  - 7z a %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip *
   - appveyor PushArtifact %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip
 
 # Deploy the release to github

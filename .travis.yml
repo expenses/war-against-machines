@@ -34,9 +34,9 @@ before_deploy:
   - cargo build --release
   - mkdir release
   - mv target/release/war-against-machines release
-  - mv resources release
+  - mv LICENCE release
   - cd release
-  - zip -r war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip war-against-machines resources
+  - zip war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip *
 
 # And deploy it
 deploy:
