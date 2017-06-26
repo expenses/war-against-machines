@@ -59,7 +59,7 @@ impl<'a> Resources<'a> {
         }
     }
 
-    /// Load an image into the images hashmap from bytes of a png
+    /// Load an image into the images hashmap from the bytes of a png
     pub fn load_image(&mut self, name: &str, bytes: &[u8]) {
         let rw_ops = RWops::from_bytes(bytes).unwrap();
 

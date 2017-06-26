@@ -73,7 +73,7 @@ impl FireCommand {
                     target.health -= damage;
                 }
 
-                target.health > 0
+                target.health <= 0
             },
             None => false
         };
