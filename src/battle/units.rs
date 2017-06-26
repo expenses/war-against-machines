@@ -7,7 +7,8 @@ use std::fmt;
 use std::collections::HashMap;
 use std::collections::hash_map::{Iter, IterMut};
 
-use items::Item;
+use battle::tiles::Tiles;
+use items::{Item, ItemType};
 use weapons::{Weapon, WeaponType};
 use utils::distance_under;
 
@@ -224,8 +225,22 @@ impl Units {
         .any(|(_, unit)| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
     }
 
-    /// Kill a unit
-    pub fn kill(&mut self, id: usize) {
+    /// Kill a unit and drop a corpse
+    pub fn kill(&mut self, tiles: &mut Tiles, id: usize) {
+        let (x, y) = match self.get(id) {
+            Some(unit) => (unit.x, unit.y),
+            _ => return
+        };
+
+        let corpse = Item::new(match self.get(id).map(|unit| unit.tag) {
+            Some(UnitType::Squaddie) => ItemType::SquaddieCorpse,
+            Some(UnitType::Machine) => ItemType::MachineCorpse,
+            _ => return
+        });
+
+        tiles.drop(x, y, corpse);
+        tiles.update_visibility(&self);
+
         self.units.remove(&id);
     }
 }

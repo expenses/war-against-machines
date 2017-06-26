@@ -5,7 +5,7 @@ use rand;
 use battle::map::Map;
 use battle::units::UnitSide;
 use battle::paths::PathPoint;
-use battle::animations::{Walk, Bullet, Dying, Animation, Animations};
+use battle::animations::{Walk, Bullet, Animation, Animations};
 use utils::chance_to_hit;
 
 /// Finish a units moves for a turn by setting them to 0
@@ -67,18 +67,19 @@ impl FireCommand {
             _ => return
         };
 
+        let lethal = match map.units.get_mut(self.target_id) {
+            Some(target) => {
+                if will_hit {
+                    target.health -= damage;
+                }
+
+                target.health > 0
+            },
+            None => false
+        };
+
         // Add a bullet to the array for drawing
-        animations.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, &map.units)));
-
-        if let Some(target) = map.units.get_mut(self.target_id) {
-            if will_hit {
-                target.health -= damage;
-            }
-
-            if target.health <= 0 {
-                animations.push(Animation::Dying(Dying::new(self.target_id)));
-            }
-        }
+        animations.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, lethal, &map.units)));
     }
 }
 

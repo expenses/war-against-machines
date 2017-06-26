@@ -7,9 +7,8 @@ use odds::vec::VecExt;
 use std::slice::Iter;
 
 use battle::map::Map;
-use battle::units::{UnitType, Units};
+use battle::units::Units;
 use weapons::WeaponType;
-use items::{Item, ItemType};
 
 const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
@@ -53,48 +52,6 @@ impl Walk {
     }
 }
 
-/// An animation of a unit dying
-pub struct Dying {
-    unit_id: usize,
-    status: f32
-}
-
-impl Dying {
-    /// Create a new dying animation
-    pub fn new(unit_id: usize) -> Dying {
-        Dying {
-            unit_id,
-            status: 0.0
-        }
-    }
-
-    /// Move the animation a step and return if its still going
-    /// If not, kill the unit and drop a corpse at its place
-    pub fn step(&mut self, map: &mut Map) -> bool {
-        self.status += WALK_SPEED;
-        let still_going = self.status <= 1.0;
-
-        if !still_going {
-            let (x, y) = match map.units.get(self.unit_id) {
-                Some(unit) => (unit.x, unit.y),
-                _ => return true
-            };
-
-            let corpse = Item::new(match map.units.get(self.unit_id).map(|unit| unit.tag) {
-                Some(UnitType::Squaddie) => ItemType::SquaddieCorpse,
-                Some(UnitType::Machine) => ItemType::MachineCorpse,
-                _ => return true
-            });
-
-            map.units.kill(self.unit_id);
-            map.tiles.drop(x, y, corpse);
-            map.tiles.update_visibility(&map.units);
-        }
-
-        still_going
-    }
-}
-
 /// A bullet animation for drawing on the screen
 pub struct Bullet {
     pub x: f32,
@@ -103,14 +60,16 @@ pub struct Bullet {
     pub image: String,
     left: bool,
     above: bool,
+    target_id: usize,
     target_x: f32,
     target_y: f32,
-    will_hit: bool
+    will_hit: bool,
+    lethal: bool
 }
 
 impl Bullet {
     /// Create a new bullet based of the firing unit and the target unit
-    pub fn new(unit_id: usize, target_id: usize, will_hit: bool, units: &Units) -> Bullet {
+    pub fn new(unit_id: usize, target_id: usize, will_hit: bool, lethal: bool, units: &Units) -> Bullet {
         let unit = units.get(unit_id).unwrap();
         let target = units.get(target_id).unwrap();
 
@@ -138,25 +97,32 @@ impl Bullet {
         let above = y < target_y;
 
         Bullet {
-           x, y, direction, image, left, above, target_x, target_y, will_hit
+           x, y, direction, image, left, above, target_id, target_x, target_y, will_hit, lethal
         }
     }
     
     /// Move the bullet a step and work out if its still going or not
-    pub fn step(&mut self, map: &Map) -> bool {
+    pub fn step(&mut self, map: &mut Map) -> bool {
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
         // Work out if the bullet is currently traveling or has reached the destination
 
         // If the bullet won't hit the target or hasn't hit the target
-        (!self.will_hit || (
+        let still_going = (!self.will_hit || (
             self.left  == (self.x < self.target_x as f32) &&
             self.above == (self.y < self.target_y as f32)
         )) &&
         // And if the bullet is within a certain margin of the map
         self.x >= -MARGIN && self.x <= map.tiles.cols as f32 + MARGIN &&
-        self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN
+        self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN;
+
+        // If the bullet isn't still going and is lethal, kill the target unit
+        if !still_going && self.lethal {
+            map.units.kill(&mut map.tiles, self.target_id);
+        }
+
+        still_going
     }
 }
 
@@ -164,7 +130,6 @@ impl Bullet {
 pub enum Animation {
     Walk(Walk),
     Bullet(Bullet),
-    Dying(Dying)
 }
 
 /// A struct for holding the animations
@@ -189,8 +154,7 @@ impl Animations {
     pub fn update(&mut self, map: &mut Map) {
         self.animations.retain_mut(|mut animation| match animation {
             &mut Animation::Walk(ref mut walk) => walk.step(map),
-            &mut Animation::Bullet(ref mut bullet) => bullet.step(map),
-            &mut Animation::Dying(ref mut dying) => dying.step(map)
+            &mut Animation::Bullet(ref mut bullet) => bullet.step(map)
         });
     }
 
