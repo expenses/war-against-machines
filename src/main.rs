@@ -6,12 +6,13 @@ extern crate odds;
 
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::video::WindowContext;
-use sdl2::image::LoadTexture;
 use sdl2::event::Event;
 use sdl2::ttf;
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{PixelFormatEnum, Color};
+use sdl2::rwops::RWops;
+use sdl2::image::ImageRWops;
 
 pub mod battle;
 pub mod menu;
@@ -27,7 +28,6 @@ use battle::battle::Battle;
 use menu::Callback;
 
 use std::collections::HashMap;
-use std::path::Path;
 
 const TITLE: &str = "War Against Machines";
 const WINDOW_WIDTH: u32 = 800;
@@ -42,7 +42,6 @@ pub enum Mode {
 /// A struct to hold resources for the game such as images and fonts
 pub struct Resources<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
-    directory: &'a Path,
     images: HashMap<String, Texture<'a>>,
     font_context: &'a ttf::Sdl2TtfContext,
     fonts: HashMap<String, ttf::Font<'a, 'a>>,
@@ -51,21 +50,24 @@ pub struct Resources<'a> {
 impl<'a> Resources<'a> {
     /// Create a new resource struct with a texture creator, font context and directory string
     pub fn new(texture_creator: &'a TextureCreator<WindowContext>,
-           font_context: &'a ttf::Sdl2TtfContext, directory: &'a str) -> Resources<'a> {        
+           font_context: &'a ttf::Sdl2TtfContext) -> Resources<'a> {        
         Resources {
             texture_creator,
-            directory: Path::new(directory),
             images: HashMap::new(),
             font_context,
             fonts: HashMap::new(),
         }
     }
 
-    /// Load an image into the images hashmap
-    pub fn load_image(&mut self, name: &str, path: &str) {
-        let path = self.directory.join(path);
+    /// Load an image into the images hashmap from bytes of a png
+    pub fn load_image(&mut self, name: &str, bytes: &[u8]) {
+        let rw_ops = RWops::from_bytes(bytes).unwrap();
 
-        self.images.insert(name.into(), self.texture_creator.load_texture(path).unwrap());
+        self.images.insert(name.into(),
+            self.texture_creator.create_texture_from_surface(
+                rw_ops.load_png().unwrap()
+            ).unwrap()
+        );
     }
 
     /// Get an image from the hashmap or panic
@@ -78,11 +80,15 @@ impl<'a> Resources<'a> {
         self.texture_creator.create_texture_target(PixelFormatEnum::ARGB8888, width, height).unwrap()
     }
 
-    /// Load a font into the fonts hashmap
-    pub fn load_font(&mut self, name: &str, path: &str, size: u16) {
-        let path = self.directory.join(path);
+    /// Load a font into the fonts hashmap from the bytes of a font
+    pub fn load_font(&mut self, name: &str, bytes: &'a [u8], size: u16) {
+        let rw_ops = RWops::from_bytes(bytes).unwrap();
 
-        self.fonts.insert(name.into(), self.font_context.load_font(path, size).unwrap());
+        self.fonts.insert(name.into(),
+            self.font_context.load_font_from_rwops(
+                rw_ops, size
+            ).unwrap()
+        );
     }
 
     /// Render a string of text using a font
@@ -203,61 +209,61 @@ pub fn main() {
     let font_context = ttf::init().unwrap();
 
     // Create the resources
-    let mut resources = Resources::new(&texture_creator, &font_context, "resources");
+    let mut resources = Resources::new(&texture_creator, &font_context);
 
-    // Load the images
-    resources.load_image("title",   "title.png");
+    // Load the images into the binary
+    resources.load_image("title",   include_bytes!("../resources/title.png"));
 
-    resources.load_image("base_1",  "base/1.png");
-    resources.load_image("base_2",  "base/2.png");
-    resources.load_image("fog",     "base/fog.png");
+    resources.load_image("base_1", include_bytes!("../resources/base/1.png"));
+    resources.load_image("base_2", include_bytes!("../resources/base/2.png"));
+    resources.load_image("fog",    include_bytes!("../resources/base/fog.png"));
     
-    resources.load_image("squaddie",    "unit/squaddie.png");
-    resources.load_image("machine",     "unit/machine.png");
+    resources.load_image("squaddie", include_bytes!("../resources/unit/squaddie.png"));
+    resources.load_image("machine",  include_bytes!("../resources/unit/machine.png"));
     
-    resources.load_image("rifle_round",         "bullet/rifle_round.png");
-    resources.load_image("machine_gun_round",   "bullet/machine_gun_round.png");
-    resources.load_image("plasma_round",        "bullet/plasma_round.png");
+    resources.load_image("rifle_round",       include_bytes!("../resources/bullet/rifle_round.png"));
+    resources.load_image("machine_gun_round", include_bytes!("../resources/bullet/machine_gun_round.png"));
+    resources.load_image("plasma_round",      include_bytes!("../resources/bullet/plasma_round.png"));
     
-    resources.load_image("cursor",              "cursor/default.png");
-    resources.load_image("cursor_unit",         "cursor/unit.png");
-    resources.load_image("cursor_unwalkable",   "cursor/unwalkable.png");
-    resources.load_image("cursor_crosshair",    "cursor/crosshair.png");
+    resources.load_image("cursor",            include_bytes!("../resources/cursor/default.png"));
+    resources.load_image("cursor_unit",       include_bytes!("../resources/cursor/unit.png"));
+    resources.load_image("cursor_unwalkable", include_bytes!("../resources/cursor/unwalkable.png"));
+    resources.load_image("cursor_crosshair",  include_bytes!("../resources/cursor/crosshair.png"));
     
-    resources.load_image("ruin_1",  "ruin/1.png");
-    resources.load_image("ruin_2",  "ruin/2.png");
-    resources.load_image("ruin_3",  "ruin/3.png");
+    resources.load_image("ruin_1", include_bytes!("../resources/ruin/1.png"));
+    resources.load_image("ruin_2", include_bytes!("../resources/ruin/2.png"));
+    resources.load_image("ruin_3", include_bytes!("../resources/ruin/3.png"));
     
-    resources.load_image("pit_top",     "pit/top.png");
-    resources.load_image("pit_right",   "pit/right.png");
-    resources.load_image("pit_left",    "pit/left.png");
-    resources.load_image("pit_bottom",  "pit/bottom.png");
-    resources.load_image("pit_tl",      "pit/tl.png");
-    resources.load_image("pit_tr",      "pit/tr.png");
-    resources.load_image("pit_bl",      "pit/bl.png");
-    resources.load_image("pit_br",      "pit/br.png");
-    resources.load_image("pit_center",  "pit/center.png");
+    resources.load_image("pit_top",    include_bytes!("../resources/pit/top.png"));
+    resources.load_image("pit_right",  include_bytes!("../resources/pit/right.png"));
+    resources.load_image("pit_left",   include_bytes!("../resources/pit/left.png"));
+    resources.load_image("pit_bottom", include_bytes!("../resources/pit/bottom.png"));
+    resources.load_image("pit_tl",     include_bytes!("../resources/pit/tl.png"));
+    resources.load_image("pit_tr",     include_bytes!("../resources/pit/tr.png"));
+    resources.load_image("pit_bl",     include_bytes!("../resources/pit/bl.png"));
+    resources.load_image("pit_br",     include_bytes!("../resources/pit/br.png"));
+    resources.load_image("pit_center", include_bytes!("../resources/pit/center.png"));
     
-    resources.load_image("path",                "path/default.png");
-    resources.load_image("path_no_weapon",      "path/no_weapon.png");
-    resources.load_image("path_unreachable",    "path/unreachable.png");
+    resources.load_image("path",             include_bytes!("../resources/path/default.png"));
+    resources.load_image("path_no_weapon",   include_bytes!("../resources/path/no_weapon.png"));
+    resources.load_image("path_unreachable", include_bytes!("../resources/path/unreachable.png"));
     
-    resources.load_image("edge_left",           "edge/left.png");
-    resources.load_image("edge_right",          "edge/right.png");
-    resources.load_image("edge_left_corner",    "edge/left_corner.png");
-    resources.load_image("edge_right_corner",   "edge/right_corner.png");
-    resources.load_image("edge_corner",         "edge/corner.png");
+    resources.load_image("edge_left",         include_bytes!("../resources/edge/left.png"));
+    resources.load_image("edge_right",        include_bytes!("../resources/edge/right.png"));
+    resources.load_image("edge_left_corner",  include_bytes!("../resources/edge/left_corner.png"));
+    resources.load_image("edge_right_corner", include_bytes!("../resources/edge/right_corner.png"));
+    resources.load_image("edge_corner",       include_bytes!("../resources/edge/corner.png"));
         
-    resources.load_image("end_turn_button", "button/end_turn.png");
+    resources.load_image("end_turn_button", include_bytes!("../resources/button/end_turn.png"));
 
-    resources.load_image("scrap",           "items/scrap.png");
-    resources.load_image("weapon",          "items/weapon.png");
-    resources.load_image("squaddie_corpse", "items/squaddie_corpse.png");
-    resources.load_image("machine_corpse",  "items/machine_corpse.png");
-    resources.load_image("skeleton",        "items/skeleton.png");
+    resources.load_image("scrap",           include_bytes!("../resources/items/scrap.png"));
+    resources.load_image("weapon",          include_bytes!("../resources/items/weapon.png"));
+    resources.load_image("squaddie_corpse", include_bytes!("../resources/items/squaddie_corpse.png"));
+    resources.load_image("machine_corpse",  include_bytes!("../resources/items/machine_corpse.png"));
+    resources.load_image("skeleton",        include_bytes!("../resources/items/skeleton.png"));
     
     // Load the font
-    resources.load_font("main", "font.ttf", 35);
+    resources.load_font("main", include_bytes!("../resources/font.ttf"), 35);
 
     // Start the game
     State::run(ctx, resources);
