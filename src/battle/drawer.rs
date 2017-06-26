@@ -217,32 +217,31 @@ impl Drawer {
 
         // Draw the path
         if let Some(ref points) = battle.path {
-            let mut total_cost = 0;
+            if let Some(unit) = map.units.get(battle.selected.unwrap()) {
+                let mut total_cost = 0;
 
-            // Get the unit the path if for
-            let unit = map.units.get(battle.selected.unwrap()).unwrap();
+                for point in points {
+                    total_cost += point.cost;
 
-            for point in points {
-                total_cost += point.cost;
+                    let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
 
-                let (x, y) = canvas.draw_location(point.x as f32, point.y as f32);
+                    if canvas.on_screen(x, y) {
+                        // Get the image for the path
+                        let image = if total_cost > unit.moves {
+                            "path_unreachable"
+                        } else if total_cost + unit.weapon.cost > unit.moves {
+                            "path_no_weapon"
+                        } else {
+                            "path"
+                        };
 
-                if canvas.on_screen(x, y) {
-                    // Get the image for the path
-                    let image = if total_cost > unit.moves {
-                        "path_unreachable"
-                    } else if total_cost + unit.weapon.cost > unit.moves {
-                        "path_no_weapon"
-                    } else {
-                        "path"
-                    };
+                        // Rendet the path cost
+                        let cost = resources.render("main", &format!("{}", total_cost), WHITE);
+                        let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
-                    // Rendet the path cost
-                    let cost = resources.render("main", &format!("{}", total_cost), WHITE);
-                    let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
-
-                    canvas.draw(&cost, x + center as i32, y);
-                    canvas.draw(resources.image(&image.into()), x, y);
+                        canvas.draw(&cost, x + center as i32, y);
+                        canvas.draw(resources.image(&image.into()), x, y);
+                    }
                 }
             }
         }
@@ -257,14 +256,13 @@ impl Drawer {
                     canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
 
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
-                    if let Some((selected, target)) = battle.selected.and_then(|selected|
-                        map.units.at_i(x, y).map(|target|
-                            (selected, target)
+                    if let Some((firing, target)) = battle.selected.and_then(|firing|
+                        map.units.get(firing).and_then(|firing|
+                            map.units.at(x, y).map(|(_, target)|
+                                (firing, target)
+                            )
                         )
                     ) {
-                        let firing = map.units.get(selected).unwrap();
-                        let target = map.units.get(target).unwrap();
-
                         if firing.side == UnitSide::Player && target.side == UnitSide::AI {
                             // Get the chance to hit as a percentage
                             let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
