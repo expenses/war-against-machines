@@ -31,6 +31,24 @@ pub struct Button {
     h_align: HorizontalAlignment
 }
 
+pub fn get_location(x: f32, y: f32, width: f32, height: f32, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, ctx: &Context) -> (f32, f32) {
+    let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
+
+    let x = match v_align {
+        &VerticalAlignment::Left => x,
+        &VerticalAlignment::Middle => (screen_width - width)  / 2.0 + x,
+        &VerticalAlignment::Right => (screen_width - width) + x
+    };
+
+    let y = match h_align {
+        &HorizontalAlignment::Top => y,
+        &HorizontalAlignment::Middle => (screen_height - height) / 2.0 + y,
+        &HorizontalAlignment::Bottom => (screen_height - height) + y
+    };
+
+    (x, y)
+}
+
 impl Button {
     /// Add a new button
     pub fn new(image: &str, x: f32, y: f32, scale: f32, resources: &Resources,
@@ -48,35 +66,16 @@ impl Button {
         }
     }
 
-    /// Get the location of the button
-    pub fn get_location(&self, ctx: &mut Context) -> (f32, f32) {
-        let (width, height) = (ctx.width() as f32, ctx.height() as f32);
-
-        let x = match self.v_align {
-            VerticalAlignment::Left => self.x,
-            VerticalAlignment::Middle => (width - self.width)  / 2.0 + self.x,
-            VerticalAlignment::Right => (width - self.width) + self.x
-        };
-
-        let y = match self.h_align {
-            HorizontalAlignment::Top => self.y,
-            HorizontalAlignment::Middle => (height - self.height) / 2.0 + self.y,
-            HorizontalAlignment::Bottom => (height - self.height) + self.y
-        };
-
-        (x, y)
-    }
-
     /// Draw the button at its location and scale
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let (x, y) = self.get_location(ctx);
+        let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
 
         ctx.draw(resources.image(&self.image), x, y, self.scale);
     }
 
     /// Calculate if the button was pressed
     pub fn clicked(&self, ctx: &mut Context, x: f32, y: f32) -> bool {
-        let (pos_x, pos_y) = self.get_location(ctx);
+        let (pos_x, pos_y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
 
         x >= pos_x && x <= pos_x + self.width &&
         y >= pos_y && y <= pos_y + self.height
@@ -104,24 +103,19 @@ impl TextDisplay {
 
     /// Draw the text display on the screen
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
-        let rendered = resources.render("main", &self.text, WHITE);
-        let query = rendered.query();
-        let (width, height) = (query.width as f32, query.height as f32);
-        let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
+        let mut y_offset = 0.0;
 
-        let x = match self.v_align {
-            VerticalAlignment::Left => self.x,
-            VerticalAlignment::Middle => (screen_width - width)  / 2.0 + self.x,
-            VerticalAlignment::Right => (screen_width - width) + self.x
-        };
+        for line in self.text.split('\n') {
+            let rendered = resources.render("main", line, WHITE);
+            let query = rendered.query();
+            let (width, height) = (query.width as f32, query.height as f32);
+            
+            let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx);
 
-        let y = match self.h_align {
-            HorizontalAlignment::Top => self.y,
-            HorizontalAlignment::Middle => (screen_height - height) / 2.0 + self.y,
-            HorizontalAlignment::Bottom => (screen_height - height) + self.y
-        };
+            ctx.draw(&rendered, x, y + y_offset, 1.0);
 
-        ctx.draw(&rendered, x, y, 1.0);
+            y_offset += height;
+        }
     }
 }
 

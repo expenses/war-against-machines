@@ -60,7 +60,7 @@ impl Battle {
     /// Create a new `Battle`
     pub fn new(resources: &Resources) -> Battle {
         let scale = 2.0;
-        let button_width = resources.image("end_turn_button").query().width as f32 * scale;
+        let width_offset = resources.image("end_turn_button").query().width as f32 * -scale;
 
         // Create the UI and add the buttons and text display
 
@@ -77,7 +77,7 @@ impl Battle {
                 ),
                 Button::new(
                     "inventory_button",
-                    - button_width,
+                    width_offset,
                     0.0,
                     scale,
                     resources,
@@ -87,7 +87,7 @@ impl Battle {
             ],
             vec![
                 TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Top, true, "-"),
-                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Middle, false, "Inventory not implemented yet")
+                TextDisplay::new(0.0, -100.0, VerticalAlignment::Middle, HorizontalAlignment::Middle, false, "-")
             ]
         );
 
@@ -188,6 +188,42 @@ impl Battle {
         // Set the text of the UI text display
         self.ui.set_text(0, format!("Turn: {} - {}, Selected: {}", self.turn, self.controller, selected));
 
+        // Create the inventory string
+        let inventory_string = match self.selected.and_then(|selected| self.map.units.get(selected)) {
+            Some(unit) => {
+                let mut string = String::new();
+
+                // Add unit items
+                if !unit.inventory.is_empty() {
+                    string.push_str(&format!("Inventory for {}:\n", unit.name));
+
+                    for item in &unit.inventory {
+                        string.push_str(&format!("{}\n", item));
+                    }
+                } else {
+                    string.push_str(&format!("{} has an empty inventory\n", unit.name));
+                }
+                
+                // Add tile items
+                let tile = self.map.tiles.at(unit.x, unit.y);
+
+                if !tile.items.is_empty() {
+                    string.push_str("Items on the ground:");
+
+                    for item in &tile.items {
+                        string.push_str(&format!("\n{}", item));
+                    }
+                } else {
+                    string.push_str("There are no items on the ground");
+                }
+
+                string
+            }
+            _ => "No unit selected".into()
+        };
+        
+        self.ui.set_text(1, inventory_string);
+
         // Draw the UI
         self.ui.draw(ctx, resources);
     }
@@ -209,29 +245,28 @@ impl Battle {
     pub fn mouse_button(&mut self, ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
         match button {
             MouseButton::Left => match self.ui.clicked(ctx, x, y) {
-                // Respond to UI clicks
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
                 Some(1) => self.ui.toggle_text_display(1),
-                // Or check if cursor position
-                _ => {
-                    if let Some((x, y)) = self.cursor.position {
-                        self.path = None;
-                        self.selected = self.map.units.at_i(x, y);
-                    }
+                // Or select/deselect a unit
+                _ => if let Some((x, y)) = self.cursor.position {
+                    self.path = None;
+                    self.selected = self.map.units.at_i(x, y);
                 }
             },
             // Check if the cursor has a position and a unit is selected
             MouseButton::Right => if let Some((x, y)) = self.cursor.position {
                 if let Some(player_unit_id) = self.selected {
+                    // Don't do anything if it's the AI's turn
                     if self.controller == Controller::AI {
                         return;
                     }
 
-                    match self.map.units.at_i(x, y) {
-                        Some(ai_unit_id) => {
-                            if self.map.units.get(ai_unit_id).unwrap().side == UnitSide::AI {
+                    match self.map.units.at(x, y) {
+                        // If an AI unit is under the cursor, push a fire command
+                        Some((ai_unit_id, ai_unit)) => {
+                            if ai_unit.side == UnitSide::AI {
                                 self.path = None;
                                 self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit_id)));
                             }

@@ -72,7 +72,7 @@ impl<'a> Resources<'a> {
 
     /// Get an image from the hashmap or panic
     pub fn image(&self, name: &str) -> &Texture {
-        self.images.get(name).expect(&format!("Loaded image '{}' could not be found.", name))
+        self.images.get(name).expect(&format!("Image '{}' could not be found.", name))
     }
 
     /// Create a new texture using the texture creator
@@ -92,7 +92,7 @@ impl<'a> Resources<'a> {
     }
 
     /// Render a string of text using a font
-    pub fn render(&self, font: &str, text: &String, colour: Color) -> Texture {
+    pub fn render(&self, font: &str, text: &str, colour: Color) -> Texture {
         // Render the text into a surface in a solid colour
         let rendered = self.fonts[font].render(text).solid(colour).unwrap();
 

@@ -243,9 +243,11 @@ impl Units {
             _ => return
         });
 
-        tiles.drop(x, y, corpse);
-        tiles.update_visibility(&self);
-
+        // Remove the unit
         self.units.remove(&id);
+        // Drop the corpse
+        tiles.drop(x, y, corpse);
+        // Update the visibility of the tiles
+        tiles.update_visibility(&self);
     }
 }
