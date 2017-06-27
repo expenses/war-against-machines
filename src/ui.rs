@@ -6,7 +6,7 @@ use colours::WHITE;
 
 /// The vertical alignment of an item
 pub enum VerticalAlignment {
-    _Left,
+    Left,
     Middle,
     Right
 }
@@ -14,7 +14,7 @@ pub enum VerticalAlignment {
 /// The horizontal alignment of an item
 pub enum HorizontalAlignment {
     Top,
-    _Middle,
+    Middle,
     Bottom
 }
 
@@ -33,17 +33,18 @@ pub struct Button {
 
 impl Button {
     /// Add a new button
-    pub fn new(image: String, x: f32, y: f32, scale: f32, resources: &Resources,
+    pub fn new(image: &str, x: f32, y: f32, scale: f32, resources: &Resources,
                v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {
-        let image_resource = resources.image(&image);
+        let image_resource = resources.image(image);
         
         let query = image_resource.query();
         let width = query.width as f32 * scale;
         let height = query.height as f32 * scale;
 
         Button {
-            image, x, y, width, height, scale, v_align, h_align,
-            active: true
+            x, y, width, height, scale, v_align, h_align,
+            active: true,
+            image: image.into()
         }
     }
 
@@ -52,14 +53,14 @@ impl Button {
         let (width, height) = (ctx.width() as f32, ctx.height() as f32);
 
         let x = match self.v_align {
-            VerticalAlignment::_Left => self.x,
+            VerticalAlignment::Left => self.x,
             VerticalAlignment::Middle => (width - self.width)  / 2.0 + self.x,
             VerticalAlignment::Right => (width - self.width) + self.x
         };
 
         let y = match self.h_align {
             HorizontalAlignment::Top => self.y,
-            HorizontalAlignment::_Middle => (height - self.height) / 2.0 + self.y,
+            HorizontalAlignment::Middle => (height - self.height) / 2.0 + self.y,
             HorizontalAlignment::Bottom => (height - self.height) + self.y
         };
 
@@ -94,11 +95,10 @@ pub struct TextDisplay {
 
 impl TextDisplay {
     /// Create a new text display
-    pub fn new(x: f32, y: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> TextDisplay {
+    pub fn new(x: f32, y: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment, active: bool, text: &str) -> TextDisplay {
         TextDisplay {
-            x, y, v_align, h_align,
-            text: String::new(),
-            active: true
+            x, y, v_align, h_align, active,
+            text: text.into()
         }
     }
 
@@ -110,14 +110,14 @@ impl TextDisplay {
         let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
 
         let x = match self.v_align {
-            VerticalAlignment::_Left => self.x,
+            VerticalAlignment::Left => self.x,
             VerticalAlignment::Middle => (screen_width - width)  / 2.0 + self.x,
             VerticalAlignment::Right => (screen_width - width) + self.x
         };
 
         let y = match self.h_align {
             HorizontalAlignment::Top => self.y,
-            HorizontalAlignment::_Middle => (screen_height - height) / 2.0 + self.y,
+            HorizontalAlignment::Middle => (screen_height - height) / 2.0 + self.y,
             HorizontalAlignment::Bottom => (screen_height - height) + self.y
         };
 
@@ -137,6 +137,11 @@ impl UI {
         UI {
             buttons, text_displays
         }
+    }
+
+    /// Toggle if a text display is active or not
+    pub fn toggle_text_display(&mut self, display: usize) {
+        self.text_displays[display].active = !self.text_displays[display].active;
     }
 
     /// Set the text of a text display

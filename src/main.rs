@@ -71,7 +71,7 @@ impl<'a> Resources<'a> {
     }
 
     /// Get an image from the hashmap or panic
-    pub fn image(&self, name: &String) -> &Texture {
+    pub fn image(&self, name: &str) -> &Texture {
         self.images.get(name).expect(&format!("Loaded image '{}' could not be found.", name))
     }
 
@@ -93,8 +93,10 @@ impl<'a> Resources<'a> {
 
     /// Render a string of text using a font
     pub fn render(&self, font: &str, text: &String, colour: Color) -> Texture {
+        // Render the text into a surface in a solid colour
         let rendered = self.fonts[font].render(text).solid(colour).unwrap();
 
+        // Create a texture from that surface
         self.texture_creator.create_texture_from_surface(rendered).unwrap()
     }
 }
@@ -254,7 +256,8 @@ pub fn main() {
     resources.load_image("edge_right_corner", include_bytes!("../resources/edge/right_corner.png"));
     resources.load_image("edge_corner",       include_bytes!("../resources/edge/corner.png"));
         
-    resources.load_image("end_turn_button", include_bytes!("../resources/button/end_turn.png"));
+    resources.load_image("end_turn_button",  include_bytes!("../resources/button/end_turn.png"));
+    resources.load_image("inventory_button", include_bytes!("../resources/button/inventory.png"));
 
     resources.load_image("scrap",           include_bytes!("../resources/items/scrap.png"));
     resources.load_image("weapon",          include_bytes!("../resources/items/weapon.png"));

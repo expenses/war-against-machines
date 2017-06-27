@@ -164,7 +164,7 @@ impl Menu {
     /// Draw the menu
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         // Draw the title
-        let title = resources.image(&"title".into());
+        let title = resources.image("title");
         let center = (ctx.width() - title.query().width) as f32 / 2.0;
         ctx.draw(title, center, TITLE_TOP_OFFSET, 1.0);
 

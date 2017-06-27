@@ -60,14 +60,24 @@ impl Battle {
     /// Create a new `Battle`
     pub fn new(resources: &Resources) -> Battle {
         let scale = 2.0;
+        let button_width = resources.image("end_turn_button").query().width as f32 * scale;
 
         // Create the UI and add the buttons and text display
 
         let ui = UI::new(
             vec![
                 Button::new(
-                    "end_turn_button".into(),
+                    "end_turn_button",
                     0.0,
+                    0.0,
+                    scale,
+                    resources,
+                    VerticalAlignment::Right,
+                    HorizontalAlignment::Bottom
+                ),
+                Button::new(
+                    "inventory_button",
+                    - button_width,
                     0.0,
                     scale,
                     resources,
@@ -76,7 +86,8 @@ impl Battle {
                 )
             ],
             vec![
-                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Top)
+                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Top, true, "-"),
+                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Middle, false, "Inventory not implemented yet")
             ]
         );
 
@@ -165,7 +176,7 @@ impl Battle {
                 if unit.side == UnitSide::Player {
                     format!(
                         "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
-                        unit.name, unit.moves, unit.health, unit.weapon.name
+                        unit.name, unit.moves, unit.health, unit.weapon
                     )
                 } else {
                     format!("(Name: {})", unit.name)
@@ -199,7 +210,10 @@ impl Battle {
         match button {
             MouseButton::Left => match self.ui.clicked(ctx, x, y) {
                 // Respond to UI clicks
+                // End the turn
                 Some(0) => self.end_turn(),
+                // Toggle the inventory
+                Some(1) => self.ui.toggle_text_display(1),
                 // Or check if cursor position
                 _ => {
                     if let Some((x, y)) = self.cursor.position {
@@ -209,51 +223,56 @@ impl Battle {
                 }
             },
             // Check if the cursor has a position and a unit is selected
-            MouseButton::Right => if let Some((x, y, player_unit_id)) = self.cursor.position.and_then(|(x, y)|
-                                                                        self.selected.map(|player_unit_id| (x, y, player_unit_id))) {
-                match self.map.units.at_i(x, y) {
-                    Some(ai_unit_id) => {
-                        if self.map.units.get(ai_unit_id).unwrap().side == UnitSide::AI {
-                            self.path = None;
-                            self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit_id)));
-                        }
+            MouseButton::Right => if let Some((x, y)) = self.cursor.position {
+                if let Some(player_unit_id) = self.selected {
+                    if self.controller == Controller::AI {
+                        return;
                     }
-                    _ => {
-                        let unit = self.map.units.get(player_unit_id).unwrap();
 
-                        // Do nothing if the unit isn't a player unit
-                        if unit.side != UnitSide::Player {
-                            return;
-                        // Or the the target location is selected
-                        } else if self.map.taken(x, y) {
-                            self.path = None;
-                            return;
+                    match self.map.units.at_i(x, y) {
+                        Some(ai_unit_id) => {
+                            if self.map.units.get(ai_unit_id).unwrap().side == UnitSide::AI {
+                                self.path = None;
+                                self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit_id)));
+                            }
                         }
+                        _ => {
+                            let unit = self.map.units.get(player_unit_id).unwrap();
 
-                        // Pathfind to get the path points and the cost
-                        let points = match pathfind(unit, x, y, &self.map) {
-                            Some((points, _)) => points,
-                            _ => {
+                            // Do nothing if the unit isn't a player unit
+                            if unit.side != UnitSide::Player {
+                                return;
+                            // Or the the target location is selected
+                            } else if self.map.taken(x, y) {
                                 self.path = None;
                                 return;
                             }
-                        };
 
-                        // Is the path is the same as existing one?
-                        let same_path = match self.path {
-                            Some(ref path) => path[path.len() - 1].at(x, y),
-                            _ => false
-                        };
+                            // Pathfind to get the path points and the cost
+                            let points = match pathfind(unit, x, y, &self.map) {
+                                Some((points, _)) => points,
+                                _ => {
+                                    self.path = None;
+                                    return;
+                                }
+                            };
 
-                        // If the paths are the same and the player unit can move to the destination, get rid of the path
-                        self.path = if same_path {
-                            self.command_queue.push(Command::Walk(WalkCommand::new(player_unit_id, &self.map, points)));
-                            None
-                        } else {
-                            Some(points)
+                            // Is the path is the same as existing one?
+                            let same_path = match self.path {
+                                Some(ref path) => path[path.len() - 1].at(x, y),
+                                _ => false
+                            };
+
+                            // If the paths are the same and the player unit can move to the destination, get rid of the path
+                            self.path = if same_path {
+                                self.command_queue.push(Command::Walk(WalkCommand::new(player_unit_id, &self.map, points)));
+                                None
+                            } else {
+                                Some(points)
+                            }
                         }
                     }
-                }
+                }                                  
             },
             _ => {}
         }

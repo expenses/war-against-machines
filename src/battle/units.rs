@@ -158,6 +158,11 @@ impl Unit {
         self.y = y;
         self.moves -= cost;
     }
+
+    /// Pick up an item
+    pub fn pick_up(&mut self, item: Item) {
+        self.inventory.push(item)
+    }
 }
 
 /// A struct for containing all of the units

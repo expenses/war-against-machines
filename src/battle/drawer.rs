@@ -159,7 +159,7 @@ impl Drawer {
                                     "cursor"
                                 };
 
-                                canvas.draw(resources.image(&image.into()), screen_x, screen_y);
+                                canvas.draw(resources.image(image), screen_x, screen_y);
                             }
                         }
                     }
@@ -174,14 +174,14 @@ impl Drawer {
                             // Draw the cursor to show that the unit is selected
                             if let Some(selected) = battle.selected {
                                 if selected == index {
-                                    canvas.draw(resources.image(&"cursor_unit".into()), screen_x, screen_y);
+                                    canvas.draw(resources.image("cursor_unit"), screen_x, screen_y);
                                 }
                             }
 
                             canvas.draw(resources.image(&unit.image), screen_x, screen_y);
                         }
                     } else {
-                        canvas.draw(resources.image(&"fog".into()), screen_x, screen_y);
+                        canvas.draw(resources.image("fog"), screen_x, screen_y);
                     }
                 }
             }
@@ -190,28 +190,28 @@ impl Drawer {
         // Draw the edge corners if visible
 
         if map.tiles.at(0, map.tiles.rows - 1).visible() {
-            canvas.draw_tile(resources.image(&"edge_left_corner".into()), 0, map.tiles.rows);
+            canvas.draw_tile(resources.image("edge_left_corner"), 0, map.tiles.rows);
         }
         
         if map.tiles.at(map.tiles.cols - 1, map.tiles.rows - 1).visible() {
-            canvas.draw_tile(resources.image(&"edge_corner".into()), map.tiles.cols, map.tiles.rows);
+            canvas.draw_tile(resources.image("edge_corner"), map.tiles.cols, map.tiles.rows);
         }
 
         if map.tiles.at(map.tiles.cols - 1, 0).visible() {
-            canvas.draw_tile(resources.image(&"edge_right_corner".into()), map.tiles.cols, 0);
+            canvas.draw_tile(resources.image("edge_right_corner"), map.tiles.cols, 0);
         }
 
         // Draw the edges
 
         for x in 1 .. map.tiles.cols {
             if map.tiles.at(x, map.tiles.rows - 1).visible() {
-                canvas.draw_tile(resources.image(&"edge_left".into()), x, map.tiles.rows);
+                canvas.draw_tile(resources.image("edge_left"), x, map.tiles.rows);
             }
         }
 
         for y in 1 .. map.tiles.rows {
             if map.tiles.at(map.tiles.cols - 1, y).visible() {
-                canvas.draw_tile(resources.image(&"edge_right".into()), map.tiles.cols, y);
+                canvas.draw_tile(resources.image("edge_right"), map.tiles.cols, y);
             }
         }
 
@@ -240,7 +240,7 @@ impl Drawer {
                         let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
 
                         canvas.draw(&cost, x + center as i32, y);
-                        canvas.draw(resources.image(&image.into()), x, y);
+                        canvas.draw(resources.image(image), x, y);
                     }
                 }
             }
@@ -253,7 +253,7 @@ impl Drawer {
 
                 if canvas.on_screen(screen_x, screen_y) {
                     // Draw the crosshair
-                    canvas.draw(resources.image(&"cursor_crosshair".into()), screen_x, screen_y);
+                    canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
 
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
                     if let Some((firing, target)) = battle.selected.and_then(|firing|
