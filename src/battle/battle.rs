@@ -186,7 +186,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.set_text(0, format!("Turn: {} - {}, Selected: {}", self.turn, self.controller, selected));
+        self.ui.set_text(0, format!("Turn {} - {} - {}", self.turn, self.controller, selected));
 
         // Create the inventory string
         let inventory_string = match self.selected.and_then(|selected| self.map.units.get(selected)) {

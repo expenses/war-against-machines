@@ -16,8 +16,8 @@ pub enum Visibility {
 
 /// A tile in the map
 pub struct Tile {
-    pub base: String,
-    pub obstacle: Option<String>,
+    pub base: &'static str,
+    pub obstacle: Option<&'static str>,
     pub player_visibility: Visibility,
     pub ai_visibility: Visibility,
     pub items: Vec<Item>
@@ -25,9 +25,9 @@ pub struct Tile {
 
 impl Tile {
     /// Create a new tile
-    fn new(base: &str) -> Tile {
+    fn new(base: &'static str) -> Tile {
         Tile {
-            base: base.into(),
+            base,
             obstacle: None,
             player_visibility: Visibility::Invisible,
             ai_visibility: Visibility::Invisible,
@@ -36,8 +36,8 @@ impl Tile {
     }
 
     /// Set the obstacle of the tile and remove the units
-    fn set_obstacle(&mut self, decoration: &str) {
-        self.obstacle = Some(decoration.into());
+    fn set_obstacle(&mut self, decoration: &'static str) {
+        self.obstacle = Some(decoration);
         self.items = Vec::new();
     }
 
@@ -164,5 +164,9 @@ impl Tiles {
     /// Drop an item onto the map
     pub fn drop(&mut self, x: usize, y: usize, item: Item) {
         self.at_mut(x, y).items.push(item);
+    }
+
+    pub fn drop_all(&mut self, x: usize, y: usize, items: &mut Vec<Item>) {
+        self.at_mut(x, y).items.append(items);
     }
 }

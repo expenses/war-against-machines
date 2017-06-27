@@ -108,7 +108,7 @@ pub struct Unit {
     pub x: usize,
     pub y: usize,
     pub weapon: Weapon,
-    pub image: String,
+    pub image: &'static str,
     pub name: String,
     pub moves: usize,
     pub max_moves: usize,
@@ -123,12 +123,12 @@ impl Unit {
         match tag {
             UnitType::Squaddie => {
                 let weapon = Weapon::new(if rand::thread_rng().gen::<bool>() { WeaponType::Rifle } else { WeaponType::MachineGun });
-                let image = "squaddie".into();
                 let moves = 30;
                 let health = 100;
 
                 Unit {
-                    tag, side, x, y, moves, health, image, weapon,
+                    tag, side, x, y, moves, health, weapon,
+                    image: "squaddie",
                     name: generate_squaddie_name(),
                     max_moves: moves,
                     max_health: health,
@@ -136,12 +136,12 @@ impl Unit {
                 }
             },
             UnitType::Machine => {
-                let image = "machine".into();
                 let moves = 25;
                 let health = 150;
 
                 Unit {
-                    tag, side, x, y, moves, health, image,
+                    tag, side, x, y, moves, health,
+                    image: "machine",
                     weapon: Weapon::new(WeaponType::PlasmaRifle),
                     name: generate_machine_name(),
                     max_moves: moves,
@@ -243,10 +243,12 @@ impl Units {
             _ => return
         });
 
-        // Remove the unit
-        self.units.remove(&id);
+        // Drop the units items
+        tiles.drop_all(x, y, &mut self.get_mut(id).unwrap().inventory);
         // Drop the corpse
         tiles.drop(x, y, corpse);
+        // Remove the unit
+        self.units.remove(&id);
         // Update the visibility of the tiles
         tiles.update_visibility(&self);
     }

@@ -16,7 +16,7 @@ pub enum ItemType {
 pub struct Item {
     pub tag: ItemType,
     pub weight: usize,
-    pub image: String
+    pub image: &'static str
 }
 
 impl fmt::Display for Item {
@@ -43,8 +43,7 @@ impl Item {
         };
 
         Item {
-            tag, weight,
-            image: image.into()
+            tag, weight, image
         }
     }
 }

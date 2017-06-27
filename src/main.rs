@@ -39,12 +39,19 @@ pub enum Mode {
     Skirmish
 }
 
+/// Load a resource into a SDL2 RWops struct at compile time
+macro_rules! rw_ops {
+    ($file:expr) => (
+        RWops::from_bytes(include_bytes!(concat!("../resources/", $file))).unwrap()
+    )
+}
+
 /// A struct to hold resources for the game such as images and fonts
 pub struct Resources<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
-    images: HashMap<String, Texture<'a>>,
+    images: HashMap<&'static str, Texture<'a>>,
     font_context: &'a ttf::Sdl2TtfContext,
-    fonts: HashMap<String, ttf::Font<'a, 'a>>,
+    fonts: HashMap<&'static str, ttf::Font<'a, 'a>>,
 }
 
 impl<'a> Resources<'a> {
@@ -59,15 +66,11 @@ impl<'a> Resources<'a> {
         }
     }
 
-    /// Load an image into the images hashmap from the bytes of a png
-    pub fn load_image(&mut self, name: &str, bytes: &[u8]) {
-        let rw_ops = RWops::from_bytes(bytes).unwrap();
-
-        self.images.insert(name.into(),
-            self.texture_creator.create_texture_from_surface(
-                rw_ops.load_png().unwrap()
-            ).unwrap()
-        );
+    /// Load an image into the images hashmap from a RWops of a png
+    pub fn load_image(&mut self, name: &'static str, rw_ops: RWops) {
+        self.images.insert(name, self.texture_creator.create_texture_from_surface(
+            rw_ops.load_png().unwrap()
+        ).unwrap());
     }
 
     /// Get an image from the hashmap or panic
@@ -80,15 +83,11 @@ impl<'a> Resources<'a> {
         self.texture_creator.create_texture_target(PixelFormatEnum::ARGB8888, width, height).unwrap()
     }
 
-    /// Load a font into the fonts hashmap from the bytes of a font
-    pub fn load_font(&mut self, name: &str, bytes: &'a [u8], size: u16) {
-        let rw_ops = RWops::from_bytes(bytes).unwrap();
-
-        self.fonts.insert(name.into(),
-            self.font_context.load_font_from_rwops(
-                rw_ops, size
-            ).unwrap()
-        );
+    /// Load a font into the fonts hashmap from a RWops of a font
+    pub fn load_font(&mut self, name: &'static str, rw_ops: RWops<'a>, size: u16) {
+        self.fonts.insert(name, self.font_context.load_font_from_rwops(
+            rw_ops, size
+        ).unwrap());
     }
 
     /// Render a string of text using a font
@@ -214,59 +213,59 @@ pub fn main() {
     let mut resources = Resources::new(&texture_creator, &font_context);
 
     // Load the images into the binary
-    resources.load_image("title",   include_bytes!("../resources/title.png"));
+    resources.load_image("title", rw_ops!("title.png"));
 
-    resources.load_image("base_1", include_bytes!("../resources/base/1.png"));
-    resources.load_image("base_2", include_bytes!("../resources/base/2.png"));
-    resources.load_image("fog",    include_bytes!("../resources/base/fog.png"));
+    resources.load_image("base_1", rw_ops!("base/1.png"));
+    resources.load_image("base_2", rw_ops!("base/2.png"));
+    resources.load_image("fog",    rw_ops!("base/fog.png"));
     
-    resources.load_image("squaddie", include_bytes!("../resources/unit/squaddie.png"));
-    resources.load_image("machine",  include_bytes!("../resources/unit/machine.png"));
+    resources.load_image("squaddie", rw_ops!("unit/squaddie.png"));
+    resources.load_image("machine",  rw_ops!("unit/machine.png"));
     
-    resources.load_image("rifle_round",       include_bytes!("../resources/bullet/rifle_round.png"));
-    resources.load_image("machine_gun_round", include_bytes!("../resources/bullet/machine_gun_round.png"));
-    resources.load_image("plasma_round",      include_bytes!("../resources/bullet/plasma_round.png"));
+    resources.load_image("rifle_round",       rw_ops!("bullet/rifle_round.png"));
+    resources.load_image("machine_gun_round", rw_ops!("bullet/machine_gun_round.png"));
+    resources.load_image("plasma_round",      rw_ops!("bullet/plasma_round.png"));
     
-    resources.load_image("cursor",            include_bytes!("../resources/cursor/default.png"));
-    resources.load_image("cursor_unit",       include_bytes!("../resources/cursor/unit.png"));
-    resources.load_image("cursor_unwalkable", include_bytes!("../resources/cursor/unwalkable.png"));
-    resources.load_image("cursor_crosshair",  include_bytes!("../resources/cursor/crosshair.png"));
+    resources.load_image("cursor",            rw_ops!("cursor/default.png"));
+    resources.load_image("cursor_unit",       rw_ops!("cursor/unit.png"));
+    resources.load_image("cursor_unwalkable", rw_ops!("cursor/unwalkable.png"));
+    resources.load_image("cursor_crosshair",  rw_ops!("cursor/crosshair.png"));
     
-    resources.load_image("ruin_1", include_bytes!("../resources/ruin/1.png"));
-    resources.load_image("ruin_2", include_bytes!("../resources/ruin/2.png"));
-    resources.load_image("ruin_3", include_bytes!("../resources/ruin/3.png"));
+    resources.load_image("ruin_1", rw_ops!("ruin/1.png"));
+    resources.load_image("ruin_2", rw_ops!("ruin/2.png"));
+    resources.load_image("ruin_3", rw_ops!("ruin/3.png"));
     
-    resources.load_image("pit_top",    include_bytes!("../resources/pit/top.png"));
-    resources.load_image("pit_right",  include_bytes!("../resources/pit/right.png"));
-    resources.load_image("pit_left",   include_bytes!("../resources/pit/left.png"));
-    resources.load_image("pit_bottom", include_bytes!("../resources/pit/bottom.png"));
-    resources.load_image("pit_tl",     include_bytes!("../resources/pit/tl.png"));
-    resources.load_image("pit_tr",     include_bytes!("../resources/pit/tr.png"));
-    resources.load_image("pit_bl",     include_bytes!("../resources/pit/bl.png"));
-    resources.load_image("pit_br",     include_bytes!("../resources/pit/br.png"));
-    resources.load_image("pit_center", include_bytes!("../resources/pit/center.png"));
+    resources.load_image("pit_top",    rw_ops!("pit/top.png"));
+    resources.load_image("pit_right",  rw_ops!("pit/right.png"));
+    resources.load_image("pit_left",   rw_ops!("pit/left.png"));
+    resources.load_image("pit_bottom", rw_ops!("pit/bottom.png"));
+    resources.load_image("pit_tl",     rw_ops!("pit/tl.png"));
+    resources.load_image("pit_tr",     rw_ops!("pit/tr.png"));
+    resources.load_image("pit_bl",     rw_ops!("pit/bl.png"));
+    resources.load_image("pit_br",     rw_ops!("pit/br.png"));
+    resources.load_image("pit_center", rw_ops!("pit/center.png"));
     
-    resources.load_image("path",             include_bytes!("../resources/path/default.png"));
-    resources.load_image("path_no_weapon",   include_bytes!("../resources/path/no_weapon.png"));
-    resources.load_image("path_unreachable", include_bytes!("../resources/path/unreachable.png"));
+    resources.load_image("path",             rw_ops!("path/default.png"));
+    resources.load_image("path_no_weapon",   rw_ops!("path/no_weapon.png"));
+    resources.load_image("path_unreachable", rw_ops!("path/unreachable.png"));
     
-    resources.load_image("edge_left",         include_bytes!("../resources/edge/left.png"));
-    resources.load_image("edge_right",        include_bytes!("../resources/edge/right.png"));
-    resources.load_image("edge_left_corner",  include_bytes!("../resources/edge/left_corner.png"));
-    resources.load_image("edge_right_corner", include_bytes!("../resources/edge/right_corner.png"));
-    resources.load_image("edge_corner",       include_bytes!("../resources/edge/corner.png"));
+    resources.load_image("edge_left",         rw_ops!("edge/left.png"));
+    resources.load_image("edge_right",        rw_ops!("edge/right.png"));
+    resources.load_image("edge_left_corner",  rw_ops!("edge/left_corner.png"));
+    resources.load_image("edge_right_corner", rw_ops!("edge/right_corner.png"));
+    resources.load_image("edge_corner",       rw_ops!("edge/corner.png"));
         
-    resources.load_image("end_turn_button",  include_bytes!("../resources/button/end_turn.png"));
-    resources.load_image("inventory_button", include_bytes!("../resources/button/inventory.png"));
+    resources.load_image("end_turn_button",  rw_ops!("button/end_turn.png"));
+    resources.load_image("inventory_button", rw_ops!("button/inventory.png"));
 
-    resources.load_image("scrap",           include_bytes!("../resources/items/scrap.png"));
-    resources.load_image("weapon",          include_bytes!("../resources/items/weapon.png"));
-    resources.load_image("squaddie_corpse", include_bytes!("../resources/items/squaddie_corpse.png"));
-    resources.load_image("machine_corpse",  include_bytes!("../resources/items/machine_corpse.png"));
-    resources.load_image("skeleton",        include_bytes!("../resources/items/skeleton.png"));
+    resources.load_image("scrap",           rw_ops!("items/scrap.png"));
+    resources.load_image("weapon",          rw_ops!("items/weapon.png"));
+    resources.load_image("squaddie_corpse", rw_ops!("items/squaddie_corpse.png"));
+    resources.load_image("machine_corpse",  rw_ops!("items/machine_corpse.png"));
+    resources.load_image("skeleton",        rw_ops!("items/skeleton.png"));
     
     // Load the font
-    resources.load_font("main", include_bytes!("../resources/font.ttf"), 35);
+    resources.load_font("main", rw_ops!("font.ttf"), 35);
 
     // Start the game
     State::run(ctx, resources);

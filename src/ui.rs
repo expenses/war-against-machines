@@ -20,7 +20,7 @@ pub enum HorizontalAlignment {
 
 /// A button on the UI
 pub struct Button {
-    image: String,
+    image: &'static str,
     x: f32,
     y: f32,
     width: f32,
@@ -51,7 +51,7 @@ pub fn get_location(x: f32, y: f32, width: f32, height: f32, v_align: &VerticalA
 
 impl Button {
     /// Add a new button
-    pub fn new(image: &str, x: f32, y: f32, scale: f32, resources: &Resources,
+    pub fn new(image: &'static str, x: f32, y: f32, scale: f32, resources: &Resources,
                v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {
         let image_resource = resources.image(image);
         
@@ -60,9 +60,8 @@ impl Button {
         let height = query.height as f32 * scale;
 
         Button {
-            x, y, width, height, scale, v_align, h_align,
-            active: true,
-            image: image.into()
+            x, y, width, height, scale, v_align, h_align, image,
+            active: true
         }
     }
 

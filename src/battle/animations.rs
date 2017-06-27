@@ -57,7 +57,7 @@ pub struct Bullet {
     pub x: f32,
     pub y: f32,
     pub direction: f32,
-    pub image: String,
+    pub image: &'static str,
     left: bool,
     above: bool,
     target_id: usize,
@@ -84,7 +84,7 @@ impl Bullet {
             WeaponType::Rifle => "rifle_round",
             WeaponType::MachineGun => "machine_gun_round",
             WeaponType::PlasmaRifle => "plasma_round"
-        }.into();
+        };
 
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
