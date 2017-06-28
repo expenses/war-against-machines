@@ -83,6 +83,15 @@ impl Battle {
                     resources,
                     VerticalAlignment::Right,
                     HorizontalAlignment::Bottom
+                ),
+                Button::new(
+                    "change_fire_mode_button",
+                    width_offset * 2.0,
+                    0.0,
+                    scale,
+                    resources,
+                    VerticalAlignment::Right,
+                    HorizontalAlignment::Bottom
                 )
             ],
             vec![
@@ -153,7 +162,6 @@ impl Battle {
             }
         }
 
-
         if self.animations.is_empty() {
             self.command_queue.update(&mut self.map, &mut self.animations);
         }
@@ -171,7 +179,7 @@ impl Battle {
     // Draw the UI
     fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
         // Get a string of info about the selected unit
-        let selected = match self.selected.and_then(|id| self.map.units.get(id)) {
+        let selected = match self.selected_unit() {
             Some(unit) => format!(
                 "Selected: (Name: {}, Moves: {}, Health: {}, Weapon: {})",
                 unit.name, unit.moves, unit.health, unit.weapon
@@ -183,7 +191,7 @@ impl Battle {
         self.ui.set_text(0, format!("Turn {} - {}\n{}", self.turn, self.controller, selected));
 
         // Create the inventory string
-        let inventory_string = match self.selected.and_then(|selected| self.map.units.get(selected)) {
+        let inventory_string = match self.selected_unit() {
             Some(unit) => {
                 let mut string = String::new();
 
@@ -245,6 +253,10 @@ impl Battle {
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
                 Some(1) => self.ui.toggle_text_display(1),
+                // Change the selected units fire mode
+                Some(2) => if let Some(unit) = self.selected.and_then(|selected| self.map.units.get_mut(selected)) {
+                    unit.weapon.change_mode();
+                },
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor.position {
                     self.path = None;
@@ -311,6 +323,11 @@ impl Battle {
             },
             _ => {}
         }
+    }
+
+    // Get a reference to the unit that is selected
+    fn selected_unit(&self) -> Option<&Unit> {
+        self.selected.and_then(|selected| self.map.units.get(selected))
     }
 
     // Work out if the cursor is on an ai unit

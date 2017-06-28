@@ -255,8 +255,9 @@ fn main() {
     resources.load_image("edge_right_corner", rw_ops!("edge/right_corner.png"));
     resources.load_image("edge_corner",       rw_ops!("edge/corner.png"));
         
-    resources.load_image("end_turn_button",  rw_ops!("button/end_turn.png"));
-    resources.load_image("inventory_button", rw_ops!("button/inventory.png"));
+    resources.load_image("end_turn_button",         rw_ops!("button/end_turn.png"));
+    resources.load_image("inventory_button",        rw_ops!("button/inventory.png"));
+    resources.load_image("change_fire_mode_button", rw_ops!("button/change_fire_mode.png"));
 
     resources.load_image("scrap",           rw_ops!("items/scrap.png"));
     resources.load_image("weapon",          rw_ops!("items/weapon.png"));

@@ -67,4 +67,8 @@ impl Weapon {
             }
         }
     }
+
+    pub fn change_mode(&mut self) {
+        self.mode = (self.mode + 1) % self.modes.len()
+    }
 }
