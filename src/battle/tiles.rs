@@ -1,4 +1,4 @@
-//! The tiles in the map, and a struct to contain them
+// The tiles in the map, and a struct to contain them
 
 use rand;
 use rand::Rng;
@@ -6,7 +6,7 @@ use rand::Rng;
 use battle::units::{UnitSide, Units};
 use items::{Item, ItemType};
 
-/// The visibility of the tile
+// The visibility of the tile
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub enum Visibility {
     Visible,
@@ -14,7 +14,7 @@ pub enum Visibility {
     Invisible
 }
 
-/// A tile in the map
+// A tile in the map
 pub struct Tile {
     pub base: &'static str,
     pub obstacle: Option<&'static str>,
@@ -24,7 +24,7 @@ pub struct Tile {
 }
 
 impl Tile {
-    /// Create a new tile
+    // Create a new tile
     fn new(base: &'static str) -> Tile {
         Tile {
             base,
@@ -35,24 +35,24 @@ impl Tile {
         }
     }
 
-    /// Set the obstacle of the tile and remove the units
+    // Set the obstacle of the tile and remove the units
     fn set_obstacle(&mut self, decoration: &'static str) {
         self.obstacle = Some(decoration);
         self.items = Vec::new();
     }
 
-    /// return if the tile is visible to the player
+    // return if the tile is visible to the player
     pub fn visible(&self) -> bool {
         self.player_visibility != Visibility::Invisible
     }
 
-    /// return if the tile can be walked on
+    // return if the tile can be walked on
     pub fn walkable(&self) -> bool {
         self.obstacle.is_none()
     }
 }
 
-/// A 2D array of tiles
+// A 2D array of tiles
 pub struct Tiles {
     tiles: Vec<Tile>,
     pub cols: usize,
@@ -60,7 +60,7 @@ pub struct Tiles {
 }
 
 impl Tiles {
-    /// Create a new set of tiles but do not generate it
+    // Create a new set of tiles but do not generate it
     pub fn new() -> Tiles {
         Tiles {
             tiles: Vec::new(),
@@ -69,7 +69,7 @@ impl Tiles {
         }
     }
 
-    /// Generate the tiles
+    // Generate the tiles
     pub fn generate(&mut self, cols: usize, rows: usize, units: &Units) {
         self.cols = cols;
         self.rows = rows;
@@ -130,17 +130,17 @@ impl Tiles {
         self.update_visibility(units);
     }
 
-    /// Get a reference to a tile
+    // Get a reference to a tile
     pub fn at(&self, x: usize, y: usize) -> &Tile {
         &self.tiles[x * self.rows + y]
     }
 
-    /// Get a mutable reference to a tile
+    // Get a mutable reference to a tile
     pub fn at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[x * self.rows + y]
     }
 
-    /// Update the visibility of the map
+    // Update the visibility of the map
     pub fn update_visibility(&mut self, units: &Units) {
         for x in 0 .. self.cols {
             for y in 0 .. self.rows {
@@ -161,7 +161,7 @@ impl Tiles {
         }
     }
 
-    /// Drop an item onto the map
+    // Drop an item onto the map
     pub fn drop(&mut self, x: usize, y: usize, item: Item) {
         self.at_mut(x, y).items.push(item);
     }

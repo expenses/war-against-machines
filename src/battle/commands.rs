@@ -1,4 +1,4 @@
-//! The commands that can be issued to units
+// The commands that can be issued to units
 
 use rand;
 
@@ -8,44 +8,44 @@ use battle::paths::PathPoint;
 use battle::animations::{Walk, Bullet, Animation, Animations};
 use utils::chance_to_hit;
 
-/// Finish a units moves for a turn by setting them to 0
+// Finish a units moves for a turn by setting them to 0
 pub struct FinishedCommand {
     unit_id: usize
 }
 
 impl FinishedCommand {
-    /// Create a new finished command
+    // Create a new finished command
     pub fn new(unit_id: usize) -> FinishedCommand {
         FinishedCommand {
             unit_id
         }
     }
 
-    /// Process the command, setting the units moves to 0 if it exists
-    pub fn process(&self, map: &mut Map) {
+    // Process the command, setting the units moves to 0 if it exists
+    fn process(&self, map: &mut Map) {
         if let Some(unit) = map.units.get_mut(self.unit_id) {
             unit.moves = 0;
         }
     }
 }
 
-/// Get one unit to fire on another
+// Get one unit to fire on another
 pub struct FireCommand {
     unit_id: usize,
     target_id: usize
 }
 
 impl FireCommand {
-    /// Create a new fire command
+    // Create a new fire command
     pub fn new(unit_id: usize, target_id: usize) -> FireCommand {
         FireCommand {
             unit_id, target_id
         }
     }
 
-    /// Process the fire command, checking if the firing unit has the moves to fire,
-    /// if it hits, and adding the bullet to `Animations`
-    pub fn process(&self, map: &mut Map, animations: &mut Animations) {
+    // Process the fire command, checking if the firing unit has the moves to fire,
+    // if it hits, and adding the bullet to Animations
+    fn process(&self, map: &mut Map, animations: &mut Animations) {
         let (target_x, target_y) = match map.units.get(self.target_id) {
             Some(target) => (target.x, target.y),
             _ => return
@@ -83,7 +83,7 @@ impl FireCommand {
     }
 }
 
-/// Move a unit along a path, checking if it spots an enemy unit along the way
+// Move a unit along a path, checking if it spots an enemy unit along the way
 pub struct WalkCommand {
     unit_id: usize,
     visible_units: usize,
@@ -91,7 +91,7 @@ pub struct WalkCommand {
 }
 
 impl WalkCommand {
-    /// Create a new walk command
+    // Create a new walk command
     pub fn new(unit_id: usize, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
         let visible_units = match map.units.get(unit_id).unwrap().side {
             UnitSide::Player => map.visible(UnitSide::AI),
@@ -103,9 +103,9 @@ impl WalkCommand {
         }
     }
 
-    /// Process the walk command, moving the unit one tile along the path and checking
-    /// if it spots an enemy unit
-    pub fn process(&mut self, map: &mut Map, animation_queue: &mut Animations) -> bool {
+    // Process the walk command, moving the unit one tile along the path and checking
+    // if it spots an enemy unit
+    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations) -> bool {
         let (x, y, cost) = {
             let point = &self.path[0];
             (point.x, point.y, point.cost)
@@ -132,27 +132,27 @@ impl WalkCommand {
     }
 }
 
-/// The command enum for holding the different kinds of commands
+// The command enum for holding the different kinds of commands
 pub enum Command {
     Fire(FireCommand),
     Walk(WalkCommand),
     Finished(FinishedCommand)
 }
 
-/// The queue of commands
+// The queue of commands
 pub struct CommandQueue {
     commands: Vec<Command>
 }
 
 impl CommandQueue {
-    /// Create a new `CommandQueue`
+    // Create a new CommandQueue
     pub fn new() -> CommandQueue {
         CommandQueue {
             commands: Vec::new()
         }
     }
 
-    /// Update the first item of the command queue
+    // Update the first item of the command queue
     pub fn update(&mut self, map: &mut Map, animations: &mut Animations) {
         let finished = match self.commands.first_mut() {
             Some(&mut Command::Fire(ref mut fire)) => {fire.process(map, animations); true},
@@ -166,12 +166,12 @@ impl CommandQueue {
         }
     }
 
-    /// Push a new command onto the queue
+    // Push a new command onto the queue
     pub fn push(&mut self, command: Command) {
         self.commands.push(command);
     }
 
-    /// Work out if the queue is empty
+    // Work out if the queue is empty
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
     }

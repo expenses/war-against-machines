@@ -1,13 +1,13 @@
-//! Various utility functions
+// Various utility functions
 
 use std::cmp::{max, min};
 
-/// Ensure that a value is between lower and an upper value
+// Ensure that a value is between lower and an upper value
 pub fn bound(value: usize, lower: usize, upper: usize) -> usize {
     min(upper, max(lower, value))
 }
 
-/// Ensure that a floating point value is between lower and upper value (as usize)
+// Ensure that a floating point value is between lower and upper value (as usize)
 pub fn bound_float(value: f32, lower: usize, upper: usize) -> usize {
     let value = value.round();
     let value = if value < 0.0 { 0 } else { value as usize };
@@ -15,12 +15,12 @@ pub fn bound_float(value: f32, lower: usize, upper: usize) -> usize {
     bound(value, lower, upper)
 }
 
-/// Calculate the distance between two points on the map
+// Calculate the distance between two points on the map
 pub fn distance(a_x: usize, a_y: usize, b_x: usize, b_y: usize) -> f32 {
     (a_x as f32 - b_x as f32).hypot(a_y as f32 - b_y as f32)
 }
 
-/// Calculate if a distance between two points is below a given value
+// Calculate if a distance between two points is below a given value
 pub fn distance_under(a_x: usize, a_y: usize, b_x: usize, b_y: usize, value: f32) -> bool {
     // First test the linear distances
     (a_x as f32 - b_x as f32).abs() <= value &&
@@ -29,14 +29,14 @@ pub fn distance_under(a_x: usize, a_y: usize, b_x: usize, b_y: usize, value: f32
     distance(a_x, a_y, b_x, b_y) <= value
 }
 
-/// A chance-to-hit function based on a fairly simple sigmoid curve.
+// A chance-to-hit function based on a fairly simple sigmoid curve.
 pub fn chance_to_hit(a_x: usize, a_y: usize, b_x: usize, b_y: usize) -> f32 {
     let distance = distance(a_x, a_y, b_x, b_y);
 
     (1.0 / (1.0 + 0.02 * 4.0_f32.powf(distance / 3.0)))
 }
 
-/// Convert a rotation for drawing on the map
+// Convert a rotation for drawing on the map
 pub fn convert_rotation(rotation: f32) -> f64 {
     // Rotate by 45'
     let rotation = rotation + 45.0f32.to_radians();

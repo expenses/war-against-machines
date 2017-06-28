@@ -1,4 +1,4 @@
-//! Unit and game animations
+// Unit and game animations
 
 use rand;
 use rand::distributions::{IndependentSample, Range};
@@ -14,7 +14,7 @@ const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
 const WALK_SPEED: f32 = 0.1;
 
-/// A pretty simple walk animation
+// A pretty simple walk animation
 pub struct Walk {
     status: f32,
     unit_id: usize,
@@ -24,7 +24,7 @@ pub struct Walk {
 }
 
 impl Walk {
-    /// Create a new walk animation
+    // Create a new walk animation
     pub fn new(unit_id: usize, x: usize, y: usize, cost: usize) -> Walk {
         Walk {
             unit_id, x, y, cost,
@@ -32,9 +32,9 @@ impl Walk {
         }
     }
 
-    /// Move the animation a step, and return if its still going
-    /// If not, move the unit
-    pub fn step(&mut self, map: &mut Map) -> bool {
+    // Move the animation a step, and return if its still going
+    // If not, move the unit
+    fn step(&mut self, map: &mut Map) -> bool {
         self.status += WALK_SPEED;
         
         let still_going = self.status <= 1.0;
@@ -52,7 +52,7 @@ impl Walk {
     }
 }
 
-/// A bullet animation for drawing on the screen
+// A bullet animation for drawing on the screen
 pub struct Bullet {
     pub x: f32,
     pub y: f32,
@@ -68,7 +68,7 @@ pub struct Bullet {
 }
 
 impl Bullet {
-    /// Create a new bullet based of the firing unit and the target unit
+    // Create a new bullet based of the firing unit and the target unit
     pub fn new(unit_id: usize, target_id: usize, will_hit: bool, lethal: bool, units: &Units) -> Bullet {
         let unit = units.get(unit_id).unwrap();
         let target = units.get(target_id).unwrap();
@@ -101,8 +101,8 @@ impl Bullet {
         }
     }
     
-    /// Move the bullet a step and work out if its still going or not
-    pub fn step(&mut self, map: &mut Map) -> bool {
+    // Move the bullet a step and work out if its still going or not
+    fn step(&mut self, map: &mut Map) -> bool {
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
@@ -126,31 +126,31 @@ impl Bullet {
     }
 }
 
-/// An animation enum to hold the different types of animations
+// An animation enum to hold the different types of animations
 pub enum Animation {
     Walk(Walk),
     Bullet(Bullet),
 }
 
-/// A struct for holding the animations
+// A struct for holding the animations
 pub struct Animations {
     animations: Vec<Animation>
 }
 
 impl Animations {
-    /// Create a new, empty `Animations`
+    // Create a new, empty Animations
     pub fn new() -> Animations {
         Animations {
             animations: Vec::new()
         }
     }
 
-    /// Iterate of the animations
+    // Iterate of the animations
     pub fn iter(&self) -> Iter<Animation> {
         self.animations.iter()
     }
 
-    /// Update all of the animations, keeping only those that are still going
+    // Update all of the animations, keeping only those that are still going
     pub fn update(&mut self, map: &mut Map) {
         self.animations.retain_mut(|mut animation| match animation {
             &mut Animation::Walk(ref mut walk) => walk.step(map),
@@ -158,12 +158,12 @@ impl Animations {
         });
     }
 
-    /// Push a new animation
+    // Push a new animation
     pub fn push(&mut self, animation: Animation) {
         self.animations.push(animation);
     }
 
-    /// Work out if `self.animations` is empty
+    // Work out if self.animations is empty
     pub fn is_empty(&self) -> bool {
         self.animations.is_empty()
     }

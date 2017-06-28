@@ -1,11 +1,11 @@
-//! A Context struct for containing the SDL2 context and the canvas
+// A Context struct for containing the SDL2 context and the canvas
 
 use sdl2;
 use sdl2::rect::Rect;
 use sdl2::video::{WindowContext, Window};
 use sdl2::render::{Texture, TextureCreator};
 
-/// Contains the SDL2 context, the canvas and a bool for whether the game should be running
+// Contains the SDL2 context, the canvas and a bool for whether the game should be running
 pub struct Context {
     sdl_context: sdl2::Sdl,
     pub canvas: sdl2::render::Canvas<Window>,
@@ -13,7 +13,7 @@ pub struct Context {
 }
 
 impl Context {
-    /// Create a new `Context` with a title, width and height
+    // Create a new Context with a title, width and height
     pub fn new(title: &str, width: u32, height: u32) -> Context {
         // Initialise sdl and get the video subsystem
         let sdl_context = sdl2::init().unwrap();
@@ -40,17 +40,17 @@ impl Context {
         }
     }
 
-    /// Simple alias for making a texture creator from the canvas
+    // Simple alias for making a texture creator from the canvas
     pub fn texture_creator(&self) -> TextureCreator<WindowContext> {
         self.canvas.texture_creator()
     }
 
-    /// Simple alias for the event pump
+    // Simple alias for the event pump
     pub fn event_pump(&self) -> sdl2::EventPump {
         self.sdl_context.event_pump().unwrap()
     }
 
-    /// Draw an image at x, y, and a particular scale
+    // Draw an image at x, y, and a particular scale
     pub fn draw(&mut self, image: &Texture, x: f32, y: f32, scale: f32) {
         // Scale up/down the image
         let query = image.query();
@@ -61,27 +61,27 @@ impl Context {
         self.canvas.copy(image, None, Some(rect)).unwrap();
     }
 
-    /// Clear the canvas
+    // Clear the canvas
     pub fn clear(&mut self) {
         self.canvas.clear();
     }
 
-    /// Present the canvas
+    // Present the canvas
     pub fn present(&mut self) {
         self.canvas.present()
     }
 
-    /// Get the width of the canvas
+    // Get the width of the canvas
     pub fn width(&self) -> u32 {
         self.canvas.output_size().unwrap().0
     }
 
-    /// Get the height of the canvas
+    // Get the height of the canvas
     pub fn height(&self) -> u32 {
         self.canvas.output_size().unwrap().1
     }
 
-    /// 'Quit' the game by setting `self.running` to false
+    // 'Quit' the game by setting self.running to false
     pub fn quit(&mut self) {
         self.running = false;
     }

@@ -23,12 +23,6 @@ After those are installed, you can build the release with Cargo:
 
     cargo build --release
 
-## Documentation
-
-To render and open the documentation, run:
-
-    cargo doc --no-deps --open
-
 ## Gameplay
 
 ### Controls

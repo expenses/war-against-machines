@@ -1,4 +1,4 @@
-//! The main menu of the game
+// The main menu of the game
 
 use sdl2::keyboard::Keycode;
 use colours::WHITE;
@@ -19,28 +19,28 @@ const DEFAULT_AI_UNITS: usize = 4;
 const DEFAULT_PLAYER_UNIT_TYPE: UnitType = UnitType::Squaddie;
 const DEFAULT_AI_UNIT_TYPE: UnitType = UnitType::Machine;
 
-/// Callbacks that can be returned from key presses
+// Callbacks that can be returned from key presses
 pub enum Callback {
-    Play,
+    Play
 }
 
-/// A submenu inside the main menu
-pub struct Submenu {
+// A submenu inside the main menu
+struct Submenu {
     selection: usize,
     list: Vec<String>
 }
 
 impl Submenu {
-    /// Create a new submenu
-    pub fn new(list: Vec<String>) -> Submenu {
+    // Create a new submenu
+    fn new(list: Vec<String>) -> Submenu {
         Submenu {
             selection: 0,
             list
         }
     }
 
-    /// Draw the items in the submenu
-    pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
+    // Draw the items in the submenu
+    fn draw(&self, ctx: &mut Context, resources: &Resources) {
         for (i, item) in self.list.iter().enumerate() {
             let mut string = item.clone();
 
@@ -58,26 +58,26 @@ impl Submenu {
         }
     }
 
-    /// Change an item in the list
-    pub fn set_item(&mut self, i: usize, string: String) {
+    // Change an item in the list
+    fn set_item(&mut self, i: usize, string: String) {
         self.list[i] = string;
     }
 
-    /// Rotate the selection up
-    pub fn rotate_up(&mut self) {
+    // Rotate the selection up
+    fn rotate_up(&mut self) {
         self.selection = match self.selection {
             0 => self.list.len() - 1,
             _ => self.selection - 1
         }
     }
 
-    /// Rotate the selection down
-    pub fn rotate_down(&mut self) {
+    // Rotate the selection down
+    fn rotate_down(&mut self) {
         self.selection = (self.selection + 1) % self.list.len();
     }
 }
 
-/// A struct for holding the settings of a skirmish
+// A struct for holding the settings of a skirmish
 pub struct SkirmishSettings {
     pub cols: usize,
     pub rows: usize,
@@ -88,7 +88,7 @@ pub struct SkirmishSettings {
 }
 
 impl SkirmishSettings {
-    /// Create a new `SkirmishSettings` using the defaults
+    // Create a new SkirmishSettings using the defaults
     pub fn new() -> SkirmishSettings {
         SkirmishSettings {
             cols: DEFAULT_SIZE,
@@ -100,24 +100,24 @@ impl SkirmishSettings {
         }
     }
 
-    /// Ensure that the settings are between their upper and lower bounds
-    pub fn bound(&mut self) {
+    // Ensure that the settings are between their upper and lower bounds
+    fn bound(&mut self) {
         self.cols = bound(self.cols, MIN_SIZE, MAX_SIZE);
         self.rows = bound(self.rows, MIN_SIZE, MAX_SIZE);
         self.player_units = bound(self.player_units, 1, self.cols);
         self.ai_units = bound(self.ai_units, 1, self.cols);
     }
 
-    /// Switch the player unit type
-    pub fn change_player_unit_type(&mut self) {
+    // Switch the player unit type
+    fn change_player_unit_type(&mut self) {
         self.player_unit_type = match self.player_unit_type {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
         }
     }
 
-    /// Switch the ai unit type
-    pub fn change_ai_unit_type(&mut self) {
+    // Switch the ai unit type
+    fn change_ai_unit_type(&mut self) {
         self.ai_unit_type = match self.ai_unit_type {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
@@ -125,13 +125,13 @@ impl SkirmishSettings {
     }
 }
 
-/// Which submenu is selected
-pub enum Selected {
+// Which submenu is selected
+enum Selected {
     Main,
     Skirmish
 }
 
-/// The main menu struct
+// The main menu struct
 pub struct Menu {
     pub skirmish_settings: SkirmishSettings,
     main: Submenu,
@@ -140,7 +140,7 @@ pub struct Menu {
 }
 
 impl Menu {
-    /// Create a new `Menu`
+    // Create a new Menu
     pub fn new() -> Menu {
         let skirmish_settings = SkirmishSettings::new();
 
@@ -161,7 +161,7 @@ impl Menu {
         }
     }
 
-    /// Draw the menu
+    // Draw the menu
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         // Draw the title
         let title = resources.image("title");
@@ -175,7 +175,7 @@ impl Menu {
         }
     }
 
-    /// Refresh the skirmish submenu
+    // Refresh the skirmish submenu
     fn refresh_skirmish(&mut self) {
         self.skirmish_settings.bound();
         self.skirmish.set_item(1, format!("Cols: {}", self.skirmish_settings.cols));
@@ -186,7 +186,7 @@ impl Menu {
         self.skirmish.set_item(6, format!("AI unit type: {}", self.skirmish_settings.ai_unit_type));
     }
 
-    /// Handle key presses, returning an optional callback
+    // Handle key presses, returning an optional callback
     pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode) -> Option<Callback> {
         match key {
             // Rotate the selections up

@@ -1,4 +1,4 @@
-//! The main battle struct the handles actions
+// The main battle struct the handles actions
 
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
@@ -20,14 +20,14 @@ use menu::SkirmishSettings;
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
 
-/// A cursor on the map with a possible position
+// A cursor on the map with a possible position
 pub struct Cursor {
     pub position: Option<(usize, usize)>
 }
 
-/// What controls the actions
+// Whose turn is it
 #[derive(Eq, PartialEq)]
-pub enum Controller {
+enum Controller {
     Player,
     AI
 }
@@ -41,7 +41,7 @@ impl fmt::Display for Controller {
     }
 }
 
-/// The Battle struct
+// The Battle struct
 pub struct Battle {
     pub map: Map,
     drawer: Drawer,
@@ -57,7 +57,7 @@ pub struct Battle {
 }
 
 impl Battle {
-    /// Create a new `Battle`
+    // Create a new Battle
     pub fn new(resources: &Resources) -> Battle {
         let scale = 2.0;
         let width_offset = resources.image("end_turn_button").query().width as f32 * -scale;
@@ -106,7 +106,7 @@ impl Battle {
         }
     }
 
-    /// Start up the map
+    // Start up the map
     pub fn start(&mut self, settings: &SkirmishSettings) {
         // Add player units
         for x in 0 .. settings.player_units {
@@ -122,7 +122,7 @@ impl Battle {
         self.map.tiles.generate(settings.cols, settings.rows, &self.map.units);
     }
 
-    /// Handle keypresses
+    // Handle keypresses
     pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode, pressed: bool) {
         match key {
             Keycode::Up    | Keycode::W => self.keys[0] = pressed,
@@ -136,7 +136,7 @@ impl Battle {
         };
     }
 
-    /// Update the battle
+    // Update the battle
     pub fn update(&mut self) {
         // Change camera variables if a key is being pressed
         if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
@@ -162,31 +162,25 @@ impl Battle {
         self.animations.update(&mut self.map);
     }
 
-    /// Draw both the map and the UI
+    // Draw both the map and the UI
     pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
         self.drawer.draw_battle(ctx, resources, &self);
         self.draw_ui(ctx, resources);
     }
 
-    /// Draw the UI
-    pub fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
+    // Draw the UI
+    fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
         // Get a string of info about the selected unit
         let selected = match self.selected.and_then(|id| self.map.units.get(id)) {
-            Some(unit) => {
-                if unit.side == UnitSide::Player {
-                    format!(
-                        "(Name: {}, Moves: {}, Health: {}, Weapon: {})",
-                        unit.name, unit.moves, unit.health, unit.weapon
-                    )
-                } else {
-                    format!("(Name: {})", unit.name)
-                }
-            },
-            _ => "~".into()
+            Some(unit) => format!(
+                "Selected: (Name: {}, Moves: {}, Health: {}, Weapon: {})",
+                unit.name, unit.moves, unit.health, unit.weapon
+            ),
+            _ => String::new()
         };
 
         // Set the text of the UI text display
-        self.ui.set_text(0, format!("Turn {} - {} - {}", self.turn, self.controller, selected));
+        self.ui.set_text(0, format!("Turn {} - {}\n{}", self.turn, self.controller, selected));
 
         // Create the inventory string
         let inventory_string = match self.selected.and_then(|selected| self.map.units.get(selected)) {
@@ -228,20 +222,22 @@ impl Battle {
         self.ui.draw(ctx, resources);
     }
 
-    /// Move the cursor on the screen
+    // Move the cursor on the screen
     pub fn move_cursor(&mut self, ctx: &mut Context, x: f32, y: f32) {
         // Get the position where the cursor should be
         let (x, y) = self.drawer.tile_under_cursor(ctx, x, y);
 
         // Set cursor position if it is on the map and visible
-        self.cursor.position = if x < self.map.tiles.cols && y < self.map.tiles.rows && self.map.tiles.at(x, y).visible() {
+        self.cursor.position = if x < self.map.tiles.cols &&
+                                  y < self.map.tiles.rows &&
+                                  self.map.tiles.at(x, y).visible() {
             Some((x, y))
         } else {
             None
         }
     }
 
-    /// Respond to mouse presses
+    // Respond to mouse presses
     pub fn mouse_button(&mut self, ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
         match button {
             MouseButton::Left => match self.ui.clicked(ctx, x, y) {
@@ -252,7 +248,14 @@ impl Battle {
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor.position {
                     self.path = None;
-                    self.selected = self.map.units.at_i(x, y);
+                    self.selected = match self.map.units.at(x, y) {
+                        Some((id, unit)) => if unit.side == UnitSide::Player {
+                            Some(id)
+                        } else {
+                            None
+                        },
+                        _ => None
+                    }
                 }
             },
             // Check if the cursor has a position and a unit is selected
@@ -274,11 +277,8 @@ impl Battle {
                         _ => {
                             let unit = self.map.units.get(player_unit_id).unwrap();
 
-                            // Do nothing if the unit isn't a player unit
-                            if unit.side != UnitSide::Player {
-                                return;
-                            // Or the the target location is selected
-                            } else if self.map.taken(x, y) {
+                            // return if the target location is taken
+                            if self.map.taken(x, y) {
                                 self.path = None;
                                 return;
                             }
@@ -313,7 +313,7 @@ impl Battle {
         }
     }
 
-    /// Work out if the cursor is on an ai unit
+    // Work out if the cursor is on an ai unit
     pub fn cursor_on_ai_unit(&self) -> bool {
         self.cursor.position
             .and_then(|(x, y)| self.map.units.at(x, y))
@@ -321,7 +321,7 @@ impl Battle {
             .unwrap_or(false)
     }
 
-    /// End the current turn
+    // End the current turn
     fn end_turn(&mut self) {
         if self.controller == Controller::Player {
             for (_, unit) in self.map.units.iter_mut() {

@@ -1,4 +1,4 @@
-//! The units in the game, and a struct to contain them
+// The units in the game, and a struct to contain them
 
 use rand;
 use rand::Rng;
@@ -12,11 +12,11 @@ use items::{Item, ItemType};
 use weapons::{Weapon, WeaponType};
 use utils::distance_under;
 
-/// The sight range of units
+// The sight range of units
 pub const UNIT_SIGHT: f32 = 7.5;
 
-/// A list of first names to pick from
-pub const FIRST_NAMES: &[&str] = &[
+// A list of first names to pick from
+const FIRST_NAMES: &[&str] = &[
     "David",
     "Dale",
     "Robert",
@@ -37,8 +37,8 @@ pub const FIRST_NAMES: &[&str] = &[
     "Jane"
 ];
 
-/// A list of last names to pick from
-pub const LAST_NAMES: &[&str] = &[
+// A list of last names to pick from
+const LAST_NAMES: &[&str] = &[
     "Cooper",
     "Yang",
     "Smith",
@@ -57,8 +57,8 @@ pub const LAST_NAMES: &[&str] = &[
     "Briggs"
 ];
 
-/// Generate a new random squaddie name
-pub fn generate_squaddie_name() -> String {
+// Generate a new random squaddie name
+fn generate_squaddie_name() -> String {
     let mut rng = rand::thread_rng();
     let first = rng.choose(FIRST_NAMES).unwrap();
     let last = rng.choose(LAST_NAMES).unwrap();
@@ -66,8 +66,8 @@ pub fn generate_squaddie_name() -> String {
     format!("{} {}", first, last)
 }
 
-/// Generate a new random machine name
-pub fn generate_machine_name() -> String {
+// Generate a new random machine name
+fn generate_machine_name() -> String {
     let mut serial = format!("{}", rand::thread_rng().gen_range(0, 100_000));
 
     while serial.len() < 5 {
@@ -77,7 +77,7 @@ pub fn generate_machine_name() -> String {
     format!("SK{}", serial)
 }
 
-/// The type of a unit
+// The type of a unit
 #[derive(Copy, Clone)]
 pub enum UnitType {
     Squaddie,
@@ -93,7 +93,7 @@ impl fmt::Display for UnitType {
     }
 }
 
-/// Which side the unit is on
+// Which side the unit is on
 #[derive(Eq, PartialEq)]
 pub enum UnitSide {
     Player,
@@ -101,7 +101,7 @@ pub enum UnitSide {
     AI
 }
 
-/// A struct for a unit in the game
+// A struct for a unit in the game
 pub struct Unit {
     pub tag: UnitType,
     pub side: UnitSide,
@@ -118,7 +118,7 @@ pub struct Unit {
 }
 
 impl Unit {
-    /// Create a new unit based on unit type
+    // Create a new unit based on unit type
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
         match tag {
             UnitType::Squaddie => {
@@ -152,27 +152,27 @@ impl Unit {
         }
     }
 
-    /// Move the unit to a location with a specific cost
+    // Move the unit to a location with a specific cost
     pub fn move_to(&mut self, x: usize, y: usize, cost: usize) {
         self.x = x;
         self.y = y;
         self.moves -= cost;
     }
 
-    /// Pick up an item
-    pub fn pick_up(&mut self, item: Item) {
+    // Pick up an item
+    pub fn _pick_up(&mut self, item: Item) {
         self.inventory.push(item)
     }
 }
 
-/// A struct for containing all of the units
+// A struct for containing all of the units
 pub struct Units {
     index: usize,
     units: HashMap<usize, Unit>
 }
 
 impl Units {
-    /// Create a new `Units` struct
+    // Create a new Units struct
     pub fn new() -> Units {
         Units {
             index: 0,
@@ -180,57 +180,52 @@ impl Units {
         }
     }
 
-    /// Push a unit
+    // Push a unit
     pub fn push(&mut self, unit: Unit) {
         self.units.insert(self.index, unit);
         self.index += 1;
     }
 
-    /// Iterate over the units
+    // Iterate over the units
     pub fn iter(&self) -> Iter<usize, Unit> {
         self.units.iter()
     }
 
-    /// Iterate mutably over the units
+    // Iterate mutably over the units
     pub fn iter_mut(&mut self) -> IterMut<usize, Unit> {
         self.units.iter_mut()
     }
 
-    /// Get a reference to a unit with a specific ID, if th unit exists
+    // Get a reference to a unit with a specific ID, if th unit exists
     pub fn get(&self, id: usize) -> Option<&Unit> {
         self.units.get(&id)
     }
 
-    /// Get a mutable reference to a unit with a specific ID, if the unit exists
+    // Get a mutable reference to a unit with a specific ID, if the unit exists
     pub fn get_mut(&mut self, id: usize) -> Option<&mut Unit> {
         self.units.get_mut(&id)
     }
 
-    /// Return the ID and reference to a unit at (x, y)
+    // Return the ID and reference to a unit at (x, y)
     pub fn at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
         self.iter()
             .find(|&(_, unit)| unit.x == x && unit.y == y)
             .map(|(i, unit)| (*i, unit))
     }
 
-    /// return just the ID component of `at`
-    pub fn at_i(&self, x: usize, y: usize) -> Option<usize> {
-        self.at(x, y).map(|(i, _)| i)
-    }
-
-    /// Check if any units on a particular side are alive
+    // Check if any units on a particular side are alive
     pub fn any_alive(&self, side: UnitSide) -> bool {
         self.iter().any(|(_, unit)| unit.side == side)
     }
 
-    /// Calculate if (x, y) is visible to any units on a particular side
+    // Calculate if (x, y) is visible to any units on a particular side
     pub fn visible(&self, x: usize, y: usize, side: UnitSide) -> bool {
         self.iter()
         .filter(|&(_, unit)| unit.side == side)
         .any(|(_, unit)| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
     }
 
-    /// Kill a unit and drop a corpse
+    // Kill a unit and drop a corpse
     pub fn kill(&mut self, tiles: &mut Tiles, id: usize) {
         let (x, y) = match self.get(id) {
             Some(unit) => (unit.x, unit.y),
