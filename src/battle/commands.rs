@@ -3,10 +3,10 @@
 use rand;
 
 use battle::map::Map;
-use battle::units::UnitSide;
+use battle::units::{Unit, UnitSide};
 use battle::paths::PathPoint;
 use battle::animations::{Walk, Bullet, Animation, Animations};
-use utils::chance_to_hit;
+use weapons::WeaponType;
 
 // Finish a units moves for a turn by setting them to 0
 pub struct FinishedCommand {
@@ -32,54 +32,85 @@ impl FinishedCommand {
 // Get one unit to fire on another
 pub struct FireCommand {
     unit_id: usize,
-    target_id: usize
+    target_id: usize,
+    status: Option<(f32, i16, usize)>
 }
 
 impl FireCommand {
     // Create a new fire command
     pub fn new(unit_id: usize, target_id: usize) -> FireCommand {
         FireCommand {
-            unit_id, target_id
+            unit_id, target_id,
+            status: None
         }
     }
 
     // Process the fire command, checking if the firing unit has the moves to fire,
     // if it hits, and adding the bullet to Animations
-    fn process(&self, map: &mut Map, animations: &mut Animations) {
-        let (target_x, target_y) = match map.units.get(self.target_id) {
-            Some(target) => (target.x, target.y),
-            _ => return
-        };
+    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> bool {
+        if self.status.is_none() {
+            let (target_x, target_y) = match map.units.get(self.target_id) {
+                Some(target) => (target.x, target.y),
+                _ => return true
+            };
 
-        let (will_hit, damage) = match map.units.get_mut(self.unit_id) {
-            Some(unit) => {
-                if unit.moves < unit.weapon.cost {
-                    return;
+            match map.units.get_mut(self.unit_id) {
+                Some(unit) => {
+                    let info = unit.weapon.info();
+                    let chance_to_hit = unit.chance_to_hit(target_x, target_y) * info.hit_modifier;
+
+                    if unit.moves < info.cost {
+                        return true;
+                    }
+
+                    unit.moves -= info.cost;
+                    
+                    self.status = Some((chance_to_hit, unit.weapon.damage, info.bullets));
                 }
+                _ => return true
+            };
+        }
+        
+        if let Some((chance_to_hit, damage, bullets)) = self.status {
+            let will_hit = chance_to_hit > rand::random::<f32>();
 
-                unit.moves -= unit.weapon.cost;
+            let lethal = match map.units.get_mut(self.target_id) {
+                Some(target) => {
+                    if will_hit {
+                        target.health -= damage;
+                    }
 
-                let hit_chance = chance_to_hit(unit.x, unit.y, target_x, target_y);
-                let random = rand::random::<f32>();
+                    target.health <= 0
+                },
+                _ => return true
+            };
 
-                (hit_chance > random, unit.weapon.damage)
+            if let Some(unit) = map.units.get(self.unit_id) {
+                if let Some(target) = map.units.get(self.target_id) {
+                    match unit.weapon.tag {
+                        WeaponType::Shotgun => {
+                            for _ in 0 .. bullets {
+                                self.push_bullet(animations, unit, target, will_hit, lethal);
+                            }
+                            return true;
+                        },
+                        _ => self.push_bullet(animations, unit, target, will_hit, lethal)
+                    }
+                }
             }
-            _ => return
-        };
 
-        let lethal = match map.units.get_mut(self.target_id) {
-            Some(target) => {
-                if will_hit {
-                    target.health -= damage;
-                }
+            if bullets == 1 {
+                return true;
+            }
 
-                target.health <= 0
-            },
-            None => false
-        };
+            self.status = Some((chance_to_hit, damage, bullets - 1));
+        }
 
-        // Add a bullet to the array for drawing
-        animations.push(Animation::Bullet(Bullet::new(self.unit_id, self.target_id, will_hit, lethal, &map.units)));
+        false
+    }
+
+    fn push_bullet(&self, animations: &mut Animations, unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) {
+        animations.push(Animation::Bullet(Bullet::new(self.target_id, unit, target, will_hit, lethal)));
     }
 }
 
@@ -155,7 +186,7 @@ impl CommandQueue {
     // Update the first item of the command queue
     pub fn update(&mut self, map: &mut Map, animations: &mut Animations) {
         let finished = match self.commands.first_mut() {
-            Some(&mut Command::Fire(ref mut fire)) => {fire.process(map, animations); true},
+            Some(&mut Command::Fire(ref mut fire)) => fire.process(map, animations),
             Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations),
             Some(&mut Command::Finished(ref mut finished)) => {finished.process(map); true}
             _ => false

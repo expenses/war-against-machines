@@ -181,7 +181,7 @@ impl Battle {
         // Get a string of info about the selected unit
         let selected = match self.selected_unit() {
             Some(unit) => format!(
-                "Selected: (Name: {}, Moves: {}, Health: {}, Weapon: {})",
+                "Name: {}, Moves: {}, Health: {}\nWeapon: {}",
                 unit.name, unit.moves, unit.health, unit.weapon
             ),
             _ => String::new()

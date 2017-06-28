@@ -98,9 +98,10 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
             command_queue.push(Command::Walk(WalkCommand::new(unit_id, map, ai_move.path)));
         }
 
+
         // If the move has a target, fire at the target as many times as possible
         if let Some(target_id) = ai_move.target_id {
-            for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.cost {
+            for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.info().cost {
                 command_queue.push(Command::Fire(FireCommand::new(unit_id, target_id)));
             }
         }
@@ -219,7 +220,10 @@ fn damage_score(x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> 
         return 0.0
     }
 
-    chance_to_hit(x, y, target.x, target.y) * ((unit.moves - cost) / unit.weapon.cost) as f32
+    let info = unit.weapon.info();
+    let chance_to_hit = chance_to_hit(x, y, target.x, target.y) * info.hit_modifier;
+
+    chance_to_hit * ((unit.moves - cost) / info.cost) as f32 * info.bullets as f32
 }
 
 // Calculate the search score for a tile.

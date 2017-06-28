@@ -10,7 +10,7 @@ use std::collections::hash_map::{Iter, IterMut};
 use battle::tiles::Tiles;
 use items::{Item, ItemType};
 use weapons::{Weapon, WeaponType};
-use utils::distance_under;
+use utils::{distance_under, chance_to_hit};
 
 // The sight range of units
 pub const UNIT_SIGHT: f32 = 7.5;
@@ -121,14 +121,16 @@ impl Unit {
     // Create a new unit based on unit type
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
         match tag {
-            UnitType::Squaddie => {
-                let weapon = Weapon::new(if rand::thread_rng().gen::<bool>() { WeaponType::Rifle } else { WeaponType::MachineGun });
+            UnitType::Squaddie => {                
                 let moves = 30;
                 let health = 100;
+                let mut rng = rand::thread_rng();
+                let weapons = [WeaponType::Rifle, WeaponType::MachineGun, WeaponType::Shotgun];
 
                 Unit {
-                    tag, side, x, y, moves, health, weapon,
+                    tag, side, x, y, moves, health,
                     image: "squaddie",
+                    weapon: Weapon::new(*rng.choose(&weapons).unwrap()),
                     name: generate_squaddie_name(),
                     max_moves: moves,
                     max_health: health,
@@ -162,6 +164,10 @@ impl Unit {
     // Pick up an item
     pub fn _pick_up(&mut self, item: Item) {
         self.inventory.push(item)
+    }
+
+    pub fn chance_to_hit(&self, target_x: usize, target_y: usize) -> f32 {
+        chance_to_hit(self.x, self.y, target_x, target_y)
     }
 }
 

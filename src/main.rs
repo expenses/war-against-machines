@@ -222,9 +222,8 @@ fn main() {
     resources.load_image("squaddie", rw_ops!("unit/squaddie.png"));
     resources.load_image("machine",  rw_ops!("unit/machine.png"));
     
-    resources.load_image("rifle_round",       rw_ops!("bullet/rifle_round.png"));
-    resources.load_image("machine_gun_round", rw_ops!("bullet/machine_gun_round.png"));
-    resources.load_image("plasma_round",      rw_ops!("bullet/plasma_round.png"));
+    resources.load_image("regular_bullet", rw_ops!("bullet/regular.png"));
+    resources.load_image("plasma_bullet",  rw_ops!("bullet/plasma.png"));
     
     resources.load_image("cursor",            rw_ops!("cursor/default.png"));
     resources.load_image("cursor_unit",       rw_ops!("cursor/unit.png"));

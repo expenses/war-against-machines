@@ -11,7 +11,7 @@ use battle::animations::Animation;
 use colours;
 use Resources;
 use context::Context;
-use utils::{bound_float, chance_to_hit, convert_rotation};
+use utils::{bound_float, convert_rotation};
 
 const TILE_WIDTH: u32 = 48;
 const TILE_HEIGHT: u32 = 24;
@@ -226,7 +226,7 @@ impl Drawer {
                         // Render the tile
                         canvas.draw(resources.image(if total_cost > unit.moves {
                             "path_unreachable"
-                        } else if total_cost + unit.weapon.cost > unit.moves {
+                        } else if total_cost + unit.weapon.info().cost > unit.moves {
                             "path_no_weapon"
                         } else {
                             "path"
@@ -268,7 +268,8 @@ impl Drawer {
                     ) {
                         if firing.side == UnitSide::Player && target.side == UnitSide::AI {
                             // Get the chance to hit as a percentage
-                            let hit_chance = chance_to_hit(firing.x, firing.y, target.x, target.y) * 100.0;
+                            let hit_modifier = firing.weapon.info().hit_modifier;
+                            let hit_chance = firing.chance_to_hit(target.x, target.y) * hit_modifier * 100.0;
 
                             // Render it and draw it at the center
                             let chance = resources.render("main", &format!("{:0.3}%", hit_chance), colours::WHITE);

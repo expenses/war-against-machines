@@ -7,7 +7,7 @@ use odds::vec::VecExt;
 use std::slice::Iter;
 
 use battle::map::Map;
-use battle::units::Units;
+use battle::units::Unit;
 use weapons::WeaponType;
 
 const MARGIN: f32 = 5.0;
@@ -69,10 +69,7 @@ pub struct Bullet {
 
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
-    pub fn new(unit_id: usize, target_id: usize, will_hit: bool, lethal: bool, units: &Units) -> Bullet {
-        let unit = units.get(unit_id).unwrap();
-        let target = units.get(target_id).unwrap();
-
+    pub fn new(target_id: usize, unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) -> Bullet {
         let x = unit.x as f32;
         let y = unit.y as f32;
         let target_x = target.x as f32;
@@ -81,9 +78,8 @@ impl Bullet {
         let mut direction = (target_y - y).atan2(target_x - x);
 
         let image = match unit.weapon.tag {
-            WeaponType::Rifle => "rifle_round",
-            WeaponType::MachineGun => "machine_gun_round",
-            WeaponType::PlasmaRifle => "plasma_round"
+            WeaponType::PlasmaRifle => "plasma_bullet",
+            _ => "regular_bullet",
         };
 
         // If the bullet won't hit the target, change the direction slightly
