@@ -22,7 +22,7 @@ struct AIMove {
 
 impl AIMove {
     // Create a new AIMove set up with a specific score
-    fn new(unit: &Unit, score: f32) -> AIMove {
+    fn from(unit: &Unit, score: f32) -> AIMove {
         AIMove {
             x: unit.x,
             y: unit.y,
@@ -51,16 +51,22 @@ impl AIMove {
         }
     }
 
+    fn new(x: usize, y: usize, path: Vec<PathPoint>, cost: usize, target_id: Option<usize>, score: f32) -> AIMove {
+        AIMove {
+            x, y, path, cost, target_id, score
+        }
+    }
+
     // Check some variables and compare the score with the current score of the AIMove.
     // If the new score is higher and the unit has the moves, set the variables of the AIMove.
-    fn check_move(&mut self, unit: &Unit, x: usize, y: usize, path: Vec<PathPoint>, cost: usize, target_id: Option<usize>, score: f32) {
-        if score > self.score && cost <= unit.moves {
-            self.x = x;
-            self.y = y;
-            self.path = path;
-            self.cost = cost;
-            self.target_id = target_id;
-            self.score = score;
+    fn compare(&mut self, unit: &Unit, ai_move: AIMove) {
+        if ai_move.score > self.score && ai_move.cost <= unit.moves {
+            self.x = ai_move.x;
+            self.y = ai_move.y;
+            self.path = ai_move.path;
+            self.cost = ai_move.cost;
+            self.target_id = ai_move.target_id;
+            self.score = ai_move.score;
         }
     }
 }
@@ -94,7 +100,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
         }
 
         // If the move has a path, queue the 'walk' command to walk along it
-        if ai_move.path.len() > 0 {
+        if !ai_move.path.is_empty() {
             command_queue.push(Command::Walk(WalkCommand::new(unit_id, map, ai_move.path)));
         }
 
@@ -126,7 +132,7 @@ fn next_unit(map: &Map) -> Option<(usize, &Unit)> {
 // Return an AIMove where the amount of tiles searched is maximized
 fn maximize_tile_search(unit: &Unit, map: &Map) -> AIMove {
     // Create a new AIMove
-    let mut ai_move = AIMove::new(unit, 0.0);
+    let mut ai_move = AIMove::from(unit, 0.0);
 
     // Loop through the tiles
     for x in 0 .. map.tiles.cols {
@@ -137,8 +143,8 @@ fn maximize_tile_search(unit: &Unit, map: &Map) -> AIMove {
             }
 
             // If there is a path to the tile, check its movement score
-            if let Some((path, cost)) = pathfind(unit, x, y, &map) {
-                ai_move.check_move(unit, x, y, path, cost, None, search_score(x, y, map));
+            if let Some((path, cost)) = pathfind(unit, x, y, map) {
+                ai_move.compare(unit, AIMove::new(x, y, path, cost, None, search_score(x, y, map)));
             }
         }
     }
@@ -149,7 +155,7 @@ fn maximize_tile_search(unit: &Unit, map: &Map) -> AIMove {
 // Return an AIMove where the damage dealt to the nearest unit is maximized
 fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
     // Create a new AIMove as the unit trying to fire from the current position
-    let mut ai_move = AIMove::fire_from_pos(unit, &map);
+    let mut ai_move = AIMove::fire_from_pos(unit, map);
 
     // Loop through the tiles
     for x in 0 .. map.tiles.cols {
@@ -160,9 +166,9 @@ fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
             }
 
             // If a path to the tile has been found and there is a closest target, check its damage score
-            if let Some((path, cost)) = pathfind(unit, x, y, &map) {
-                if let Some((target_id, target)) = closest_target(unit, &map) {
-                    ai_move.check_move(unit, x, y, path, cost, Some(target_id), damage_score(x, y, cost, unit, target));
+            if let Some((path, cost)) = pathfind(unit, x, y, map) {
+                if let Some((target_id, target)) = closest_target(unit, map) {
+                    ai_move.compare(unit, AIMove::new(x, y, path, cost, Some(target_id), damage_score(x, y, cost, unit, target)));
                 }
             }
         }
@@ -176,7 +182,7 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
     // Find the closest target unit
     let (_, target) = closest_target(unit, map).unwrap();
     // Create a new AIMove of the chance to hit the target
-    let mut ai_move = AIMove::new(unit, chance_to_hit(unit.x, unit.y, target.x, target.y));
+    let mut ai_move = AIMove::from(unit, chance_to_hit(unit.x, unit.y, target.x, target.y));
 
     // Loop through the tiles
     for x in 0 .. map.tiles.cols {
@@ -187,9 +193,9 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
             }
 
             // If a path to the tile has been found and there is a closest target, check its chance to hit
-            if let Some((path, cost)) = pathfind(unit, x, y, &map) {
-                if let Some((_, target)) = closest_target(unit, &map) {
-                    ai_move.check_move(unit, x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y));
+            if let Some((path, cost)) = pathfind(unit, x, y, map) {
+                if let Some((_, target)) = closest_target(unit, map) {
+                    ai_move.compare(unit, AIMove::new(x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y)));
                 }
             }
         }

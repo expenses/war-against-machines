@@ -148,9 +148,9 @@ impl Animations {
 
     // Update all of the animations, keeping only those that are still going
     pub fn update(&mut self, map: &mut Map) {
-        self.animations.retain_mut(|mut animation| match animation {
-            &mut Animation::Walk(ref mut walk) => walk.step(map),
-            &mut Animation::Bullet(ref mut bullet) => bullet.step(map)
+        self.animations.retain_mut(|mut animation| match *animation {
+            Animation::Walk(ref mut walk) => walk.step(map),
+            Animation::Bullet(ref mut bullet) => bullet.step(map)
         });
     }
 

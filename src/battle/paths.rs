@@ -91,6 +91,6 @@ impl PathPoint {
             }
         }
 
-        return neighbours;
+        neighbours
     }
 }

@@ -5,7 +5,7 @@ use colours::WHITE;
 
 use Resources;
 use context::Context;
-use utils::bound;
+use utils::clamp;
 use battle::units::UnitType;
 
 const MIN_SIZE: usize = 10;
@@ -102,10 +102,10 @@ impl SkirmishSettings {
 
     // Ensure that the settings are between their upper and lower bounds
     fn bound(&mut self) {
-        self.cols = bound(self.cols, MIN_SIZE, MAX_SIZE);
-        self.rows = bound(self.rows, MIN_SIZE, MAX_SIZE);
-        self.player_units = bound(self.player_units, 1, self.cols);
-        self.ai_units = bound(self.ai_units, 1, self.cols);
+        self.cols = clamp(self.cols, MIN_SIZE, MAX_SIZE);
+        self.rows = clamp(self.rows, MIN_SIZE, MAX_SIZE);
+        self.player_units = clamp(self.player_units, 1, self.cols);
+        self.ai_units = clamp(self.ai_units, 1, self.cols);
     }
 
     // Switch the player unit type
@@ -213,8 +213,8 @@ impl Menu {
                 }
             },
             // Lower the skimish settings
-            Keycode::Left | Keycode::A => match self.submenu {
-                Selected::Skirmish => match self.skirmish.selection {
+            Keycode::Left | Keycode::A => if let Selected::Skirmish = self.submenu {
+                match self.skirmish.selection {
                     1 => { self.skirmish_settings.cols -= SIZE_CHANGE; self.refresh_skirmish(); },
                     2 => { self.skirmish_settings.rows -= SIZE_CHANGE; self.refresh_skirmish(); },
                     3 => { self.skirmish_settings.player_units -= 1; self.refresh_skirmish(); },
@@ -222,12 +222,11 @@ impl Menu {
                     5 => { self.skirmish_settings.change_player_unit_type(); self.refresh_skirmish(); },
                     6 => { self.skirmish_settings.change_ai_unit_type(); self.refresh_skirmish(); },
                     _ => {}
-                },
-                _ => {}
+                }
             },
             // Raise the skimish settings
-            Keycode::Right | Keycode::D => match self.submenu {
-                Selected::Skirmish => match self.skirmish.selection {
+            Keycode::Right | Keycode::D => if let Selected::Skirmish = self.submenu {
+                match self.skirmish.selection {
                     1 => { self.skirmish_settings.cols += SIZE_CHANGE; self.refresh_skirmish(); },
                     2 => { self.skirmish_settings.rows += SIZE_CHANGE; self.refresh_skirmish(); },
                     3 => { self.skirmish_settings.player_units += 1; self.refresh_skirmish(); },
@@ -235,8 +234,7 @@ impl Menu {
                     5 => { self.skirmish_settings.change_player_unit_type(); self.refresh_skirmish(); },
                     6 => { self.skirmish_settings.change_ai_unit_type(); self.refresh_skirmish(); },
                     _ => {}
-                },
-                _ => {}
+                }
             },
             Keycode::Escape => ctx.quit(),
             _ => {}

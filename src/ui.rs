@@ -34,16 +34,16 @@ pub struct Button {
 fn get_location(x: f32, y: f32, width: f32, height: f32, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, ctx: &Context) -> (f32, f32) {
     let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
 
-    let x = match v_align {
-        &VerticalAlignment::_Left => x,
-        &VerticalAlignment::Middle => (screen_width - width)  / 2.0 + x,
-        &VerticalAlignment::Right => (screen_width - width) + x
+    let x = match *v_align {
+        VerticalAlignment::_Left => x,
+        VerticalAlignment::Middle => (screen_width - width)  / 2.0 + x,
+        VerticalAlignment::Right => (screen_width - width) + x
     };
 
-    let y = match h_align {
-        &HorizontalAlignment::Top => y,
-        &HorizontalAlignment::Middle => (screen_height - height) / 2.0 + y,
-        &HorizontalAlignment::Bottom => (screen_height - height) + y
+    let y = match *h_align {
+        HorizontalAlignment::Top => y,
+        HorizontalAlignment::Middle => (screen_height - height) / 2.0 + y,
+        HorizontalAlignment::Bottom => (screen_height - height) + y
     };
 
     (x, y)
@@ -69,7 +69,7 @@ impl Button {
     fn draw(&self, ctx: &mut Context, resources: &Resources) {
         let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
 
-        ctx.draw(resources.image(&self.image), x, y, self.scale);
+        ctx.draw(resources.image(self.image), x, y, self.scale);
     }
 
     // Calculate if the button was pressed

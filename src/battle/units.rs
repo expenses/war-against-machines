@@ -86,9 +86,9 @@ pub enum UnitType {
 
 impl fmt::Display for UnitType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            &UnitType::Squaddie => "Squaddie",
-            &UnitType::Machine => "Machine"
+        write!(f, "{}", match *self {
+            UnitType::Squaddie => "Squaddie",
+            UnitType::Machine => "Machine"
         })
     }
 }
@@ -251,6 +251,6 @@ impl Units {
         // Remove the unit
         self.units.remove(&id);
         // Update the visibility of the tiles
-        tiles.update_visibility(&self);
+        tiles.update_visibility(self);
     }
 }

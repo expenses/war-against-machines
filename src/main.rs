@@ -24,7 +24,7 @@ mod colours;
 mod items;
 
 use context::Context;
-use battle::battle::Battle;
+use battle::Battle;
 use menu::Callback;
 
 use std::collections::HashMap;
@@ -142,9 +142,8 @@ impl<'a> State<'a> {
 
     // Update the game
     fn update(&mut self) {
-        match self.mode {
-            Mode::Skirmish => self.skirmish.update(),
-            _ => {}
+        if let Mode::Skirmish = self.mode {
+            self.skirmish.update();
         }
     }
 
@@ -166,25 +165,22 @@ impl<'a> State<'a> {
 
     // Handle key releases
     fn handle_key_up(&mut self, key: Keycode) {
-        match self.mode {
-            Mode::Skirmish => self.skirmish.handle_key(&mut self.ctx, key, false),
-            _ => {}
+        if let Mode::Skirmish = self.mode {
+            self.skirmish.handle_key(&mut self.ctx, key, false);
         }
     }
 
     // Handle mouse movement
     fn handle_mouse_motion(&mut self, x: i32, y: i32) {
-        match self.mode {
-            Mode::Skirmish => self.skirmish.move_cursor(&mut self.ctx, x as f32, y as f32),
-            _ => {}
+        if let Mode::Skirmish = self.mode {
+            self.skirmish.move_cursor(&mut self.ctx, x as f32, y as f32);
         }
     }
 
     // Handle mouse button presses
     fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
-        match self.mode {
-            Mode::Skirmish => self.skirmish.mouse_button(&mut self.ctx, button, x as f32, y as f32),
-            _ => {}
+        if let Mode::Skirmish = self.mode {
+            self.skirmish.mouse_button(&mut self.ctx, button, x as f32, y as f32);
         }
     }
 
@@ -248,11 +244,8 @@ fn main() {
     resources.load_image("path_no_weapon",   rw_ops!("path/no_weapon.png"));
     resources.load_image("path_unreachable", rw_ops!("path/unreachable.png"));
     
-    resources.load_image("edge_left",         rw_ops!("edge/left.png"));
-    resources.load_image("edge_right",        rw_ops!("edge/right.png"));
-    resources.load_image("edge_left_corner",  rw_ops!("edge/left_corner.png"));
-    resources.load_image("edge_right_corner", rw_ops!("edge/right_corner.png"));
-    resources.load_image("edge_corner",       rw_ops!("edge/corner.png"));
+    resources.load_image("left_edge",  rw_ops!("edge/left.png"));
+    resources.load_image("right_edge", rw_ops!("edge/right.png"));
         
     resources.load_image("end_turn_button",         rw_ops!("button/end_turn.png"));
     resources.load_image("inventory_button",        rw_ops!("button/inventory.png"));

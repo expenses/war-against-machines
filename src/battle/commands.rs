@@ -159,7 +159,7 @@ impl WalkCommand {
 
         self.path.remove(0);
         
-        self.path.len() == 0
+        self.path.is_empty()
     }
 }
 
