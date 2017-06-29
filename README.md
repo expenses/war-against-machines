@@ -6,7 +6,7 @@
 
 A (very WIP) turn-based strategy game set in the not-so-distant future.
 
-![A screenshot of the game taken 06/26/17](readme/screenshot-06-26-17.png)
+![A screenshot of the game taken 29/06/17](readme/screenshot-29-06-17.png)
 
 Written in [Rust](https://www.rust-lang.org).
 
@@ -14,7 +14,7 @@ Written in [Rust](https://www.rust-lang.org).
 
 Releases can be found on the [releases page](https://github.com/expenses/war-against-machines/releases).
 
-Not that as these builds are built by [CIs](https://en.wikipedia.org/wiki/Continuous_integration), I may not have personally tested them.
+Note that as these releases are build automatically, I may not have personally tested them.
 
 ## Building
 
