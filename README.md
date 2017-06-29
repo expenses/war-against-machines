@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/expenses/war-against-machines.svg?branch=master)](https://travis-ci.org/expenses/war-against-machines)
 [![Build status](https://ci.appveyor.com/api/projects/status/80a2soj85wglon1x?svg=true)](https://ci.appveyor.com/project/expenses/war-against-machines)
+[![LoC](https://tokei.rs/b1/github/expenses/war-against-machines)](https://github.com/Aaronepower/tokei)
 
 A (very WIP) turn-based strategy game set in the not-so-distant future.
 

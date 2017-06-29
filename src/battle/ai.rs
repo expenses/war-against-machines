@@ -104,7 +104,6 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
             command_queue.push(Command::Walk(WalkCommand::new(unit_id, map, ai_move.path)));
         }
 
-
         // If the move has a target, fire at the target as many times as possible
         if let Some(target_id) = ai_move.target_id {
             for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.info().cost {

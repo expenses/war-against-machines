@@ -36,7 +36,9 @@ pub struct Weapon {
 
 impl fmt::Display for Weapon {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} - {} - Cost: {}", match self.tag {
+        let info = self.info();
+
+        write!(f, "{} - {} (Hit modifier: {}, Cost: {}, Bullets: {}", match self.tag {
             WeaponType::Rifle => "Rifle",
             WeaponType::MachineGun => "Machine Gun",
             WeaponType::PlasmaRifle => "Plasma Rifle",
@@ -46,7 +48,7 @@ impl fmt::Display for Weapon {
             FiringMode::AimedShot => "Aimed Shot",
             FiringMode::SemiAuto => "Semi Auto",
             FiringMode::FullAuto => "Full Auto"
-        }, self.info().cost)
+        }, info.hit_modifier, info.cost, info.bullets)
     }
 }
 
@@ -60,7 +62,7 @@ impl Weapon {
                 damage: 40,
                 base_bullets: 1,
                 mode: 0,
-                modes: vec![FiringMode::SingleShot, FiringMode::AimedShot, FiringMode::SemiAuto] 
+                modes: vec![FiringMode::SingleShot, FiringMode::AimedShot] 
             },
             WeaponType::MachineGun => Weapon {
                 tag,
@@ -84,7 +86,7 @@ impl Weapon {
                 damage: 15,
                 base_bullets: 6,
                 mode: 0,
-                modes: vec![FiringMode::SingleShot, FiringMode::AimedShot]
+                modes: vec![FiringMode::SingleShot]
             }
         }
     }

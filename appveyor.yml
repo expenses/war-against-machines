@@ -13,22 +13,22 @@ install:
   - rustc --version
   - cargo --version
   # Install SDL2 (following https://github.com/AngryLawyer/rust-sdl2#windows-msvc)
-  - mkdir release
+  - mkdir staging
   # SDL2
   - appveyor DownloadFile http://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip
   - 7z x SDL2-devel-2.0.5-VC.zip
-  - copy SDL2-2.0.5\lib\x64\*.lib %LIB%
-  - copy SDL2-2.0.5\lib\x64\*.dll release
+  - move SDL2-2.0.5\lib\x64\*.lib %LIB%
+  - move SDL2-2.0.5\lib\x64\*.dll staging
   # SDL2 ttf
   - appveyor DownloadFile https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.14-VC.zip
   - 7z x SDL2_ttf-devel-2.0.14-VC.zip
-  - copy SDL2_ttf-2.0.14\lib\x64\*.lib %LIB%
-  - copy SDL2_ttf-2.0.14\lib\x64\*.dll release
+  - move SDL2_ttf-2.0.14\lib\x64\*.lib %LIB%
+  - move SDL2_ttf-2.0.14\lib\x64\*.dll staging
   # SDL2 image
   - appveyor DownloadFile https://www.libsdl.org/projects/SDL_image/release/SDL2_image-devel-2.0.1-VC.zip
   - 7z x SDL2_image-devel-2.0.1-VC.zip
-  - copy SDL2_image-2.0.1\lib\x64\*.lib %LIB%
-  - copy SDL2_image-2.0.1\lib\x64\*.dll release
+  - move SDL2_image-2.0.1\lib\x64\*.lib %LIB%
+  - move SDL2_image-2.0.1\lib\x64\*.dll staging
 
 # Don't build the project (because we're using cargo test)
 build: false
@@ -41,9 +41,9 @@ test_script:
 # Build and zip the release
 before_deploy:
   - cargo build --release
-  - move target\release\%NAME%.exe release
-  - move LICENCE release
-  - cd release
+  - move target\release\%NAME%.exe staging
+  - move LICENCE staging
+  - cd staging
   - 7z a %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip *
   - appveyor PushArtifact %NAME%-%APPVEYOR_REPO_TAG_NAME%-windows.zip
 

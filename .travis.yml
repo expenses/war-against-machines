@@ -32,10 +32,10 @@ before_install:
 # Build and zip the release
 before_deploy:
   - cargo build --release
-  - mkdir release
-  - mv target/release/war-against-machines release
-  - mv LICENCE release
-  - cd release
+  - mkdir staging
+  - mv target/release/war-against-machines staging
+  - mv LICENCE staging
+  - cd staging
   - zip war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip *
 
 # And deploy it
@@ -50,7 +50,7 @@ lSrt+gAeyB8NWcJ9VxYddun0U8buVaI11s0OHWfJXmJq5EEMrP8XaloAMZnqekLrZtslmyvTh6yABysT
 H0Ms5Wlx46v08CkvjA8RtHNXZxNzdMs7xJh+4TxCGFQai+GPBY59E48mqXpAgH6mify8bXAVoSvvuP9A4C7zmTHFU0jouWOwuF3e4vXEflN5wIOJeqy3oDXXh+CtNHze3nU2VxeIYYHU
 bJbh2RZdOmDnWY9Xow+F+u0tbcrMSukhOexBg5aCWdMCAto3anh4AYlFerMnze3he8Vx9wKGHmOpspVOyGQLGaV+nmh5cuNcUy3X+9NOBy1zTDVrVC4DtP5h/2rDXnVOTPgCkU="
   # The file to upload
-  file: $TRAVIS_BUILD_DIR/release/war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip
+  file: $TRAVIS_BUILD_DIR/staging/war-against-machines-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip
   # Don't clean up the directory
   skip_cleanup: true
   # Only deploy on tagged releases to the main repo

@@ -198,13 +198,13 @@ impl Drawer {
 
         for x in 0 .. map.tiles.cols {
             if map.tiles.at(x, map.tiles.rows - 1).visible() {
-                canvas.draw_if_visible(resources.image("edge_left"), x + 1, map.tiles.rows);
+                canvas.draw_if_visible(resources.image("left_edge"), x + 1, map.tiles.rows);
             }
         }
 
         for y in 0 .. map.tiles.rows {
             if map.tiles.at(map.tiles.cols - 1, y).visible() {
-                canvas.draw_if_visible(resources.image("edge_right"), map.tiles.cols, y + 1);
+                canvas.draw_if_visible(resources.image("right_edge"), map.tiles.cols, y + 1);
             }
         }
 

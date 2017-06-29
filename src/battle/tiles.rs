@@ -132,12 +132,14 @@ impl Tiles {
 
     // Get a reference to a tile
     pub fn at(&self, x: usize, y: usize) -> &Tile {
-        &self.tiles[x * self.rows + y]
+        self.tiles.get(x * self.rows + y)
+            .expect(&format!("Tile at ({}, {}) out of bounds for Tiles of size ({}, {})", x, y, self.cols, self.rows))
     }
 
     // Get a mutable reference to a tile
     pub fn at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
-        &mut self.tiles[x * self.rows + y]
+        self.tiles.get_mut(x * self.rows + y)
+            .expect(&format!("Tile at ({}, {}) out of bounds for Tiles of size ({}, {})", x, y, self.cols, self.rows))
     }
 
     // Update the visibility of the map
