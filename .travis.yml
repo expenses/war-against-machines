@@ -17,7 +17,8 @@ before_install:
       brew install
         sdl2
         sdl2_image
-        sdl2_ttf;
+        sdl2_ttf
+        sdl2_mixer;
     fi
   # Install SDL2 on Linux
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
@@ -26,7 +27,8 @@ before_install:
       sudo apt-get install -qq
         libsdl2-dev
         libsdl2-image-dev
-        libsdl2-ttf-dev;
+        libsdl2-ttf-dev
+        libsdl2-mixer-dev;
     fi
 
 # Build and zip the release

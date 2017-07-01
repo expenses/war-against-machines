@@ -8,11 +8,11 @@ use std::slice::Iter;
 
 use battle::map::Map;
 use battle::units::Unit;
-use weapons::WeaponType;
+use Resources;
 
 const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
-const WALK_SPEED: f32 = 0.1;
+const WALK_SPEED: f32 = 0.075;
 
 // A pretty simple walk animation
 pub struct Walk {
@@ -34,12 +34,14 @@ impl Walk {
 
     // Move the animation a step, and return if its still going
     // If not, move the unit
-    fn step(&mut self, map: &mut Map) -> bool {
+    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
         self.status += WALK_SPEED;
         
         let still_going = self.status <= 1.0;
 
         if !still_going {
+            resources.play_audio("walk");
+
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => unit.move_to(self.x, self.y, self.cost),
                 _ => return true
@@ -64,7 +66,8 @@ pub struct Bullet {
     target_x: f32,
     target_y: f32,
     will_hit: bool,
-    lethal: bool
+    lethal: bool,
+    started: bool
 }
 
 impl Bullet {
@@ -77,28 +80,31 @@ impl Bullet {
         // Calculate the direction of the bullet
         let mut direction = (target_y - y).atan2(target_x - x);
 
-        let image = match unit.weapon.tag {
-            WeaponType::PlasmaRifle => "plasma_bullet",
-            _ => "regular_bullet",
-        };
-
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
             let mut rng = rand::thread_rng();
-            direction += Range::new(-0.1, 0.1).ind_sample(&mut rng);
+            direction += Range::new(-0.2, 0.2).ind_sample(&mut rng);
         }
 
-        // Work out if the bullet started to the left/right and above/below the target
-        let left = x < target_x;
-        let above = y < target_y;
-
         Bullet {
-           x, y, direction, image, left, above, target_id, target_x, target_y, will_hit, lethal
+           x, y, direction, target_id, target_x, target_y, will_hit, lethal,
+           // Work out if the bullet started to the left/right and above/below the target
+           left: x < target_x,
+           above: y < target_y,
+           // Get the image of the bullet
+           image: unit.weapon.bullet(),
+           // The bullet hasn't started moving
+           started: false
         }
     }
     
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, map: &mut Map) -> bool {
+    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
+        if !self.started {
+            resources.play_audio("plasma");
+            self.started = true;
+        }
+
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
@@ -147,10 +153,10 @@ impl Animations {
     }
 
     // Update all of the animations, keeping only those that are still going
-    pub fn update(&mut self, map: &mut Map) {
+    pub fn update(&mut self, map: &mut Map, resources: &Resources) {
         self.animations.retain_mut(|mut animation| match *animation {
-            Animation::Walk(ref mut walk) => walk.step(map),
-            Animation::Bullet(ref mut bullet) => bullet.step(map)
+            Animation::Walk(ref mut walk) => walk.step(map, resources),
+            Animation::Bullet(ref mut bullet) => bullet.step(map, resources)
         });
     }
 

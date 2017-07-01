@@ -7,12 +7,13 @@ extern crate odds;
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::video::WindowContext;
 use sdl2::event::Event;
-use sdl2::ttf;
+use sdl2::ttf::{Sdl2TtfContext, Font};
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{PixelFormatEnum, Color};
 use sdl2::rwops::RWops;
 use sdl2::image::ImageRWops;
+use sdl2::mixer::{Music, LoaderRWops};
 
 mod battle;
 mod menu;
@@ -50,19 +51,21 @@ macro_rules! rw_ops {
 pub struct Resources<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
     images: HashMap<&'static str, Texture<'a>>,
-    font_context: &'a ttf::Sdl2TtfContext,
-    fonts: HashMap<&'static str, ttf::Font<'a, 'a>>,
+    font_context: &'a Sdl2TtfContext,
+    fonts: HashMap<&'static str, Font<'a, 'a>>,
+    audio: HashMap<&'static str, Music<'a>>
 }
 
 impl<'a> Resources<'a> {
     // Create a new resource struct with a texture creator, font context and directory string
     fn new(texture_creator: &'a TextureCreator<WindowContext>,
-           font_context: &'a ttf::Sdl2TtfContext) -> Resources<'a> {        
+           font_context: &'a Sdl2TtfContext) -> Resources<'a> {        
         Resources {
             texture_creator,
             images: HashMap::new(),
             font_context,
             fonts: HashMap::new(),
+            audio: HashMap::new()
         }
     }
 
@@ -85,9 +88,7 @@ impl<'a> Resources<'a> {
 
     // Load a font into the fonts hashmap from a RWops of a font
     fn load_font(&mut self, name: &'static str, rw_ops: RWops<'a>, size: u16) {
-        self.fonts.insert(name, self.font_context.load_font_from_rwops(
-            rw_ops, size
-        ).unwrap());
+        self.fonts.insert(name, self.font_context.load_font_from_rwops(rw_ops, size).unwrap());
     }
 
     // Render a string of text using a font
@@ -97,6 +98,14 @@ impl<'a> Resources<'a> {
 
         // Create a texture from that surface
         self.texture_creator.create_texture_from_surface(rendered).unwrap()
+    }
+
+    fn load_audio(&mut self, name: &'static str, rw_ops: &'a RWops) {
+        self.audio.insert(name, rw_ops.load_music().unwrap());
+    }
+
+    fn play_audio(&self, name: &str) {
+        self.audio.get(name).and_then(|audio| audio.play(1).ok()).unwrap()
     }
 }
 
@@ -143,7 +152,7 @@ impl<'a> State<'a> {
     // Update the game
     fn update(&mut self) {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.update();
+            self.skirmish.update(&self.resources);
         }
     }
 
@@ -201,9 +210,14 @@ impl<'a> State<'a> {
 fn main() {
     // Create the context
     let ctx = Context::new(TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
-    
     let texture_creator = ctx.texture_creator();
-    let font_context = ttf::init().unwrap();
+    let font_context = ctx.font_context();
+
+    // Load audio resources
+    // Beacuse these need to have longer lifetimes than Resources, which borrows them, we load them first
+    let mut audio: HashMap<&str, RWops> = HashMap::new();
+    audio.insert("plasma",  rw_ops!("audio/plasma.ogg"));
+    audio.insert("walk",    rw_ops!("audio/walk.ogg"));
 
     // Create the resources
     let mut resources = Resources::new(&texture_creator, &font_context);
@@ -259,6 +273,10 @@ fn main() {
     
     // Load the font
     resources.load_font("main", rw_ops!("font.ttf"), 35);
+
+    for (name, rw_ops) in &audio {
+        resources.load_audio(name, rw_ops);
+    }
 
     // Start the game
     State::run(ctx, resources);

@@ -16,4 +16,4 @@ odds = "*"
 # SDL2 with features
 [dependencies.sdl2]
 version = "*"
-features = ["image", "ttf"]
+features = ["image", "ttf", "mixer"]

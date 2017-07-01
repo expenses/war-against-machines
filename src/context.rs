@@ -1,9 +1,17 @@
 // A Context struct for containing the SDL2 context and the canvas
 
 use sdl2;
+use sdl2::ttf;
+use sdl2::ttf::Sdl2TtfContext;
+use sdl2::mixer;
+use sdl2::mixer::{INIT_OGG, AUDIO_S16LSB, DEFAULT_CHANNELS};
 use sdl2::rect::Rect;
 use sdl2::video::{WindowContext, Window};
 use sdl2::render::{Texture, TextureCreator};
+
+// Audio settings
+const FREQUENCY: i32 = 44100;
+const CHUNK_SIZE: i32 = 1024;
 
 // Contains the SDL2 context, the canvas and a bool for whether the game should be running
 pub struct Context {
@@ -18,6 +26,11 @@ impl Context {
         // Initialise sdl and get the video subsystem
         let sdl_context = sdl2::init().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
+
+        // Set up the audio mixer
+        sdl_context.audio().unwrap();
+        mixer::init(INIT_OGG).unwrap();
+        mixer::open_audio(FREQUENCY, AUDIO_S16LSB, DEFAULT_CHANNELS, CHUNK_SIZE).unwrap();
 
         // Build the window, making it resizable
         let window = video_subsystem
@@ -43,6 +56,10 @@ impl Context {
     // Simple alias for making a texture creator from the canvas
     pub fn texture_creator(&self) -> TextureCreator<WindowContext> {
         self.canvas.texture_creator()
+    }
+
+    pub fn font_context(&self) -> Sdl2TtfContext {
+        ttf::init().unwrap()
     }
 
     // Simple alias for the event pump

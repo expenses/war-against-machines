@@ -154,7 +154,7 @@ impl Battle {
     }
 
     // Update the battle
-    pub fn update(&mut self) {
+    pub fn update(&mut self, resources: &Resources) {
         // Change camera variables if a key is being pressed
         if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
         if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED; }
@@ -176,7 +176,7 @@ impl Battle {
         }
 
         // Update the animation queue
-        self.animations.update(&mut self.map);
+        self.animations.update(&mut self.map, resources);
     }
 
     // Draw both the map and the UI

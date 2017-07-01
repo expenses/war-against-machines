@@ -108,4 +108,11 @@ impl Weapon {
             FiringMode::FullAuto   => FiringModeInfo {hit_modifier: 0.66, cost: self.cost(2.5), bullets: self.base_bullets * 6}
         }
     }
+
+    pub fn bullet(&self) -> &'static str {
+        match self.tag {
+            WeaponType::PlasmaRifle => "plasma_bullet",
+            _ => "regular_bullet"
+        }
+    }
 }

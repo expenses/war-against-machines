@@ -29,6 +29,10 @@ install:
   - 7z x SDL2_image-devel-2.0.1-VC.zip
   - move SDL2_image-2.0.1\lib\x64\*.lib %LIB%
   - move SDL2_image-2.0.1\lib\x64\*.dll staging
+  - appveyor DownloadFile https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-devel-2.0.1-VC.zip
+  - 7z x SDL2_mixer-devel-2.0.1-VC.zip
+  - move SDL2_mixer-2.0.1\lib\x64\*.lib %LIB%
+  - move SDL2_mixer-2.0.1\lib\x64\*.dll staging
 
 # Don't build the project (because we're using cargo test)
 build: false
