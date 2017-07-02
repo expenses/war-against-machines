@@ -1,6 +1,6 @@
 [package]
 name = "war-against-machines"
-version = "0.1.1"
+version = "0.1.3"
 authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]

@@ -38,10 +38,11 @@ impl Walk {
         let still_going = self.status <= 1.0;
 
         if !still_going {
-            resources.play_audio("walk");
-
             match map.units.get_mut(self.unit_id) {
-                Some(unit) => unit.move_to(self.x, self.y, self.cost),
+                Some(unit) => {
+                    unit.move_to(self.x, self.y, self.cost);
+                    resources.play_audio("walk");
+                }
                 _ => return true
             }
 
@@ -98,11 +99,13 @@ impl Bullet {
     
     // Move the bullet a step and work out if its still going or not
     fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
+        // If the bullet hasn't started moving, play its sound effect
         if !self.started {
             resources.play_audio("plasma");
             self.started = true;
         }
 
+        // Move the bullet
         self.x += self.direction.cos() * BULLET_SPEED;
         self.y += self.direction.sin() * BULLET_SPEED;
 
@@ -117,7 +120,7 @@ impl Bullet {
         self.x >= -MARGIN && self.x <= map.tiles.cols as f32 + MARGIN &&
         self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN;
 
-        // If the bullet isn't still going and is lethal, kill the target unit
+        // If the bullet is finished and is lethal, kill the target unit
         if !still_going && self.lethal {
             map.units.kill(&mut map.tiles, self.target_id);
         }

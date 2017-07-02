@@ -7,8 +7,7 @@ use std::fmt;
 pub enum WeaponType {
     Rifle,
     MachineGun,
-    PlasmaRifle,
-    Shotgun
+    PlasmaRifle
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,8 +42,7 @@ impl fmt::Display for Weapon {
         write!(f, "{} - {} (Hit modifier: {}, Cost: {}, Bullets: {}", match self.tag {
             WeaponType::Rifle => "Rifle",
             WeaponType::MachineGun => "Machine Gun",
-            WeaponType::PlasmaRifle => "Plasma Rifle",
-            WeaponType::Shotgun => "Shotgun"
+            WeaponType::PlasmaRifle => "Plasma Rifle"
         }, match self.modes[self.mode] {
             FiringMode::SingleShot => "Single Shot",
             FiringMode::AimedShot => "Aimed Shot",
@@ -81,14 +79,6 @@ impl Weapon {
                 base_bullets: 1,
                 mode: 0,
                 modes: vec![FiringMode::SingleShot, FiringMode::AimedShot, FiringMode::SemiAuto] 
-            },
-            WeaponType::Shotgun => Weapon {
-                tag,
-                base_cost: 15,
-                damage: 15,
-                base_bullets: 6,
-                mode: 0,
-                modes: vec![FiringMode::SingleShot]
             }
         }
     }

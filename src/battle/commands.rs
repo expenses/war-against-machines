@@ -6,7 +6,6 @@ use battle::map::Map;
 use battle::units::{Unit, UnitSide};
 use battle::paths::PathPoint;
 use battle::animations::{Walk, Bullet, Animation, Animations};
-use weapons::WeaponType;
 
 // Finish a units moves for a turn by setting them to 0
 pub struct FinishedCommand {
@@ -48,12 +47,15 @@ impl FireCommand {
     // Process the fire command, checking if the firing unit has the moves to fire,
     // if it hits, and adding the bullet to Animations
     fn process(&mut self, map: &mut Map, animations: &mut Animations) -> bool {
+        // If the status isn't set, firing hasn't started so get the weapon info
         if self.status.is_none() {
+            // Get the target position
             let (target_x, target_y) = match map.units.get(self.target_id) {
                 Some(target) => (target.x, target.y),
                 _ => return true
             };
 
+            // Expend the units moves and set the status
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => {
                     let info = unit.weapon.info();
@@ -71,9 +73,12 @@ impl FireCommand {
             };
         }
         
+        // Get out the status info
         if let Some((chance_to_hit, damage, bullets)) = self.status {
+            // Calculate if the bullet will hit
             let will_hit = chance_to_hit > rand::random::<f32>();
 
+            // Deal damage to the target and calculate if the bullet is lethal
             let lethal = match map.units.get_mut(self.target_id) {
                 Some(target) => {
                     if will_hit {
@@ -85,80 +90,78 @@ impl FireCommand {
                 _ => return true
             };
 
+            // Push a bullet to the animation queue
             if let Some(unit) = map.units.get(self.unit_id) {
                 if let Some(target) = map.units.get(self.target_id) {
-                    match unit.weapon.tag {
-                        WeaponType::Shotgun => {
-                            for _ in 0 .. bullets {
-                                self.push_bullet(animations, unit, target, will_hit, lethal);
-                            }
-                            return true;
-                        },
-                        _ => self.push_bullet(animations, unit, target, will_hit, lethal)
-                    }
+                    animations.push(Animation::Bullet(Bullet::new(self.target_id, unit, target, will_hit, lethal)));
                 }
             }
 
+            // If that was the last bullet, return
+            // Otherwise, Lower the bullets in the status
             if bullets == 1 {
                 return true;
+            } else {
+                self.status = Some((chance_to_hit, damage, bullets - 1));
             }
 
-            self.status = Some((chance_to_hit, damage, bullets - 1));
         }
 
         false
     }
+}
 
-    fn push_bullet(&self, animations: &mut Animations, unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) {
-        animations.push(Animation::Bullet(Bullet::new(self.target_id, unit, target, will_hit, lethal)));
+// Calculate the visible enemy units for a unit
+fn visible_enemies(map: &Map, unit: &Unit) -> usize {
+    match unit.side {
+        UnitSide::Player => map.visible(UnitSide::AI),
+        UnitSide::AI => map.visible(UnitSide::Player)
     }
 }
 
 // Move a unit along a path, checking if it spots an enemy unit along the way
 pub struct WalkCommand {
     unit_id: usize,
-    visible_units: usize,
+    visible_enemies: usize,
     path: Vec<PathPoint>,
 }
 
 impl WalkCommand {
     // Create a new walk command
     pub fn new(unit_id: usize, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
-        let visible_units = match map.units.get(unit_id).unwrap().side {
-            UnitSide::Player => map.visible(UnitSide::AI),
-            UnitSide::AI => map.visible(UnitSide::Player)
-        };
-
         WalkCommand {
-            unit_id, path, visible_units
+            unit_id, path,
+            // Calculate the number of visible enemy units
+            visible_enemies: visible_enemies(map, map.units.get(unit_id).unwrap())
         }
     }
 
     // Process the walk command, moving the unit one tile along the path and checking
     // if it spots an enemy unit
     fn process(&mut self, map: &mut Map, animation_queue: &mut Animations) -> bool {
+        // Get the path x, y and cost
         let (x, y, cost) = {
             let point = &self.path[0];
             (point.x, point.y, point.cost)
         };
 
         if let Some(unit) = map.units.get(self.unit_id) {
-            if match unit.side {
-                UnitSide::Player => map.visible(UnitSide::AI),
-                UnitSide::AI => map.visible(UnitSide::Player)
-            } > self.visible_units {
+            // If there are more visible enemies now than when the walk began
+            // or if the move costs too much
+            // or if the tile is taken, end the walk
+            if visible_enemies(map, unit) > self.visible_enemies ||
+               unit.moves < cost ||
+               map.units.at(x, y).is_some() {
                 return true;
-            }
-
-            if unit.moves >= cost && map.units.at(x, y).is_none() {
-                animation_queue.push(Animation::Walk(Walk::new(self.unit_id, x, y, cost)));
             } else {
-                return true;
+                // Otherwise, add a walk to the animation queue
+                animation_queue.push(Animation::Walk(Walk::new(self.unit_id, x, y, cost)));
             }
         }            
 
+        // Remove the point from the path
         self.path.remove(0);
-        
+        // Return whether the path is empty
         self.path.is_empty()
     }
 }

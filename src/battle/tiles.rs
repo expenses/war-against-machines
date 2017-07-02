@@ -100,36 +100,39 @@ impl Tiles {
             }
         }
 
+        // Generate a randomly sized pit
+        let mut rng = rand::thread_rng();        
+        self.add_pit(rng.gen_range(2, 5), rng.gen_range(2, 5));
+
+        self.update_visibility(units);
+    }
+
+    fn add_pit(&mut self, width: usize, height: usize) {
         // Generate pit position and size
         let mut rng = rand::thread_rng();
-        let pit_width = rng.gen_range(1, 4);
-        let pit_height = rng.gen_range(1, 4);
-        let pit_x = rng.gen_range(1, cols - 1 - pit_width);
-        let pit_y = rng.gen_range(1, rows - 1 - pit_height);
+        let pit_x = rng.gen_range(1, self.cols - width  - 1);
+        let pit_y = rng.gen_range(1, self.rows - height - 1);
 
         // Add pit corners
         self.at_mut(pit_x,             pit_y             ).set_obstacle("pit_top");
-        self.at_mut(pit_x,             pit_y + pit_height).set_obstacle("pit_left");
-        self.at_mut(pit_x + pit_width, pit_y             ).set_obstacle("pit_right");
-        self.at_mut(pit_x + pit_width, pit_y + pit_height).set_obstacle("pit_bottom");
+        self.at_mut(pit_x,             pit_y + height - 1).set_obstacle("pit_left");
+        self.at_mut(pit_x + width - 1, pit_y             ).set_obstacle("pit_right");
+        self.at_mut(pit_x + width - 1, pit_y + height - 1).set_obstacle("pit_bottom");
 
         // Add pit edges and center
-
-        for x in pit_x + 1 .. pit_x + pit_width {
+        for x in pit_x + 1 .. pit_x + width - 1 {
             self.at_mut(x, pit_y             ).set_obstacle("pit_tr");
-            self.at_mut(x, pit_y + pit_height).set_obstacle("pit_bl");
+            self.at_mut(x, pit_y + height - 1).set_obstacle("pit_bl");
 
-            for y in pit_y + 1 .. pit_y + pit_height {
+            for y in pit_y + 1 .. pit_y + height - 1 {
                 self.at_mut(x, y).set_obstacle("pit_center");
             }
         }
 
-        for y in pit_y + 1 .. pit_y + pit_height {
-             self.at_mut(pit_x,             y).set_obstacle("pit_tl");
-             self.at_mut(pit_x + pit_width, y).set_obstacle("pit_br");
+        for y in pit_y + 1 .. pit_y + height - 1 {
+            self.at_mut(pit_x,             y).set_obstacle("pit_tl");
+            self.at_mut(pit_x + width - 1, y).set_obstacle("pit_br");
         }
-
-        self.update_visibility(units);
     }
 
     // Get a reference to a tile

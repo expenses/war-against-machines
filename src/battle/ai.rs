@@ -7,7 +7,7 @@ use battle::map::Map;
 use battle::units::{Unit, UnitSide, UNIT_SIGHT};
 use battle::paths::{pathfind, PathPoint, WALK_LATERAL_COST};
 use battle::commands::{CommandQueue, Command, WalkCommand, FireCommand, FinishedCommand};
-use utils::{chance_to_hit, distance_under};
+use utils::{chance_to_hit, distance_under, distance};
 
 // A move that the AI could take
 #[derive(Debug)]
@@ -21,6 +21,13 @@ struct AIMove {
 }
 
 impl AIMove {
+    // Create a new AIMove
+    fn new(x: usize, y: usize, path: Vec<PathPoint>, cost: usize, target_id: Option<usize>, score: f32) -> AIMove {
+        AIMove {
+            x, y, path, cost, target_id, score
+        }
+    }
+
     // Create a new AIMove set up with a specific score
     fn from(unit: &Unit, score: f32) -> AIMove {
         AIMove {
@@ -35,7 +42,7 @@ impl AIMove {
 
     // Create a new AIMove as if the unit had fired from its current position at the nearest target
     fn fire_from_pos(unit: &Unit, map: &Map) -> AIMove {
-        // Check if there is a closest unit and get it's id (if any) and damage score
+        // Check if there is a closest unit and get it's ID and damage score
         let (target_id, score) = match closest_target(unit, map) {
             Some((target_id, target)) => (Some(target_id), damage_score(unit.x, unit.y, 0, unit, target)),
             None => (None, 0.0)
@@ -51,14 +58,8 @@ impl AIMove {
         }
     }
 
-    fn new(x: usize, y: usize, path: Vec<PathPoint>, cost: usize, target_id: Option<usize>, score: f32) -> AIMove {
-        AIMove {
-            x, y, path, cost, target_id, score
-        }
-    }
-
-    // Check some variables and compare the score with the current score of the AIMove.
-    // If the new score is higher and the unit has the moves, set the variables of the AIMove.
+    // Compare two AIMoves and take the fields from the new one if
+    // it is within the units moves and has a higher score
     fn compare(&mut self, unit: &Unit, ai_move: AIMove) {
         if ai_move.score > self.score && ai_move.cost <= unit.moves {
             self.x = ai_move.x;
@@ -119,12 +120,12 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
     }
 }
 
-// Find the next ai unit that can be moved, if any
+// Find the next ai unit that can be moved
 fn next_unit(map: &Map) -> Option<(usize, &Unit)> {
     map.units.iter()
         // Make sure that there is a player unit alive and find ai units with avaliable moves
-        .find(|&(_, unit)| map.units.any_alive(UnitSide::Player) &&
-                           unit.side == UnitSide::AI && unit.moves > 0)
+        .find(|&(_, unit)| map.units.any_alive(UnitSide::Player) && unit.side == UnitSide::AI && unit.moves > 0)
+        // Dereference the id
         .map(|(unit_id, unit)| (*unit_id, unit))
 }
 
@@ -203,7 +204,7 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
     ai_move
 }
 
-// Return if the tile cannot be reached by the unit walking in a lateral direction or is invisible
+// If the tile is invisible or cannot be reached by the unit walking in a lateral direction
 fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
     map.tiles.at(x, y).ai_visibility == Visibility::Invisible ||
     (unit.x as i32 - x as i32).abs() as usize * WALK_LATERAL_COST > unit.moves ||
@@ -213,21 +214,28 @@ fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
 // Find the closest target unit to a unit on the map, if any
 fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<(usize, &'a Unit)> {
     map.units.iter()
+        // Filter to visible player units
         .filter(|&(_, target)| target.side == UnitSide::Player &&
                                map.tiles.at(target.x, target.y).ai_visibility == Visibility::Visible)
-        .ord_subset_max_by_key(|&(_, target)| chance_to_hit(unit.x, unit.y, target.x, target.y))
+        // Minimize distance
+        .ord_subset_min_by_key(|&(_, target)| distance(unit.x, unit.y, target.x, target.y))
+        // Dereference the id
         .map(|(i, unit)| (*i, unit))
 }
 
 // Calculate the damage score for a tile
 fn damage_score(x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {
+    // Return if the cost is too high
     if cost > unit.moves {
         return 0.0
     }
 
+    // Get the weapon mode info
     let info = unit.weapon.info();
+    // Calculate the chance to hit
     let chance_to_hit = chance_to_hit(x, y, target.x, target.y) * info.hit_modifier;
 
+    // Return chance to hit * times the weapon can be fired * number of bullets the weapon fires
     chance_to_hit * ((unit.moves - cost) / info.cost) as f32 * info.bullets as f32
 }
 

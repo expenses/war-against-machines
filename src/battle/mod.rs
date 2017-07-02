@@ -49,6 +49,11 @@ impl fmt::Display for Controller {
     }
 }
 
+pub enum BattleCallback {
+    Won,
+    Lost
+}
+
 // The main Battle struct the handles actions
 pub struct Battle {
     pub map: Map,
@@ -147,7 +152,7 @@ impl Battle {
             Keycode::O                  => self.keys[4] = pressed,
             Keycode::P                  => self.keys[5] = pressed,
             Keycode::Escape             => {
-                self.map.save();
+                self.map.save_skrimish("autosave.sav");
                 ctx.quit();
             }
             _ => {}
@@ -155,7 +160,7 @@ impl Battle {
     }
 
     // Update the battle
-    pub fn update(&mut self, resources: &Resources) {
+    pub fn update(&mut self, resources: &Resources) -> Option<BattleCallback> {
         // Change camera variables if a key is being pressed
         if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
         if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED; }
@@ -171,6 +176,12 @@ impl Battle {
             
             self.controller = Controller::Player;
             self.map.turn += 1;
+
+            if !self.map.units.any_alive(UnitSide::Player) {
+                return Some(BattleCallback::Lost);
+            } else if !self.map.units.any_alive(UnitSide::AI) {
+                return Some(BattleCallback::Won);
+            }
         }
 
         // Update the command queue if there are no animations in progress
@@ -179,6 +190,8 @@ impl Battle {
         }
         // Update the animations
         self.animations.update(&mut self.map, resources);
+
+        None
     }
 
     // Draw both the map and the UI

@@ -28,7 +28,7 @@ mod settings;
 
 use context::Context;
 use battle::Battle;
-use menu::Callback;
+use menu::MenuCallback;
 use resources::Resources;
 use settings::Settings;
 use battle::map::Map;
@@ -84,7 +84,10 @@ impl<'a> State<'a> {
     // Update the game
     fn update(&mut self) {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.update(&self.resources);
+            if self.skirmish.update(&self.resources).is_some() {
+                self.mode = Mode::Menu;
+                self.skirmish = Battle::new(&self.resources);
+            }
         }
     }
 
@@ -94,12 +97,12 @@ impl<'a> State<'a> {
             // If the mode is the menu, respond to callbacks
             Mode::Menu => if let Some(callback) = self.menu.handle_key(&mut self.ctx, key) {
                 match callback {
-                    Callback::NewSkirmish => {
+                    MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
                         self.skirmish.start(&self.menu.skirmish_settings);
                     },
-                    Callback::LoadSkirmish => {
-                        if let Some(map) = Map::load() {
+                    MenuCallback::LoadSkirmish(filename) => {
+                        if let Some(map) = Map::load_skirmish(&filename) {
                             self.skirmish.map = map;
                             self.mode = Mode::Skirmish;
                         }

@@ -13,9 +13,9 @@ use Resources;
 use context::Context;
 use utils::{clamp_float, convert_rotation};
 
-const TILE_WIDTH: u32 = 48;
-const TILE_HEIGHT: u32 = 24;
-const TILE_IMAGE_SIZE: u32 = 48;
+const TILE_WIDTH: f32 = 48.0;
+const TILE_HEIGHT: f32 = 24.0;
+const TILE_IMAGE_SIZE: f32 = 48.0;
 
 const DEFAULT_ZOOM: f32 = 2.0;
 const ZOOM_MAX: f32 = 10.0;
@@ -34,14 +34,14 @@ pub fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
 // A struct to abstract drawing to a canvas
 struct CanvasTexture<'a> {
     canvas: &'a mut Canvas<Window>,
-    width: u32,
-    height: u32,
+    width: f32,
+    height: f32,
     camera: &'a Camera
 }
 
 impl<'a> CanvasTexture<'a> {
     // Create a new CanvasTexture
-    fn new(canvas: &'a mut Canvas<Window>, width: u32, height: u32, camera: &'a Camera) -> CanvasTexture<'a> {
+    fn new(canvas: &'a mut Canvas<Window>, width: f32, height: f32, camera: &'a Camera) -> CanvasTexture<'a> {
         CanvasTexture {
             canvas, width, height, camera
         }
@@ -76,17 +76,19 @@ impl<'a> CanvasTexture<'a> {
 
     // Calculate the correct position to draw a tile on the screen
     fn draw_location(&self, x: f32, y: f32) -> Option<(i32, i32)> {
+        // Change x and y from map coords to screen coords
         let (x, y) = from_map_coords(x, y);
-        let (tile_width, tile_height) = (TILE_WIDTH as f32, TILE_HEIGHT as f32);
 
-        let x = (x * tile_width  - (self.camera.x * tile_width  - self.width  as f32)) / 2.0;
-        let y = (y * tile_height - (self.camera.y * tile_height - self.height as f32)) / 2.0;
+        // Scale up the values
+        let x = (x * TILE_WIDTH  - (self.camera.x * TILE_WIDTH  - self.width )) / 2.0;
+        let y = (y * TILE_HEIGHT - (self.camera.y * TILE_HEIGHT - self.height)) / 2.0;
 
+        // Calculate the minimum and maximum locations that a tile could be at to be on screen
         let min = -(TILE_IMAGE_SIZE as f32) * self.camera.zoom;
-        let max_x = (self.width  + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom;
-        let max_y = (self.height + TILE_IMAGE_SIZE / 2) as f32 * self.camera.zoom;
+        let max_x = (self.width  + TILE_IMAGE_SIZE / 2.0) * self.camera.zoom;
+        let max_y = (self.height + TILE_IMAGE_SIZE / 2.0) * self.camera.zoom;
 
-        // Calculate if a tile is on screen
+        // if a tile is on screen, return the values as i32s
         if x > min && x < max_x && y > min && y < max_y {
             Some((x as i32, y as i32))
         } else {
@@ -238,7 +240,7 @@ impl Drawer {
                         // Render the path cost
                         let cost = resources.render("main", &format!("{}", total_cost), colours::OFF_WHITE);
 
-                        let center = (TILE_WIDTH as f32 - cost.query().width as f32) / 2.0;
+                        let center = (TILE_WIDTH - cost.query().width as f32) / 2.0;
 
                         canvas.draw(&cost, x + center as i32, y);
                     }
@@ -268,7 +270,7 @@ impl Drawer {
 
                             // Render it and draw it at the center
                             let chance = resources.render("main", &format!("{:0.3}%", hit_chance), colours::WHITE);
-                            let center = (TILE_WIDTH as f32 - chance.query().width as f32) / 2.0;
+                            let center = (TILE_WIDTH - chance.query().width as f32) / 2.0;
                             canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
                         }
                     }
@@ -304,6 +306,9 @@ impl Drawer {
         // Create a texture to render into
         let mut texture = resources.create_texture(width, height);
 
+        // Convert the width and height to floats
+        let (width, height) = (width as f32, height as f32);
+
         // As I had problems with seams between textures before,
         // the strategy to render the map is to render it into the texture
         // and _then_ scale it to the screen, so here we use the canvas as a texture
@@ -318,7 +323,7 @@ impl Drawer {
         }).unwrap(); 
 
         // Work out the center of the screen
-        let (center_x, center_y) = (width as f32 / 2.0, height as f32 / 2.0);
+        let (center_x, center_y) = (width / 2.0, height / 2.0);
 
         // Draw the map texture onto the screen at the correct location
         ctx.draw(&texture, center_x - center_x * self.camera.zoom, center_y - center_y * self.camera.zoom, self.camera.zoom);
@@ -331,8 +336,8 @@ impl Drawer {
         let center_y = ctx.get_height() as f32 / 2.0;
 
         // Work out the position of the mouse on the screen relative to the camera
-        let x = (x - center_x) / TILE_WIDTH as f32  / self.camera.zoom + self.camera.x / 2.0 - 0.5;
-        let y = (y - center_y) / TILE_HEIGHT as f32 / self.camera.zoom + self.camera.y / 2.0 - 0.5;
+        let x = (x - center_x) / TILE_WIDTH  / self.camera.zoom + self.camera.x / 2.0 - 0.5;
+        let y = (y - center_y) / TILE_HEIGHT / self.camera.zoom + self.camera.y / 2.0 - 0.5;
 
         // Account for the images being square
         let y = y - 1.0;

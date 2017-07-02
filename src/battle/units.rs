@@ -126,7 +126,7 @@ impl Unit {
                 let moves = 30;
                 let health = 100;
                 let mut rng = rand::thread_rng();
-                let weapons = [WeaponType::Rifle, WeaponType::MachineGun, WeaponType::Shotgun];
+                let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
 
                 Unit {
                     tag, side, x, y, moves, health,

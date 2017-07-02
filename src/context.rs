@@ -106,10 +106,7 @@ impl Context {
         let window = self.canvas.window_mut();
 
         window.set_size(settings.width, settings.height).unwrap();
-        window.set_fullscreen(match settings.fullscreen {
-            true => FullscreenType::True,
-            false => FullscreenType::Off
-        }).unwrap();
+        window.set_fullscreen(if settings.fullscreen {FullscreenType::True} else {FullscreenType::Off}).unwrap();
         mixer::Channel::all().set_volume(settings.volume);
     }
 
