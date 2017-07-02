@@ -3,7 +3,7 @@
 use std::fmt;
 
 // The type of weapon
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum WeaponType {
     Rifle,
     MachineGun,
@@ -11,6 +11,7 @@ pub enum WeaponType {
     Shotgun
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum FiringMode {
     SingleShot,
     AimedShot,
@@ -25,6 +26,7 @@ pub struct FiringModeInfo {
 }
 
 // The struct for a weapon
+#[derive(Serialize, Deserialize)]
 pub struct Weapon {
     pub tag: WeaponType,
     base_cost: usize,

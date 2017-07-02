@@ -7,7 +7,7 @@ use battle::units::{UnitSide, Units};
 use items::{Item, ItemType};
 
 // The visibility of the tile
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum Visibility {
     Visible,
     Foggy,
@@ -15,9 +15,10 @@ pub enum Visibility {
 }
 
 // A tile in the map
+#[derive(Serialize, Deserialize)]
 pub struct Tile {
-    pub base: &'static str,
-    pub obstacle: Option<&'static str>,
+    pub base: String,
+    pub obstacle: Option<String>,
     pub player_visibility: Visibility,
     pub ai_visibility: Visibility,
     pub items: Vec<Item>
@@ -25,9 +26,9 @@ pub struct Tile {
 
 impl Tile {
     // Create a new tile
-    fn new(base: &'static str) -> Tile {
+    fn new(base: &str) -> Tile {
         Tile {
-            base,
+            base: base.into(),
             obstacle: None,
             player_visibility: Visibility::Invisible,
             ai_visibility: Visibility::Invisible,
@@ -36,8 +37,8 @@ impl Tile {
     }
 
     // Set the obstacle of the tile and remove the units
-    fn set_obstacle(&mut self, decoration: &'static str) {
-        self.obstacle = Some(decoration);
+    fn set_obstacle(&mut self, decoration: &str) {
+        self.obstacle = Some(decoration.into());
         self.items = Vec::new();
     }
 
@@ -53,6 +54,7 @@ impl Tile {
 }
 
 // A 2D array of tiles
+#[derive(Serialize, Deserialize)]
 pub struct Tiles {
     tiles: Vec<Tile>,
     pub cols: usize,

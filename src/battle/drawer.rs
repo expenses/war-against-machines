@@ -136,10 +136,10 @@ impl Drawer {
         // If the tile is on the screen, draw it
         if let Some((screen_x, screen_y)) = canvas.draw_location(x as f32, y as f32) {
             // Draw the tile base
-            canvas.draw(resources.image(tile.base), screen_x, screen_y);
+            canvas.draw(resources.image(&tile.base), screen_x, screen_y);
 
             // Draw the tile decoration
-            if let Some(obstacle) = tile.obstacle {
+            if let Some(ref obstacle) = tile.obstacle {
                 canvas.draw(resources.image(obstacle), screen_x, screen_y);
             }
 
@@ -163,7 +163,7 @@ impl Drawer {
 
             if tile.player_visibility != Visibility::Foggy {
                 for item in &tile.items {
-                    canvas.draw(resources.image(item.image), screen_x, screen_y);
+                    canvas.draw(resources.image(&item.image), screen_x, screen_y);
                 }
 
                 // Draw a unit at the position
@@ -175,7 +175,7 @@ impl Drawer {
                         }
                     }
 
-                    canvas.draw(resources.image(unit.image), screen_x, screen_y);
+                    canvas.draw(resources.image(&unit.image), screen_x, screen_y);
                 }
             } else {
                 canvas.draw(resources.image("fog"), screen_x, screen_y);
@@ -299,7 +299,7 @@ impl Drawer {
     // Draw the battle
     pub fn draw_battle(&self, ctx: &mut Context, resources: &Resources, battle: &Battle) {
         // Get the width and height of the screen
-        let (width, height) = (ctx.width(), ctx.height());
+        let (width, height) = (ctx.get_width(), ctx.get_height());
 
         // Create a texture to render into
         let mut texture = resources.create_texture(width, height);
@@ -327,8 +327,8 @@ impl Drawer {
     // Work out which tile is under the cursor
     pub fn tile_under_cursor(&self, ctx: &mut Context, x: f32, y: f32) -> (usize, usize) {
         // Get the center of the window
-        let center_x = ctx.width()  as f32 / 2.0;
-        let center_y = ctx.height() as f32 / 2.0;
+        let center_x = ctx.get_width()  as f32 / 2.0;
+        let center_y = ctx.get_height() as f32 / 2.0;
 
         // Work out the position of the mouse on the screen relative to the camera
         let x = (x - center_x) / TILE_WIDTH as f32  / self.camera.zoom + self.camera.x / 2.0 - 0.5;

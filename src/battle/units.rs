@@ -78,7 +78,7 @@ fn generate_machine_name() -> String {
 }
 
 // The type of a unit
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum UnitType {
     Squaddie,
     Machine
@@ -94,7 +94,7 @@ impl fmt::Display for UnitType {
 }
 
 // Which side the unit is on
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Serialize, Deserialize)]
 pub enum UnitSide {
     Player,
     // Neutral,
@@ -102,13 +102,14 @@ pub enum UnitSide {
 }
 
 // A struct for a unit in the game
+#[derive(Serialize, Deserialize)]
 pub struct Unit {
     pub tag: UnitType,
     pub side: UnitSide,
     pub x: usize,
     pub y: usize,
     pub weapon: Weapon,
-    pub image: &'static str,
+    pub image: String,
     pub name: String,
     pub moves: usize,
     pub max_moves: usize,
@@ -129,7 +130,7 @@ impl Unit {
 
                 Unit {
                     tag, side, x, y, moves, health,
-                    image: "squaddie",
+                    image: "squaddie".into(),
                     weapon: Weapon::new(*rng.choose(&weapons).unwrap()),
                     name: generate_squaddie_name(),
                     max_moves: moves,
@@ -143,7 +144,7 @@ impl Unit {
 
                 Unit {
                     tag, side, x, y, moves, health,
-                    image: "machine",
+                    image: "machine".into(),
                     weapon: Weapon::new(WeaponType::PlasmaRifle),
                     name: generate_machine_name(),
                     max_moves: moves,
@@ -172,6 +173,7 @@ impl Unit {
 }
 
 // A struct for containing all of the units
+#[derive(Serialize, Deserialize)]
 pub struct Units {
     index: usize,
     units: HashMap<usize, Unit>

@@ -171,21 +171,16 @@ pub enum Command {
 }
 
 // The queue of commands
-pub struct CommandQueue {
-    commands: Vec<Command>
+pub type CommandQueue = Vec<Command>;
+
+pub trait UpdateCommands {
+    fn update(&mut self, map: &mut Map, animations: &mut Animations);
 }
 
-impl CommandQueue {
-    // Create a new CommandQueue
-    pub fn new() -> CommandQueue {
-        CommandQueue {
-            commands: Vec::new()
-        }
-    }
-
+impl UpdateCommands for CommandQueue {
     // Update the first item of the command queue
-    pub fn update(&mut self, map: &mut Map, animations: &mut Animations) {
-        let finished = match self.commands.first_mut() {
+    fn update(&mut self, map: &mut Map, animations: &mut Animations) {
+        let finished = match self.first_mut() {
             Some(&mut Command::Fire(ref mut fire)) => fire.process(map, animations),
             Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations),
             Some(&mut Command::Finished(ref mut finished)) => {finished.process(map); true}
@@ -193,17 +188,7 @@ impl CommandQueue {
         };
 
         if finished {
-            self.commands.remove(0);
+            self.remove(0);
         }
-    }
-
-    // Push a new command onto the queue
-    pub fn push(&mut self, command: Command) {
-        self.commands.push(command);
-    }
-
-    // Work out if the queue is empty
-    pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
     }
 }

@@ -32,7 +32,7 @@ pub struct Button {
 }
 
 fn get_location(x: f32, y: f32, width: f32, height: f32, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, ctx: &Context) -> (f32, f32) {
-    let (screen_width, screen_height) = (ctx.width() as f32, ctx.height() as f32);
+    let (screen_width, screen_height) = (ctx.get_width() as f32, ctx.get_height() as f32);
 
     let x = match *v_align {
         VerticalAlignment::_Left => x,

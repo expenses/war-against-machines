@@ -1,8 +1,8 @@
 // A battle in the game
 
 pub mod units;
+pub mod map;
 mod drawer;
-mod map;
 mod tiles;
 mod paths;
 mod animations;
@@ -16,14 +16,14 @@ use std::fmt;
 
 use battle::drawer::Drawer;
 use battle::paths::{pathfind, PathPoint};
-use battle::animations::Animations;
-use battle::commands::{CommandQueue, Command, FireCommand, WalkCommand};
+use battle::animations::{Animations, UpdateAnimations};
+use battle::commands::{CommandQueue, Command, UpdateCommands, FireCommand, WalkCommand};
 use battle::units::{Unit, UnitSide};
 use battle::map::Map;
 use context::Context;
 use Resources;
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
-use menu::SkirmishSettings;
+use settings::SkirmishSettings;
 
 const CAMERA_SPEED: f32 = 0.2;
 const CAMERA_ZOOM_SPEED: f32 = 0.02;
@@ -57,7 +57,6 @@ pub struct Battle {
     keys: [bool; 6],
     pub selected: Option<usize>,
     pub path: Option<Vec<PathPoint>>,
-    turn: u16,
     ui: UI,
     pub animations: Animations,
     pub command_queue: CommandQueue,
@@ -115,7 +114,6 @@ impl Battle {
             keys: [false; 6],
             selected: None,
             path: None,
-            turn: 1,
             ui: ui,
             animations: Animations::new(),
             command_queue: CommandQueue::new(),
@@ -148,7 +146,10 @@ impl Battle {
             Keycode::Right | Keycode::D => self.keys[3] = pressed,
             Keycode::O                  => self.keys[4] = pressed,
             Keycode::P                  => self.keys[5] = pressed,
-            Keycode::Escape             => ctx.quit(),
+            Keycode::Escape             => {
+                self.map.save();
+                ctx.quit();
+            }
             _ => {}
         };
     }
@@ -167,15 +168,16 @@ impl Battle {
            self.command_queue.is_empty() &&
            self.animations.is_empty() &&
            !ai::make_move(&self.map, &mut self.command_queue) {
+            
             self.controller = Controller::Player;
-            self.turn += 1;
+            self.map.turn += 1;
         }
 
+        // Update the command queue if there are no animations in progress
         if self.animations.is_empty() {
             self.command_queue.update(&mut self.map, &mut self.animations);
         }
-
-        // Update the animation queue
+        // Update the animations
         self.animations.update(&mut self.map, resources);
     }
 
@@ -197,7 +199,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.set_text(0, format!("Turn {} - {}\n{}", self.turn, self.controller, selected));
+        self.ui.set_text(0, format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected));
 
         // Create the inventory string
         let inventory_string = match self.selected_unit() {

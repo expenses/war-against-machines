@@ -3,7 +3,7 @@
 use std::fmt;
 
 // The type of an item
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ItemType {
     _Scrap,
     _Weapon,
@@ -12,11 +12,12 @@ pub enum ItemType {
     Skeleton
 }
 
-// An item with a weight value
+// An item with a weight value and image
+#[derive(Serialize, Deserialize)]
 pub struct Item {
     pub tag: ItemType,
     pub weight: usize,
-    pub image: &'static str
+    pub image: String
 }
 
 impl fmt::Display for Item {
@@ -43,7 +44,8 @@ impl Item {
         };
 
         Item {
-            tag, weight, image
+            tag, weight,
+            image: image.into()
         }
     }
 }

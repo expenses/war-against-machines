@@ -12,6 +12,13 @@ pathfinding = "*"
 ord_subset = "*"
 # For 'retain_mut'
 odds = "*"
+# Serialization/deserialization
+serde = "*"
+serde_derive = "*"
+## Human-readable settings
+toml = "*"
+## Efficiently-serialized data
+bincode = "*"
 
 # SDL2 with features
 [dependencies.sdl2]

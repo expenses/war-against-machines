@@ -3,110 +3,42 @@ extern crate rand;
 extern crate pathfinding;
 extern crate ord_subset;
 extern crate odds;
+extern crate toml;
+#[macro_use]
+extern crate serde_derive;
+extern crate bincode;
 
-use sdl2::render::{Texture, TextureCreator};
-use sdl2::video::WindowContext;
 use sdl2::event::Event;
-use sdl2::ttf::{Sdl2TtfContext, Font};
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
-use sdl2::pixels::{PixelFormatEnum, Color};
 use sdl2::rwops::RWops;
-use sdl2::image::ImageRWops;
-use sdl2::mixer::{Music, LoaderRWops};
 
 mod battle;
 mod menu;
 mod ui;
 mod weapons;
 mod context;
+#[macro_use]
 mod utils;
+#[macro_use]
+mod resources;
 mod colours;
 mod items;
+mod settings;
 
 use context::Context;
 use battle::Battle;
 use menu::Callback;
+use resources::Resources;
+use settings::Settings;
+use battle::map::Map;
 
-use std::collections::HashMap;
-
-const TITLE: &str = "War Against Machines";
-const WINDOW_WIDTH: u32 = 960;
-const WINDOW_HEIGHT: u32 = 600;
+pub const TITLE: &str = "War Against Machines";
 
 // Which mode the game is in
 enum Mode {
     Menu,
     Skirmish
-}
-
-// Load a resource into a SDL2 RWops struct at compile time
-macro_rules! rw_ops {
-    ($file:expr) => (
-        RWops::from_bytes(include_bytes!(concat!("../resources/", $file))).unwrap()
-    )
-}
-
-// A struct to hold resources for the game such as images and fonts
-pub struct Resources<'a> {
-    texture_creator: &'a TextureCreator<WindowContext>,
-    images: HashMap<&'static str, Texture<'a>>,
-    font_context: &'a Sdl2TtfContext,
-    fonts: HashMap<&'static str, Font<'a, 'a>>,
-    audio: HashMap<&'static str, Music<'a>>
-}
-
-impl<'a> Resources<'a> {
-    // Create a new resource struct with a texture creator, font context and directory string
-    fn new(texture_creator: &'a TextureCreator<WindowContext>,
-           font_context: &'a Sdl2TtfContext) -> Resources<'a> {        
-        Resources {
-            texture_creator,
-            images: HashMap::new(),
-            font_context,
-            fonts: HashMap::new(),
-            audio: HashMap::new()
-        }
-    }
-
-    // Load an image into the images hashmap from a RWops of a png
-    fn load_image(&mut self, name: &'static str, rw_ops: RWops) {
-        self.images.insert(name, self.texture_creator.create_texture_from_surface(
-            rw_ops.load_png().unwrap()
-        ).unwrap());
-    }
-
-    // Get an image from the hashmap or panic
-    fn image(&self, name: &str) -> &Texture {
-        self.images.get(name).expect(&format!("Image '{}' could not be found.", name))
-    }
-
-    // Create a new texture using the texture creator
-    fn create_texture(&self, width: u32, height: u32) -> Texture {
-        self.texture_creator.create_texture_target(PixelFormatEnum::ARGB8888, width, height).unwrap()
-    }
-
-    // Load a font into the fonts hashmap from a RWops of a font
-    fn load_font(&mut self, name: &'static str, rw_ops: RWops<'a>, size: u16) {
-        self.fonts.insert(name, self.font_context.load_font_from_rwops(rw_ops, size).unwrap());
-    }
-
-    // Render a string of text using a font
-    fn render(&self, font: &str, text: &str, colour: Color) -> Texture {
-        // Render the text into a surface in a solid colour
-        let rendered = self.fonts[font].render(text).solid(colour).unwrap();
-
-        // Create a texture from that surface
-        self.texture_creator.create_texture_from_surface(rendered).unwrap()
-    }
-
-    fn load_audio(&mut self, name: &'static str, rw_ops: &'a RWops) {
-        self.audio.insert(name, rw_ops.load_music().unwrap());
-    }
-
-    fn play_audio(&self, name: &str) {
-        self.audio.get(name).and_then(|audio| audio.play(1).ok()).unwrap()
-    }
 }
 
 // A struct for holding the game state
@@ -120,12 +52,12 @@ struct State<'a> {
 
 impl<'a> State<'a> {
     // Create a new state, starting on the menu
-    fn run(ctx: Context, resources: Resources<'a>) {
+    fn run(ctx: Context, resources: Resources<'a>, settings: Settings) {
         let mut state = State {
             mode: Mode::Menu,
-            menu: menu::Menu::new(),
+            menu: menu::Menu::new(settings),
             skirmish: Battle::new(&resources),
-            ctx, resources,
+            ctx, resources
         };
 
         // Get the event pump
@@ -162,9 +94,15 @@ impl<'a> State<'a> {
             // If the mode is the menu, respond to callbacks
             Mode::Menu => if let Some(callback) = self.menu.handle_key(&mut self.ctx, key) {
                 match callback {
-                    Callback::Play => {
+                    Callback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
                         self.skirmish.start(&self.menu.skirmish_settings);
+                    },
+                    Callback::LoadSkirmish => {
+                        if let Some(map) = Map::load() {
+                            self.skirmish.map = map;
+                            self.mode = Mode::Skirmish;
+                        }
                     }
                 }  
             },
@@ -208,16 +146,17 @@ impl<'a> State<'a> {
 
 // The main function
 fn main() {
+    // Load (or use the default) settings
+    let settings = Settings::load();
+
     // Create the context
-    let ctx = Context::new(TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
+    let mut ctx = Context::new(settings.width, settings.height);
+
+    // Set the settings
+    ctx.set(&settings);
+
     let texture_creator = ctx.texture_creator();
     let font_context = ctx.font_context();
-
-    // Load audio resources
-    // Beacuse these need to have longer lifetimes than Resources, which borrows them, we load them first
-    let mut audio: HashMap<&str, RWops> = HashMap::new();
-    audio.insert("plasma",  rw_ops!("audio/plasma.ogg"));
-    audio.insert("walk",    rw_ops!("audio/walk.ogg"));
 
     // Create the resources
     let mut resources = Resources::new(&texture_creator, &font_context);
@@ -274,10 +213,10 @@ fn main() {
     // Load the font
     resources.load_font("main", rw_ops!("font.ttf"), 35);
 
-    for (name, rw_ops) in &audio {
-        resources.load_audio(name, rw_ops);
-    }
+    // Load audio resources
+    resources.load_audio("plasma",  rw_ops!("audio/plasma.ogg"));
+    resources.load_audio("walk",    rw_ops!("audio/walk.ogg"));
 
     // Start the game
-    State::run(ctx, resources);
+    State::run(ctx, resources, settings);
 }

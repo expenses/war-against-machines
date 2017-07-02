@@ -1,6 +1,11 @@
+# Rust
 target/
 **/*.rs.bk
 
 # Ipython notebooks, used for graphing stuff
 .ipynb_checkpoints
 *.ipynb
+
+# Save files
+*.sav
+settings.toml

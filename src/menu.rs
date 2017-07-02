@@ -5,23 +5,17 @@ use colours::WHITE;
 
 use Resources;
 use context::Context;
-use utils::clamp;
-use battle::units::UnitType;
+use settings::{Settings, SkirmishSettings};
 
-const MIN_SIZE: usize = 10;
-const MAX_SIZE: usize = 60;
-const DEFAULT_SIZE: usize = 30;
-const SIZE_CHANGE: usize = 5;
+const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
-
-const DEFAULT_PLAYER_UNITS: usize = 6;
-const DEFAULT_AI_UNITS: usize = 4;
-const DEFAULT_PLAYER_UNIT_TYPE: UnitType = UnitType::Squaddie;
-const DEFAULT_AI_UNIT_TYPE: UnitType = UnitType::Machine;
+const WINDOW_SIZE_CHANGE: u32 = 10;
+const VOLUME_CHANGE: i32 = 4;
 
 // Callbacks that can be returned from key presses
 pub enum Callback {
-    Play
+    NewSkirmish,
+    LoadSkirmish
 }
 
 // A submenu inside the main menu
@@ -51,7 +45,7 @@ impl Submenu {
             let rendered = resources.render("main", &string, WHITE);
 
             // Get the center of the rendered string
-            let center = (ctx.width() - rendered.query().width) as f32 / 2.0;
+            let center = (ctx.get_width() - rendered.query().width) as f32 / 2.0;
 
             // Draw the string
             ctx.draw(&rendered, center, 150.0 + i as f32 * 20.0, 1.0);
@@ -77,77 +71,34 @@ impl Submenu {
     }
 }
 
-// A struct for holding the settings of a skirmish
-pub struct SkirmishSettings {
-    pub cols: usize,
-    pub rows: usize,
-    pub player_units: usize,
-    pub ai_units: usize,
-    pub player_unit_type: UnitType,
-    pub ai_unit_type: UnitType
-}
-
-impl SkirmishSettings {
-    // Create a new SkirmishSettings using the defaults
-    pub fn new() -> SkirmishSettings {
-        SkirmishSettings {
-            cols: DEFAULT_SIZE,
-            rows: DEFAULT_SIZE,
-            player_units: DEFAULT_PLAYER_UNITS,
-            ai_units: DEFAULT_AI_UNITS,
-            player_unit_type: DEFAULT_PLAYER_UNIT_TYPE,
-            ai_unit_type: DEFAULT_AI_UNIT_TYPE
-        }
-    }
-
-    // Ensure that the settings are between their upper and lower bounds
-    fn bound(&mut self) {
-        self.cols = clamp(self.cols, MIN_SIZE, MAX_SIZE);
-        self.rows = clamp(self.rows, MIN_SIZE, MAX_SIZE);
-        self.player_units = clamp(self.player_units, 1, self.cols);
-        self.ai_units = clamp(self.ai_units, 1, self.cols);
-    }
-
-    // Switch the player unit type
-    fn change_player_unit_type(&mut self) {
-        self.player_unit_type = match self.player_unit_type {
-            UnitType::Squaddie => UnitType::Machine,
-            UnitType::Machine => UnitType::Squaddie
-        }
-    }
-
-    // Switch the ai unit type
-    fn change_ai_unit_type(&mut self) {
-        self.ai_unit_type = match self.ai_unit_type {
-            UnitType::Squaddie => UnitType::Machine,
-            UnitType::Machine => UnitType::Squaddie
-        }
-    }
-}
-
-// Which submenu is selected
-enum Selected {
-    Main,
-    Skirmish
-}
+const MAIN: usize = 0;
+const SKIRMISH: usize = 1;
+const SETTINGS: usize = 2;
 
 // The main menu struct
 pub struct Menu {
     pub skirmish_settings: SkirmishSettings,
-    main: Submenu,
-    skirmish: Submenu,
-    submenu: Selected
+    pub settings: Settings,
+    submenu: usize,
+    submenus: [Submenu; 3]
 }
 
 impl Menu {
     // Create a new Menu
-    pub fn new() -> Menu {
-        let skirmish_settings = SkirmishSettings::new();
+    pub fn new(settings: Settings) -> Menu {
+        let skirmish_settings = SkirmishSettings::default();
 
         Menu {
-            main: Submenu::new(vec!["Skirmish".into(), "Quit".into()]),
-            skirmish: Submenu::new(vec![
-                    "Play".into(),
+            submenu: MAIN,
+            submenus: [
+                Submenu::new(vec![
+                    "Skirmish".into(),
+                    "Settings".into(),
+                    "Quit".into(),
+                ]),
+                Submenu::new(vec![
+                    "New".into(),
+                    "Load Skirmish".into(),
                     format!("Cols: {}", skirmish_settings.cols),
                     format!("Rows: {}", skirmish_settings.rows),
                     format!("Player units: {}", skirmish_settings.player_units),
@@ -155,9 +106,19 @@ impl Menu {
                     format!("Player unit type: {}", skirmish_settings.player_unit_type),
                     format!("AI unit type: {}", skirmish_settings.ai_unit_type),
                     "Back".into()
-            ]),
-            submenu: Selected::Main,
-            skirmish_settings,
+                ]),
+                Submenu::new(vec![
+                    "Back".into(),
+                    format!("Volume: {}", settings.volume),
+                    format!("Width: {}", settings.width),
+                    format!("Height: {}", settings.height),
+                    "From screen size".into(),
+                    format!("Fullscreen: {}", settings.fullscreen),
+                    "Reset".into(),
+                    "Save".into()
+                ])
+            ],
+            skirmish_settings, settings
         }
     }
 
@@ -165,76 +126,128 @@ impl Menu {
     pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
         // Draw the title
         let title = resources.image("title");
-        let center = (ctx.width() - title.query().width) as f32 / 2.0;
+        let center = (ctx.get_width() - title.query().width) as f32 / 2.0;
         ctx.draw(title, center, TITLE_TOP_OFFSET, 1.0);
 
         // Draw the selected submenu
-        match self.submenu {
-            Selected::Main => self.main.draw(ctx, resources),
-            Selected::Skirmish => self.skirmish.draw(ctx, resources)
-        }
+        self.submenus[self.submenu].draw(ctx, resources);
     }
 
-    // Refresh the skirmish submenu
+    // Refresh the skirmish settings
     fn refresh_skirmish(&mut self) {
-        self.skirmish_settings.bound();
-        self.skirmish.set_item(1, format!("Cols: {}", self.skirmish_settings.cols));
-        self.skirmish.set_item(2, format!("Rows: {}", self.skirmish_settings.rows));
-        self.skirmish.set_item(3, format!("Player units: {}", self.skirmish_settings.player_units));
-        self.skirmish.set_item(4, format!("AI units: {}", self.skirmish_settings.ai_units));
-        self.skirmish.set_item(5, format!("Player unit type: {}", self.skirmish_settings.player_unit_type));
-        self.skirmish.set_item(6, format!("AI unit type: {}", self.skirmish_settings.ai_unit_type));
+        let skirmish = &mut self.submenus[SKIRMISH];
+        
+        self.skirmish_settings.clamp();
+        skirmish.set_item(2, format!("Cols: {}", self.skirmish_settings.cols));
+        skirmish.set_item(3, format!("Rows: {}", self.skirmish_settings.rows));
+        skirmish.set_item(4, format!("Player units: {}", self.skirmish_settings.player_units));
+        skirmish.set_item(5, format!("AI units: {}", self.skirmish_settings.ai_units));
+        skirmish.set_item(6, format!("Player unit type: {}", self.skirmish_settings.player_unit_type));
+        skirmish.set_item(7, format!("AI unit type: {}", self.skirmish_settings.ai_unit_type));
+    }
+
+    fn refresh_settings(&mut self) {
+        let settings = &mut self.submenus[SETTINGS];
+
+        self.settings.clamp();
+        settings.set_item(1, format!("Volume: {}", self.settings.volume));
+        settings.set_item(2, format!("Width: {}", self.settings.width));
+        settings.set_item(3, format!("Height: {}", self.settings.height));
+        settings.set_item(5, format!("Fullscreen: {}", self.settings.fullscreen));
     }
 
     // Handle key presses, returning an optional callback
     pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode) -> Option<Callback> {
         match key {
             // Rotate the selections up
-            Keycode::Up | Keycode::W => match self.submenu {
-                Selected::Main => self.main.rotate_up(),
-                Selected::Skirmish => self.skirmish.rotate_up()
-            },
+            Keycode::Up | Keycode::W => self.submenus[self.submenu].rotate_up(),
             // Rotate the selections down
-            Keycode::Down | Keycode::S => match self.submenu {
-                Selected::Main => self.main.rotate_down(),
-                Selected::Skirmish => self.skirmish.rotate_down()
-            },
+            Keycode::Down | Keycode::S => self.submenus[self.submenu].rotate_down(),
             // Perform actions on the selection 
             Keycode::Return => match self.submenu {
-                Selected::Main => match self.main.selection {
-                    0 => self.submenu = Selected::Skirmish,
-                    1 => ctx.quit(),
+                MAIN => match self.submenus[MAIN].selection {
+                    0 => self.submenu = SKIRMISH,
+                    1 => self.submenu = SETTINGS,
+                    2 => ctx.quit(),
                     _ => {}
                 },
-                Selected::Skirmish => match self.skirmish.selection {
-                    0 => return Some(Callback::Play),
-                    7 => self.submenu = Selected::Main,
+                SKIRMISH => match self.submenus[SKIRMISH].selection {
+                    0 => return Some(Callback::NewSkirmish),
+                    1 => return Some(Callback::LoadSkirmish),
+                    7 => self.submenu = MAIN,
                     _ => {}
-                }
+                },
+                SETTINGS => match self.submenus[SETTINGS].selection {
+                    0 => self.submenu = MAIN,
+                    4 => {
+                        self.settings.width = ctx.get_width();
+                        self.settings.height = ctx.get_height();
+                        self.refresh_settings();
+                    },
+                    6 => {
+                        self.settings = Settings::default();
+                        ctx.set(&self.settings);
+                        self.refresh_settings();
+                    },
+                    7 => {
+                        ctx.set(&self.settings);
+                        self.settings.save();
+                    },
+                    _ => {}
+                },
+                _ => {}
             },
             // Lower the skimish settings
-            Keycode::Left | Keycode::A => if let Selected::Skirmish = self.submenu {
-                match self.skirmish.selection {
-                    1 => { self.skirmish_settings.cols -= SIZE_CHANGE; self.refresh_skirmish(); },
-                    2 => { self.skirmish_settings.rows -= SIZE_CHANGE; self.refresh_skirmish(); },
-                    3 => { self.skirmish_settings.player_units -= 1; self.refresh_skirmish(); },
-                    4 => { self.skirmish_settings.ai_units -= 1; self.refresh_skirmish(); },
-                    5 => { self.skirmish_settings.change_player_unit_type(); self.refresh_skirmish(); },
-                    6 => { self.skirmish_settings.change_ai_unit_type(); self.refresh_skirmish(); },
-                    _ => {}
+            Keycode::Left | Keycode::A => match self.submenu {
+                SKIRMISH => {
+                    match self.submenus[SKIRMISH].selection {
+                        2 => self.skirmish_settings.cols -= MAP_SIZE_CHANGE,
+                        3 => self.skirmish_settings.rows -= MAP_SIZE_CHANGE,
+                        4 => self.skirmish_settings.player_units -= 1,
+                        5 => self.skirmish_settings.ai_units -= 1,
+                        6 => self.skirmish_settings.change_player_unit_type(),
+                        7 => self.skirmish_settings.change_ai_unit_type(),
+                        _ => {}
+                    }
+                    self.refresh_skirmish();
                 }
+                SETTINGS => {
+                    match self.submenus[SETTINGS].selection {
+                        1 => self.settings.volume -= VOLUME_CHANGE,
+                        2 => self.settings.width -= WINDOW_SIZE_CHANGE,
+                        3 => self.settings.height -= WINDOW_SIZE_CHANGE,
+                        5 => self.settings.toggle_fullscreen(),
+                        _ => {}
+                    }
+                    self.refresh_settings();
+                }
+                _ => {}
             },
             // Raise the skimish settings
-            Keycode::Right | Keycode::D => if let Selected::Skirmish = self.submenu {
-                match self.skirmish.selection {
-                    1 => { self.skirmish_settings.cols += SIZE_CHANGE; self.refresh_skirmish(); },
-                    2 => { self.skirmish_settings.rows += SIZE_CHANGE; self.refresh_skirmish(); },
-                    3 => { self.skirmish_settings.player_units += 1; self.refresh_skirmish(); },
-                    4 => { self.skirmish_settings.ai_units += 1; self.refresh_skirmish(); },
-                    5 => { self.skirmish_settings.change_player_unit_type(); self.refresh_skirmish(); },
-                    6 => { self.skirmish_settings.change_ai_unit_type(); self.refresh_skirmish(); },
-                    _ => {}
+            Keycode::Right | Keycode::D => match self.submenu {
+                SKIRMISH => {
+                    match self.submenus[SKIRMISH].selection {
+                        2 => self.skirmish_settings.cols += MAP_SIZE_CHANGE,
+                        3 => self.skirmish_settings.rows += MAP_SIZE_CHANGE,
+                        4 => self.skirmish_settings.player_units += 1,
+                        5 => self.skirmish_settings.ai_units += 1,
+                        6 => self.skirmish_settings.change_player_unit_type(),
+                        7 => self.skirmish_settings.change_ai_unit_type(),
+                        _ => {}
+                    }
+                    self.refresh_skirmish();
+                },
+                SETTINGS => {
+                    match self.submenus[SETTINGS].selection {
+                        1 => self.settings.volume += VOLUME_CHANGE,
+                        2 => self.settings.width += WINDOW_SIZE_CHANGE,
+                        3 => self.settings.height += WINDOW_SIZE_CHANGE,
+                        5 => self.settings.toggle_fullscreen(),
+                        _ => {}
+                    }
+                    self.refresh_settings();
                 }
+                _ => {}
             },
             Keycode::Escape => ctx.quit(),
             _ => {}

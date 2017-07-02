@@ -4,15 +4,13 @@ use rand;
 use rand::distributions::{IndependentSample, Range};
 use odds::vec::VecExt;
 
-use std::slice::Iter;
-
 use battle::map::Map;
 use battle::units::Unit;
 use Resources;
 
 const MARGIN: f32 = 5.0;
 const BULLET_SPEED: f32 = 0.5;
-const WALK_SPEED: f32 = 0.075;
+const WALK_SPEED: f32 = 0.1;
 
 // A pretty simple walk animation
 pub struct Walk {
@@ -134,39 +132,20 @@ pub enum Animation {
     Bullet(Bullet),
 }
 
-// A struct for holding the animations
-pub struct Animations {
-    animations: Vec<Animation>
+// A type for holding the animations
+pub type Animations = Vec<Animation>;
+
+// A trait for updating the animations
+pub trait UpdateAnimations {
+    fn update(&mut self, map: &mut Map, resources: &Resources);
 }
 
-impl Animations {
-    // Create a new, empty Animations
-    pub fn new() -> Animations {
-        Animations {
-            animations: Vec::new()
-        }
-    }
-
-    // Iterate of the animations
-    pub fn iter(&self) -> Iter<Animation> {
-        self.animations.iter()
-    }
-
+impl UpdateAnimations for Animations {
     // Update all of the animations, keeping only those that are still going
-    pub fn update(&mut self, map: &mut Map, resources: &Resources) {
-        self.animations.retain_mut(|mut animation| match *animation {
+    fn update(&mut self, map: &mut Map, resources: &Resources) {
+        self.retain_mut(|mut animation| match *animation {
             Animation::Walk(ref mut walk) => walk.step(map, resources),
             Animation::Bullet(ref mut bullet) => bullet.step(map, resources)
         });
-    }
-
-    // Push a new animation
-    pub fn push(&mut self, animation: Animation) {
-        self.animations.push(animation);
-    }
-
-    // Work out if self.animations is empty
-    pub fn is_empty(&self) -> bool {
-        self.animations.is_empty()
     }
 }

@@ -3,8 +3,10 @@
 use std::cmp::{max, min};
 
 // Ensure that a value is between lower and an upper value
-pub fn clamp(value: usize, lower: usize, upper: usize) -> usize {
-    min(upper, max(lower, value))
+macro_rules! clamp {
+    ($value:expr, $lower:expr, $upper:expr) => (
+        min($upper, max($lower, $value))
+    )
 }
 
 // Ensure that a floating point value is between lower and upper value (as usize)
@@ -12,7 +14,7 @@ pub fn clamp_float(value: f32, lower: usize, upper: usize) -> usize {
     let value = value.round();
     let value = if value < 0.0 { 0 } else { value as usize };
 
-    clamp(value, lower, upper)
+    clamp!(value, lower, upper)
 }
 
 // Calculate the distance between two points on the map

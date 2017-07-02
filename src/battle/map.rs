@@ -3,10 +3,18 @@
 use battle::units::{UnitSide, Units};
 use battle::tiles::{Visibility, Tiles};
 
+use std::fs::File;
+use bincode;
+
+const SIZE_LIMIT: bincode::Infinite = bincode::Infinite;
+const AUTOSAVE: &str = "autosave.sav";
+
 // The Map struct
+#[derive(Serialize, Deserialize)]
 pub struct Map {
     pub units: Units,
-    pub tiles: Tiles
+    pub tiles: Tiles,
+    pub turn: u8
 }
 
 impl Map {
@@ -14,7 +22,8 @@ impl Map {
     pub fn new() -> Map {
         Map {
             units: Units::new(),
-            tiles: Tiles::new()
+            tiles: Tiles::new(),
+            turn: 1
         }
     }
 
@@ -32,5 +41,15 @@ impl Map {
                 UnitSide::AI => self.tiles.at(unit.x, unit.y).player_visibility
             } == Visibility::Visible)
             .count()
+    }
+
+    pub fn load() -> Option<Map> {
+        File::open(AUTOSAVE).ok()
+            .and_then(|mut file| bincode::deserialize_from(&mut file, SIZE_LIMIT).ok())
+    }
+
+    pub fn save(&self) -> Option<()> {
+        File::create(AUTOSAVE).ok()
+            .and_then(|mut file| bincode::serialize_into(&mut file, self, SIZE_LIMIT).ok())
     }
 }
