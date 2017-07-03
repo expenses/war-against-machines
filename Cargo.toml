@@ -4,6 +4,9 @@ version = "0.1.3"
 authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]
+
+## General
+
 # Random number generation
 rand = "*"
 # Unit pathfinding
@@ -20,7 +23,17 @@ toml = "*"
 ## Efficiently-serialized data
 bincode = "*"
 
-# SDL2 with features
-[dependencies.sdl2]
-version = "*"
-features = ["image", "ttf", "mixer"]
+## Engine
+
+# Base piston dependencies
+piston = "*"
+piston2d-graphics = "*"
+
+# Glutin for windowing
+pistoncore-glutin_window = "*"
+
+# OpenGL backend
+piston2d-opengl_graphics = "*"
+
+# Loading images
+image = "*"

@@ -2,25 +2,25 @@
 
 pub mod units;
 pub mod map;
-mod drawer;
+//mod drawer;
 mod tiles;
 mod paths;
 mod animations;
 mod ai;
 mod commands;
 
-use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseButton;
-
 use std::fmt;
 
-use battle::drawer::Drawer;
+use piston::input::{Key, MouseButton};
+use graphics::{Context, ImageSize};
+use opengl_graphics::GlGraphics;
+
+//use battle::drawer::Drawer;
 use battle::paths::{pathfind, PathPoint};
 use battle::animations::{Animations, UpdateAnimations};
 use battle::commands::{CommandQueue, Command, UpdateCommands, FireCommand, WalkCommand};
 use battle::units::{Unit, UnitSide};
 use battle::map::Map;
-use context::Context;
 use Resources;
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use settings::SkirmishSettings;
@@ -57,7 +57,7 @@ pub enum BattleCallback {
 // The main Battle struct the handles actions
 pub struct Battle {
     pub map: Map,
-    drawer: Drawer,
+    //drawer: Drawer,
     pub cursor: Cursor,
     keys: [bool; 6],
     pub selected: Option<usize>,
@@ -72,7 +72,7 @@ impl Battle {
     // Create a new Battle
     pub fn new(resources: &Resources) -> Battle {
         let scale = 2.0;
-        let width_offset = resources.image("end_turn_button").query().width as f32 * -scale;
+        let width_offset = resources.image("end_turn_button").get_width() as f64 * -scale;
 
         // Create the UI and add the buttons and text display
 
@@ -114,7 +114,7 @@ impl Battle {
 
         Battle {
             map: Map::new(),
-            drawer: Drawer::new(),
+            //drawer: Drawer::new(),
             cursor: Cursor { position: None },
             keys: [false; 6],
             selected: None,
@@ -143,31 +143,33 @@ impl Battle {
     }
 
     // Handle keypresses
-    pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode, pressed: bool) {
+    pub fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
         match key {
-            Keycode::Up    | Keycode::W => self.keys[0] = pressed,
-            Keycode::Down  | Keycode::S => self.keys[1] = pressed,
-            Keycode::Left  | Keycode::A => self.keys[2] = pressed,
-            Keycode::Right | Keycode::D => self.keys[3] = pressed,
-            Keycode::O                  => self.keys[4] = pressed,
-            Keycode::P                  => self.keys[5] = pressed,
-            Keycode::Escape             => {
+            Key::Up    | Key::W => self.keys[0] = pressed,
+            Key::Down  | Key::S => self.keys[1] = pressed,
+            Key::Left  | Key::A => self.keys[2] = pressed,
+            Key::Right | Key::D => self.keys[3] = pressed,
+            Key::O              => self.keys[4] = pressed,
+            Key::P              => self.keys[5] = pressed,
+            Key::Escape         => {
                 self.map.save_skrimish("autosave.sav");
-                ctx.quit();
+                return false;
             }
             _ => {}
         };
+
+        true
     }
 
     // Update the battle
     pub fn update(&mut self, resources: &Resources) -> Option<BattleCallback> {
         // Change camera variables if a key is being pressed
-        if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
+        /*if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
         if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED; }
         if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED; }
         if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED; }
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
-        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
+        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }*/
 
         if self.controller == Controller::AI &&
            self.command_queue.is_empty() &&
@@ -195,13 +197,13 @@ impl Battle {
     }
 
     // Draw both the map and the UI
-    pub fn draw(&mut self, ctx: &mut Context, resources: &Resources) {
-        self.drawer.draw_battle(ctx, resources, self);
-        self.draw_ui(ctx, resources);
+    pub fn draw(&mut self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
+        //self.drawer.draw_battle(ctx, resources, self);
+        self.draw_ui(ctx, gl, resources);
     }
 
     // Draw the UI
-    fn draw_ui(&mut self, ctx: &mut Context, resources: &Resources) {
+    fn draw_ui(&mut self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
         // Get a string of info about the selected unit
         let selected = match self.selected_unit() {
             Some(unit) => format!(
@@ -251,13 +253,13 @@ impl Battle {
         self.ui.set_text(1, inventory_string);
 
         // Draw the UI
-        self.ui.draw(ctx, resources);
+        self.ui.draw(ctx, gl, resources);
     }
 
     // Move the cursor on the screen
-    pub fn move_cursor(&mut self, ctx: &mut Context, x: f32, y: f32) {
+    /*pub fn move_cursor(&mut self, x: f32, y: f32) {
         // Get the position where the cursor should be
-        let (x, y) = self.drawer.tile_under_cursor(ctx, x, y);
+        let (x, y) = self.drawer.tile_under_cursor(x, y);
 
         // Set cursor position if it is on the map and visible
         self.cursor.position = if x < self.map.tiles.cols &&
@@ -267,10 +269,10 @@ impl Battle {
         } else {
             None
         }
-    }
+    }*/
 
     // Respond to mouse presses
-    pub fn mouse_button(&mut self, ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
+    pub fn mouse_button(&mut self, ctx: &mut Context, button: MouseButton, x: f64, y: f64) {
         match button {
             MouseButton::Left => match self.ui.clicked(ctx, x, y) {
                 // End the turn

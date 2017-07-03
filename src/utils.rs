@@ -1,6 +1,7 @@
 // Various utility functions
 
 use std::cmp::{max, min};
+use graphics::Context;
 
 // Ensure that a value is between lower and an upper value
 macro_rules! clamp {
@@ -54,4 +55,19 @@ pub fn convert_rotation(rotation: f32) -> f64 {
 
     // Return the degrees as f64
     rotation.to_degrees() as f64
+}
+
+pub trait Dimensions {
+    fn get_width(&self) -> f64;
+    fn get_height(&self) -> f64;
+}
+
+impl Dimensions for Context {
+    fn get_width(&self) -> f64 {
+        self.get_view_size()[0]
+    }
+
+    fn get_height(&self) -> f64 {
+        self.get_view_size()[1]
+    }
 }

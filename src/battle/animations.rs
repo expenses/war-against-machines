@@ -41,7 +41,7 @@ impl Walk {
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => {
                     unit.move_to(self.x, self.y, self.cost);
-                    resources.play_audio("walk");
+                    //resources.play_audio("walk");
                 }
                 _ => return true
             }
@@ -101,7 +101,7 @@ impl Bullet {
     fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if !self.started {
-            resources.play_audio("plasma");
+            //resources.play_audio("plasma");
             self.started = true;
         }
 

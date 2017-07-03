@@ -1,4 +1,3 @@
-extern crate sdl2;
 extern crate rand;
 extern crate pathfinding;
 extern crate ord_subset;
@@ -7,28 +6,33 @@ extern crate toml;
 #[macro_use]
 extern crate serde_derive;
 extern crate bincode;
+extern crate piston;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate glutin_window;
+extern crate image;
 
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseButton;
-use sdl2::rwops::RWops;
+use piston::window::WindowSettings;
+use piston::event_loop::{Events, EventLoop, EventSettings};
+use piston::input::{Input, Key, Button, UpdateArgs, MouseButton};
+use graphics::{Context, clear};
+use glutin_window::GlutinWindow;
+use opengl_graphics::{GlGraphics, OpenGL};
 
 mod battle;
 mod menu;
 mod ui;
 mod weapons;
-mod context;
 #[macro_use]
 mod utils;
-#[macro_use]
 mod resources;
-mod colours;
+mod constants;
 mod items;
 mod settings;
 
-use context::Context;
+use constants::BLACK;
 use battle::Battle;
-use menu::MenuCallback;
+use menu::{Menu, MenuCallback};
 use resources::Resources;
 use settings::Settings;
 use battle::map::Map;
@@ -42,184 +46,137 @@ enum Mode {
 }
 
 // A struct for holding the game state
-struct State<'a> {
-    ctx: Context,
-    resources: Resources<'a>,
+struct App {
+    resources: Resources,
     mode: Mode,
     menu: menu::Menu,
     skirmish: Battle,
 }
 
-impl<'a> State<'a> {
+impl App {
     // Create a new state, starting on the menu
-    fn run(ctx: Context, resources: Resources<'a>, settings: Settings) {
-        let mut state = State {
+    fn new(resources: Resources, settings: Settings) -> App {
+        App {
             mode: Mode::Menu,
-            menu: menu::Menu::new(settings),
+            menu: Menu::new(settings),
             skirmish: Battle::new(&resources),
-            ctx, resources
-        };
-
-        // Get the event pump
-        let mut pump = state.ctx.event_pump();
-
-        // Loop through events while the game is running
-        'main: while state.ctx.running {
-            for event in pump.poll_iter() {
-                match event {
-                    Event::Quit {..} => break 'main,
-                    Event::KeyDown {keycode, ..} => state.handle_key_down(keycode.unwrap()),
-                    Event::KeyUp {keycode, ..} => state.handle_key_up(keycode.unwrap()),
-                    Event::MouseMotion {x, y, ..} => state.handle_mouse_motion(x, y),
-                    Event::MouseButtonDown {mouse_btn, x, y, ..} => state.handle_mouse_button(mouse_btn, x, y),
-                    _ => {}
-                }
-            }
-
-            state.update();
-            state.draw();
+            resources
         }
     }
 
     // Update the game
-    fn update(&mut self) {
+    fn update(&mut self, _dt: f64) -> bool {
         if let Mode::Skirmish = self.mode {
             if self.skirmish.update(&self.resources).is_some() {
                 self.mode = Mode::Menu;
                 self.skirmish = Battle::new(&self.resources);
             }
         }
+
+        true
     }
 
     // Handle key presses
-    fn handle_key_down(&mut self, key: Keycode) {
+    fn handle_key_press(&mut self, key: Key) -> bool {
         match self.mode {
             // If the mode is the menu, respond to callbacks
-            Mode::Menu => if let Some(callback) = self.menu.handle_key(&mut self.ctx, key) {
+            Mode::Menu => if let Some(callback) = self.menu.handle_key(key) {
                 match callback {
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish.start(&self.menu.skirmish_settings);
+                        //self.skirmish.start(&self.menu.skirmish_settings);
                     },
                     MenuCallback::LoadSkirmish(filename) => {
                         if let Some(map) = Map::load_skirmish(&filename) {
                             self.skirmish.map = map;
                             self.mode = Mode::Skirmish;
                         }
-                    }
+                    },
+                    MenuCallback::Quit => return false
                 }  
             },
-            Mode::Skirmish => self.skirmish.handle_key(&mut self.ctx, key, true)
+            Mode::Skirmish => return self.skirmish.handle_key(key, true)
         }
+
+        true
     }
 
     // Handle key releases
-    fn handle_key_up(&mut self, key: Keycode) {
+    fn handle_key_release(&mut self, key: Key) -> bool {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.handle_key(&mut self.ctx, key, false);
+            return self.skirmish.handle_key(key, false);
         }
+
+        true
     }
 
     // Handle mouse movement
-    fn handle_mouse_motion(&mut self, x: i32, y: i32) {
+    fn _handle_mouse_motion(&mut self, _x: i32, _y: i32) {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.move_cursor(&mut self.ctx, x as f32, y as f32);
+            //self.skirmish.move_cursor(x as f32, y as f32);
         }
     }
 
     // Handle mouse button presses
-    fn handle_mouse_button(&mut self, button: MouseButton, x: i32, y: i32) {
+    fn _handle_mouse_button(&mut self, _button: MouseButton, _x: i32, _y: i32) -> bool {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.mouse_button(&mut self.ctx, button, x as f32, y as f32);
+            //self.skirmish.mouse_button(button, x as f32, y as f32);
         }
+
+        true
     }
 
     // Clear, draw and present the canvas
-    fn draw(&mut self) {
-        self.ctx.clear();
+    fn render(&mut self, ctx: &Context, gl: &mut GlGraphics) {
+        clear(BLACK, gl);
 
         match self.mode {
-            Mode::Skirmish => self.skirmish.draw(&mut self.ctx, &self.resources),
-            Mode::Menu => self.menu.draw(&mut self.ctx, &self.resources)
+            Mode::Skirmish => self.skirmish.draw(ctx, gl, &mut self.resources),
+            Mode::Menu => self.menu.render(ctx, gl, &mut self.resources)
         }
-
-        self.ctx.present();
     }
 }
 
 // The main function
 fn main() {
+    // Set opengl version
+    let opengl = OpenGL::V3_2;
+
     // Load (or use the default) settings
     let settings = Settings::load();
 
-    // Create the context
-    let mut ctx = Context::new(settings.width, settings.height);
+    let mut window: GlutinWindow = WindowSettings::new(TITLE, (settings.width, settings.height))
+        .vsync(true)
+        .opengl(opengl)
+        .build()
+        .unwrap();
 
-    // Set the settings
-    ctx.set(&settings);
+    let mut gl = GlGraphics::new(opengl);
+    let mut events = Events::new(EventSettings::new());
 
-    let texture_creator = ctx.texture_creator();
-    let font_context = ctx.font_context();
+    let mut resources = Resources::new("resources/tileset.png", "resources/font.ttf");
 
-    // Create the resources
-    let mut resources = Resources::new(&texture_creator, &font_context);
+    resources.load_image("title", "resources/title.png");
+    resources.load_image("end_turn_button", "resources/button/end_turn.png");
+    resources.load_image("inventory_button", "resources/button/inventory.png");
+    resources.load_image("change_fire_mode_button", "resources/button/change_fire_mode.png");
 
-    // Load the images into the binary
-    resources.load_image("title", rw_ops!("title.png"));
+    let mut app = App::new(resources, settings);
 
-    resources.load_image("base_1", rw_ops!("base/1.png"));
-    resources.load_image("base_2", rw_ops!("base/2.png"));
-    resources.load_image("fog",    rw_ops!("base/fog.png"));
-    
-    resources.load_image("squaddie", rw_ops!("unit/squaddie.png"));
-    resources.load_image("machine",  rw_ops!("unit/machine.png"));
-    
-    resources.load_image("regular_bullet", rw_ops!("bullet/regular.png"));
-    resources.load_image("plasma_bullet",  rw_ops!("bullet/plasma.png"));
-    
-    resources.load_image("cursor",            rw_ops!("cursor/default.png"));
-    resources.load_image("cursor_unit",       rw_ops!("cursor/unit.png"));
-    resources.load_image("cursor_unwalkable", rw_ops!("cursor/unwalkable.png"));
-    resources.load_image("cursor_crosshair",  rw_ops!("cursor/crosshair.png"));
-    
-    resources.load_image("ruin_1", rw_ops!("ruin/1.png"));
-    resources.load_image("ruin_2", rw_ops!("ruin/2.png"));
-    resources.load_image("ruin_3", rw_ops!("ruin/3.png"));
-    
-    resources.load_image("pit_top",    rw_ops!("pit/top.png"));
-    resources.load_image("pit_right",  rw_ops!("pit/right.png"));
-    resources.load_image("pit_left",   rw_ops!("pit/left.png"));
-    resources.load_image("pit_bottom", rw_ops!("pit/bottom.png"));
-    resources.load_image("pit_tl",     rw_ops!("pit/tl.png"));
-    resources.load_image("pit_tr",     rw_ops!("pit/tr.png"));
-    resources.load_image("pit_bl",     rw_ops!("pit/bl.png"));
-    resources.load_image("pit_br",     rw_ops!("pit/br.png"));
-    resources.load_image("pit_center", rw_ops!("pit/center.png"));
-    
-    resources.load_image("path",             rw_ops!("path/default.png"));
-    resources.load_image("path_no_weapon",   rw_ops!("path/no_weapon.png"));
-    resources.load_image("path_unreachable", rw_ops!("path/unreachable.png"));
-    
-    resources.load_image("left_edge",  rw_ops!("edge/left.png"));
-    resources.load_image("right_edge", rw_ops!("edge/right.png"));
-        
-    resources.load_image("end_turn_button",         rw_ops!("button/end_turn.png"));
-    resources.load_image("inventory_button",        rw_ops!("button/inventory.png"));
-    resources.load_image("change_fire_mode_button", rw_ops!("button/change_fire_mode.png"));
+    while let Some(event) = events.next(&mut window) {
+        let running = match event {
+            Input::Press(Button::Keyboard(key)) => app.handle_key_press(key),
+            Input::Release(Button::Keyboard(key)) => app.handle_key_release(key),
+            Input::Render(args) => {
+                gl.draw(args.viewport(), |ctx, gl| app.render(&ctx, gl));
+                true
+            },
+            Input::Update(args) => app.update(args.dt),
+            _ => true
+        };
 
-    resources.load_image("scrap",           rw_ops!("items/scrap.png"));
-    resources.load_image("weapon",          rw_ops!("items/weapon.png"));
-    resources.load_image("squaddie_corpse", rw_ops!("items/squaddie_corpse.png"));
-    resources.load_image("machine_corpse",  rw_ops!("items/machine_corpse.png"));
-    resources.load_image("skeleton",        rw_ops!("items/skeleton.png"));
-    
-    // Load the font
-    resources.load_font("main", rw_ops!("font.ttf"), 35);
-
-    // Load audio resources
-    resources.load_audio("plasma",  rw_ops!("audio/plasma.ogg"));
-    resources.load_audio("walk",    rw_ops!("audio/walk.ogg"));
-
-    // Start the game
-    State::run(ctx, resources, settings);
+        if !running {
+            break;
+        }
+    }
 }

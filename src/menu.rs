@@ -1,23 +1,28 @@
 // The main menu of the game
 
-use sdl2::keyboard::Keycode;
+use piston::input::Key;
+use graphics::{Context, ImageSize, text, image, Transformed, DrawState};
+use graphics::character::CharacterCache;
+use opengl_graphics::GlGraphics;
 
 use std::fs::read_dir;
 
-use colours::WHITE;
+use constants::{WHITE, REGULAR};
 use Resources;
-use context::Context;
 use settings::{Settings, SkirmishSettings};
+use utils::Dimensions;
 
 const MAP_SIZE_CHANGE: usize = 5;
-const TITLE_TOP_OFFSET: f32 = 50.0;
+const TITLE_TOP_OFFSET: f64 = 50.0;
+const TOP_ITEM_OFFSET: f64 = 150.0;
 const WINDOW_SIZE_CHANGE: u32 = 10;
 const VOLUME_CHANGE: i32 = 4;
 
 // Callbacks that can be returned from key presses
 pub enum MenuCallback {
     NewSkirmish,
-    LoadSkirmish(String)
+    LoadSkirmish(String),
+    Quit
 }
 
 // A submenu inside the main menu
@@ -36,7 +41,7 @@ impl Submenu {
     }
 
     // Draw the items in the submenu
-    fn draw(&self, ctx: &mut Context, resources: &Resources) {
+    fn render(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
         for (i, item) in self.list.iter().enumerate() {
             let mut string = item.clone();
 
@@ -44,13 +49,16 @@ impl Submenu {
             if i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let rendered = resources.render("main", &string, WHITE);
 
-            // Get the center of the rendered string
-            let center = (ctx.get_width() - rendered.query().width) as f32 / 2.0;
+            let center = (ctx.get_width() - resources.font.width(REGULAR.font_size, &string)) / 2.0;
 
-            // Draw the string
-            ctx.draw(&rendered, center, 150.0 + i as f32 * 20.0, 1.0);
+            let rendered = REGULAR.draw(
+                &string,
+                &mut resources.font,
+                &DrawState::default(),
+                ctx.transform.trans(center, TOP_ITEM_OFFSET + i as f64 * 20.0),
+                gl
+            );
         }
     }
 
@@ -132,14 +140,17 @@ impl Menu {
     }
 
     // Draw the menu
-    pub fn draw(&self, ctx: &mut Context, resources: &Resources) {
+    pub fn render(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
         // Draw the title
-        let title = resources.image("title");
-        let center = (ctx.get_width() - title.query().width) as f32 / 2.0;
-        ctx.draw(title, center, TITLE_TOP_OFFSET, 1.0);
+        {
+            let title = resources.image("title");
+            let center = (ctx.get_width() - title.get_width() as f64) / 2.0;
+
+            image(title, ctx.transform.trans(center, TITLE_TOP_OFFSET), gl);
+        }
 
         // Draw the selected submenu
-        self.submenus[self.submenu].draw(ctx, resources);
+        self.submenus[self.submenu].render(ctx, gl, resources);
     }
 
     // Refresh the skirmish settings
@@ -180,18 +191,18 @@ impl Menu {
     }
 
     // Handle key presses, returning an optional callback
-    pub fn handle_key(&mut self, ctx: &mut Context, key: Keycode) -> Option<MenuCallback> {
+    pub fn handle_key(&mut self, key: Key) -> Option<MenuCallback> {
         match key {
             // Rotate the selections up
-            Keycode::Up | Keycode::W => self.submenus[self.submenu].rotate_up(),
+            Key::Up | Key::W => self.submenus[self.submenu].rotate_up(),
             // Rotate the selections down
-            Keycode::Down | Keycode::S => self.submenus[self.submenu].rotate_down(),
+            Key::Down | Key::S => self.submenus[self.submenu].rotate_down(),
             // Perform actions on the selection 
-            Keycode::Return => match self.submenu {
+            Key::Return => match self.submenu {
                 MAIN => match self.submenus[MAIN].selection {
                     0 => self.submenu = SKIRMISH,
                     1 => self.submenu = SETTINGS,
-                    2 => ctx.quit(),
+                    2 => return Some(MenuCallback::Quit),
                     _ => {}
                 },
                 SKIRMISH => match self.submenus[SKIRMISH].selection {
@@ -206,17 +217,17 @@ impl Menu {
                 SETTINGS => match self.submenus[SETTINGS].selection {
                     0 => self.submenu = MAIN,
                     4 => {
-                        self.settings.width = ctx.get_width();
-                        self.settings.height = ctx.get_height();
+                        self.settings.width = 100; //ctx.get_width();
+                        self.settings.height = 100; //ctx.get_height();
                         self.refresh_settings();
                     },
                     6 => {
                         self.settings = Settings::default();
-                        ctx.set(&self.settings);
+                        //ctx.set(&self.settings);
                         self.refresh_settings();
                     },
                     7 => {
-                        ctx.set(&self.settings);
+                        //ctx.set(&self.settings);
                         self.settings.save();
                     },
                     _ => {}
@@ -229,7 +240,7 @@ impl Menu {
                 _ => {}
             },
             // Lower the skimish settings
-            Keycode::Left | Keycode::A => match self.submenu {
+            Key::Left | Key::A => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
                         4 => self.skirmish_settings.cols -= MAP_SIZE_CHANGE,
@@ -255,7 +266,7 @@ impl Menu {
                 _ => {}
             },
             // Raise the skimish settings
-            Keycode::Right | Keycode::D => match self.submenu {
+            Key::Right | Key::D => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
                         4 => self.skirmish_settings.cols += MAP_SIZE_CHANGE,
@@ -280,7 +291,7 @@ impl Menu {
                 }
                 _ => {}
             },
-            Keycode::Escape => ctx.quit(),
+            Key::Escape => return Some(MenuCallback::Quit),
             _ => {}
         }
 
