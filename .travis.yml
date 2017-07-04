@@ -14,7 +14,7 @@ dist: trusty
 before_install: 
   # Install ALSA on Linux
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-      sudo apt-get install -qq alsa-base;
+      sudo apt-get install -qq libasound2;
     fi
 
 # Build and zip the release
