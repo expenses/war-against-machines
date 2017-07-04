@@ -11,28 +11,7 @@ install:
   - rustup-init.exe -y --default-host %TOOLCHAIN%
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
   - rustc --version
-  - cargo --version
-  # Install SDL2 (following https://github.com/AngryLawyer/rust-sdl2#windows-msvc)
-  - mkdir staging
-  # SDL2
-  - appveyor DownloadFile http://www.libsdl.org/release/SDL2-devel-2.0.5-VC.zip
-  - 7z x SDL2-devel-2.0.5-VC.zip
-  - move SDL2-2.0.5\lib\x64\*.lib %LIB%
-  - move SDL2-2.0.5\lib\x64\*.dll staging
-  # SDL2 ttf
-  - appveyor DownloadFile https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.14-VC.zip
-  - 7z x SDL2_ttf-devel-2.0.14-VC.zip
-  - move SDL2_ttf-2.0.14\lib\x64\*.lib %LIB%
-  - move SDL2_ttf-2.0.14\lib\x64\*.dll staging
-  # SDL2 image
-  - appveyor DownloadFile https://www.libsdl.org/projects/SDL_image/release/SDL2_image-devel-2.0.1-VC.zip
-  - 7z x SDL2_image-devel-2.0.1-VC.zip
-  - move SDL2_image-2.0.1\lib\x64\*.lib %LIB%
-  - move SDL2_image-2.0.1\lib\x64\*.dll staging
-  - appveyor DownloadFile https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-devel-2.0.1-VC.zip
-  - 7z x SDL2_mixer-devel-2.0.1-VC.zip
-  - move SDL2_mixer-2.0.1\lib\x64\*.lib %LIB%
-  - move SDL2_mixer-2.0.1\lib\x64\*.dll staging
+  - cargo --version  
 
 # Don't build the project (because we're using cargo test)
 build: false
@@ -45,6 +24,7 @@ test_script:
 # Build and zip the release
 before_deploy:
   - cargo build --release
+  - mkdir staging
   - move target\release\%NAME%.exe staging
   - move LICENCE staging
   - cd staging

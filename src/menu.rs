@@ -135,12 +135,10 @@ impl Menu {
     // Draw the menu
     pub fn render(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
         // Draw the title
-        {
-            let title = SetImage::Title;
-            let center = (ctx.width() - title.width() as f64) / 2.0;
+        let title = SetImage::Title;
+        let center = (ctx.width() - title.width() as f64) / 2.0;
 
-            resources.render(&title, ctx.transform.trans(center, TITLE_TOP_OFFSET), gl);
-        }
+        resources.render(&title, ctx.transform.trans(center, TITLE_TOP_OFFSET), gl);
 
         // Draw the selected submenu
         self.submenus[self.submenu].render(ctx, gl, resources);

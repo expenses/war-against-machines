@@ -32,7 +32,7 @@ impl Walk {
 
     // Move the animation a step, and return if its still going
     // If not, move the unit
-    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
+    fn step(&mut self, map: &mut Map, _resources: &Resources) -> bool {
         self.status += WALK_SPEED;
         
         let still_going = self.status <= 1.0;
@@ -98,7 +98,7 @@ impl Bullet {
     }
     
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
+    fn step(&mut self, map: &mut Map, _resources: &Resources) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if !self.started {
             //resources.play_audio("plasma");
