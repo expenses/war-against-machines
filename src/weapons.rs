@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use resources::SetImage;
+
 // The type of weapon
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum WeaponType {
@@ -101,10 +103,10 @@ impl Weapon {
         }
     }
 
-    pub fn bullet(&self) -> &'static str {
+    pub fn bullet(&self) -> SetImage {
         match self.tag {
-            WeaponType::PlasmaRifle => "plasma_bullet",
-            _ => "regular_bullet"
+            WeaponType::PlasmaRifle => SetImage::PlasmaBullet,
+            _ => SetImage::RegularBullet
         }
     }
 }

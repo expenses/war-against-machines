@@ -13,8 +13,9 @@ extern crate glutin_window;
 extern crate image;
 
 use piston::window::WindowSettings;
-use piston::event_loop::{Events, EventLoop, EventSettings};
-use piston::input::{Input, Key, Button, UpdateArgs, MouseButton};
+use piston::event_loop::{Events, EventSettings, EventLoop};
+use piston::input::{Input, Key, Button, MouseButton, Motion};
+use piston::window::Window;
 use graphics::{Context, clear};
 use glutin_window::GlutinWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -26,23 +27,36 @@ mod weapons;
 #[macro_use]
 mod utils;
 mod resources;
-mod constants;
+mod colours;
 mod items;
 mod settings;
 
-use constants::BLACK;
+use colours::BLACK;
 use battle::Battle;
 use menu::{Menu, MenuCallback};
 use resources::Resources;
 use settings::Settings;
 use battle::map::Map;
 
-pub const TITLE: &str = "War Against Machines";
+const TITLE: &str = "War Against Machines";
 
 // Which mode the game is in
 enum Mode {
     Menu,
     Skirmish
+}
+
+pub struct WindowSize {
+    width: f64,
+    height: f64
+}
+
+impl WindowSize {
+    fn update(&mut self, window: &GlutinWindow) {
+        let size = window.draw_size();
+        self.width = size.width as f64;
+        self.height = size.height as f64;
+    }
 }
 
 // A struct for holding the game state
@@ -51,6 +65,7 @@ struct App {
     mode: Mode,
     menu: menu::Menu,
     skirmish: Battle,
+    window_size: WindowSize
 }
 
 impl App {
@@ -59,17 +74,20 @@ impl App {
         App {
             mode: Mode::Menu,
             menu: Menu::new(settings),
-            skirmish: Battle::new(&resources),
-            resources
+            skirmish: Battle::new(),
+            window_size: WindowSize {width: 0.0, height: 0.0},
+            resources,
         }
     }
 
     // Update the game
-    fn update(&mut self, _dt: f64) -> bool {
+    fn update(&mut self, _dt: f64, window: &GlutinWindow) -> bool {
+        self.window_size.update(window);
+
         if let Mode::Skirmish = self.mode {
             if self.skirmish.update(&self.resources).is_some() {
                 self.mode = Mode::Menu;
-                self.skirmish = Battle::new(&self.resources);
+                self.skirmish = Battle::new();
             }
         }
 
@@ -84,7 +102,7 @@ impl App {
                 match callback {
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        //self.skirmish.start(&self.menu.skirmish_settings);
+                        self.skirmish.start(&self.menu.skirmish_settings);
                     },
                     MenuCallback::LoadSkirmish(filename) => {
                         if let Some(map) = Map::load_skirmish(&filename) {
@@ -111,16 +129,18 @@ impl App {
     }
 
     // Handle mouse movement
-    fn _handle_mouse_motion(&mut self, _x: i32, _y: i32) {
+    fn handle_mouse_motion(&mut self, x: f64, y: f64) -> bool {
         if let Mode::Skirmish = self.mode {
-            //self.skirmish.move_cursor(x as f32, y as f32);
+            self.skirmish.move_cursor(x, y, &self.window_size);
         }
+
+        true
     }
 
     // Handle mouse button presses
-    fn _handle_mouse_button(&mut self, _button: MouseButton, _x: i32, _y: i32) -> bool {
+    fn handle_mouse_button(&mut self, button: MouseButton) -> bool {
         if let Mode::Skirmish = self.mode {
-            //self.skirmish.mouse_button(button, x as f32, y as f32);
+            self.skirmish.mouse_button(button, &self.window_size);
         }
 
         true
@@ -152,26 +172,23 @@ fn main() {
         .unwrap();
 
     let mut gl = GlGraphics::new(opengl);
-    let mut events = Events::new(EventSettings::new());
+    let mut events = Events::new(EventSettings::new().ups(60));
 
-    let mut resources = Resources::new("resources/tileset.png", "resources/font.ttf");
-
-    resources.load_image("title", "resources/title.png");
-    resources.load_image("end_turn_button", "resources/button/end_turn.png");
-    resources.load_image("inventory_button", "resources/button/inventory.png");
-    resources.load_image("change_fire_mode_button", "resources/button/change_fire_mode.png");
+    let resources = Resources::new("resources/tileset.png", "resources/font.ttf", 20);
 
     let mut app = App::new(resources, settings);
 
     while let Some(event) = events.next(&mut window) {
         let running = match event {
             Input::Press(Button::Keyboard(key)) => app.handle_key_press(key),
+            Input::Press(Button::Mouse(button)) => app.handle_mouse_button(button),
             Input::Release(Button::Keyboard(key)) => app.handle_key_release(key),
+            Input::Move(Motion::MouseCursor(x, y)) => app.handle_mouse_motion(x, y),
             Input::Render(args) => {
                 gl.draw(args.viewport(), |ctx, gl| app.render(&ctx, gl));
                 true
             },
-            Input::Update(args) => app.update(args.dt),
+            Input::Update(args) => app.update(args.dt, &window),
             _ => true
         };
 

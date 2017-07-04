@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use resources::SetImage;
+
 // The type of an item
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ItemType {
@@ -17,7 +19,7 @@ pub enum ItemType {
 pub struct Item {
     pub tag: ItemType,
     pub weight: usize,
-    pub image: String
+    pub image: SetImage
 }
 
 impl fmt::Display for Item {
@@ -36,16 +38,15 @@ impl Item {
     // Create a new item
     pub fn new(tag: ItemType) -> Item {
         let (weight, image) = match tag {
-            ItemType::_Scrap => (5, "scrap"),
-            ItemType::_Weapon => (4, "weapon"),
-            ItemType::SquaddieCorpse => (6, "squaddie_corpse"),
-            ItemType::MachineCorpse => (8, "machine_corpse"),
-            ItemType::Skeleton => (4, "skeleton")
+            ItemType::_Scrap =>         (5, SetImage::Scrap),
+            ItemType::_Weapon =>        (4, SetImage::Weapon),
+            ItemType::SquaddieCorpse => (6, SetImage::SquaddieCorpse),
+            ItemType::MachineCorpse =>  (8, SetImage::MachineCorpse),
+            ItemType::Skeleton =>       (4, SetImage::Skeleton)
         };
 
         Item {
-            tag, weight,
-            image: image.into()
+            tag, weight, image
         }
     }
 }

@@ -5,6 +5,7 @@ use rand::Rng;
 
 use battle::units::{UnitSide, Units};
 use items::{Item, ItemType};
+use resources::SetImage;
 
 // The visibility of the tile
 #[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
@@ -17,8 +18,8 @@ pub enum Visibility {
 // A tile in the map
 #[derive(Serialize, Deserialize)]
 pub struct Tile {
-    pub base: String,
-    pub obstacle: Option<String>,
+    pub base: SetImage,
+    pub obstacle: Option<SetImage>,
     pub player_visibility: Visibility,
     pub ai_visibility: Visibility,
     pub items: Vec<Item>
@@ -26,9 +27,9 @@ pub struct Tile {
 
 impl Tile {
     // Create a new tile
-    fn new(base: &str) -> Tile {
+    fn new(base: SetImage) -> Tile {
         Tile {
-            base: base.into(),
+            base,
             obstacle: None,
             player_visibility: Visibility::Invisible,
             ai_visibility: Visibility::Invisible,
@@ -37,8 +38,8 @@ impl Tile {
     }
 
     // Set the obstacle of the tile and remove the units
-    fn set_obstacle(&mut self, decoration: &str) {
-        self.obstacle = Some(decoration.into());
+    fn set_obstacle(&mut self, decoration: SetImage) {
+        self.obstacle = Some(decoration);
         self.items = Vec::new();
     }
 
@@ -77,8 +78,8 @@ impl Tiles {
         self.rows = rows;
 
         let mut rng = rand::thread_rng();
-        let ruins = &["ruin_1", "ruin_2", "ruin_3"];
-        let bases = &["base_1", "base_2"];
+        let ruins = &[SetImage::Ruin1, SetImage::Ruin2, SetImage::Ruin3];
+        let bases = &[SetImage::Base1, SetImage::Base2];
 
         for x in 0 .. cols {
             for y in 0 .. rows {
@@ -114,37 +115,37 @@ impl Tiles {
         let pit_y = rng.gen_range(1, self.rows - height - 1);
 
         // Add pit corners
-        self.at_mut(pit_x,             pit_y             ).set_obstacle("pit_top");
-        self.at_mut(pit_x,             pit_y + height - 1).set_obstacle("pit_left");
-        self.at_mut(pit_x + width - 1, pit_y             ).set_obstacle("pit_right");
-        self.at_mut(pit_x + width - 1, pit_y + height - 1).set_obstacle("pit_bottom");
+        self.at_mut(pit_x,             pit_y             ).set_obstacle(SetImage::PitTop);
+        self.at_mut(pit_x,             pit_y + height - 1).set_obstacle(SetImage::PitLeft);
+        self.at_mut(pit_x + width - 1, pit_y             ).set_obstacle(SetImage::PitRight);
+        self.at_mut(pit_x + width - 1, pit_y + height - 1).set_obstacle(SetImage::PitBottom);
 
         // Add pit edges and center
         for x in pit_x + 1 .. pit_x + width - 1 {
-            self.at_mut(x, pit_y             ).set_obstacle("pit_tr");
-            self.at_mut(x, pit_y + height - 1).set_obstacle("pit_bl");
+            self.at_mut(x, pit_y             ).set_obstacle(SetImage::PitTR);
+            self.at_mut(x, pit_y + height - 1).set_obstacle(SetImage::PitBL);
 
             for y in pit_y + 1 .. pit_y + height - 1 {
-                self.at_mut(x, y).set_obstacle("pit_center");
+                self.at_mut(x, y).set_obstacle(SetImage::PitCenter);
             }
         }
 
         for y in pit_y + 1 .. pit_y + height - 1 {
-            self.at_mut(pit_x,             y).set_obstacle("pit_tl");
-            self.at_mut(pit_x + width - 1, y).set_obstacle("pit_br");
+            self.at_mut(pit_x,             y).set_obstacle(SetImage::PitTL);
+            self.at_mut(pit_x + width - 1, y).set_obstacle(SetImage::PitBR);
         }
     }
 
     // Get a reference to a tile
     pub fn at(&self, x: usize, y: usize) -> &Tile {
         self.tiles.get(x * self.rows + y)
-            .expect(&format!("Tile at ({}, {}) out of bounds for Tiles of size ({}, {})", x, y, self.cols, self.rows))
+            .unwrap_or_else(|| panic!("Tile at ({}, {}) out of bounds", x, y))
     }
 
     // Get a mutable reference to a tile
     pub fn at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         self.tiles.get_mut(x * self.rows + y)
-            .expect(&format!("Tile at ({}, {}) out of bounds for Tiles of size ({}, {})", x, y, self.cols, self.rows))
+            .unwrap_or_else(|| panic!("Tile at ({}, {}) out of bounds", x, y))
     }
 
     // Update the visibility of the map

@@ -1,14 +1,13 @@
 // The main menu of the game
 
 use piston::input::Key;
-use graphics::{Context, ImageSize, text, image, Transformed, DrawState};
-use graphics::character::CharacterCache;
+use graphics::{Context, Transformed};
 use opengl_graphics::GlGraphics;
 
 use std::fs::read_dir;
 
-use constants::{WHITE, REGULAR};
-use Resources;
+use colours::WHITE;
+use resources::{Resources, SetImage};
 use settings::{Settings, SkirmishSettings};
 use utils::Dimensions;
 
@@ -50,15 +49,9 @@ impl Submenu {
 
             // Render the string
 
-            let center = (ctx.get_width() - resources.font.width(REGULAR.font_size, &string)) / 2.0;
+            let center = (ctx.width() - resources.font_width(&string)) / 2.0;
 
-            let rendered = REGULAR.draw(
-                &string,
-                &mut resources.font,
-                &DrawState::default(),
-                ctx.transform.trans(center, TOP_ITEM_OFFSET + i as f64 * 20.0),
-                gl
-            );
+            resources.render_text(&string, WHITE, ctx.transform.trans(center, TOP_ITEM_OFFSET + i as f64 * 20.0), gl);
         }
     }
 
@@ -143,10 +136,10 @@ impl Menu {
     pub fn render(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
         // Draw the title
         {
-            let title = resources.image("title");
-            let center = (ctx.get_width() - title.get_width() as f64) / 2.0;
+            let title = SetImage::Title;
+            let center = (ctx.width() - title.width() as f64) / 2.0;
 
-            image(title, ctx.transform.trans(center, TITLE_TOP_OFFSET), gl);
+            resources.render(&title, ctx.transform.trans(center, TITLE_TOP_OFFSET), gl);
         }
 
         // Draw the selected submenu

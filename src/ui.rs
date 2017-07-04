@@ -1,12 +1,12 @@
 // A UI struct to display clickable buttons and text fields
 
-use graphics::{Context, ImageSize, Transformed, image, DrawState};
-use graphics::character::CharacterCache;
+use graphics::{Context, Transformed};
 use utils::Dimensions;
 use opengl_graphics::GlGraphics;
 
-use Resources;
-use constants::{WHITE, REGULAR};
+use resources::{Resources, SetImage};
+use colours::WHITE;
+use WindowSize;
 
 // The vertical alignment of an item
 pub enum VerticalAlignment {
@@ -22,19 +22,17 @@ pub enum HorizontalAlignment {
     Bottom
 }
 
-fn get_location(x: f64, y: f64, width: f64, height: f64, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, ctx: &Context) -> (f64, f64) {
-    let (screen_width, screen_height) = (ctx.get_width(), ctx.get_height());
-
+fn get_location(x: f64, y: f64, width: f64, height: f64, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, window_width: f64, window_height: f64) -> (f64, f64) {
     let x = match *v_align {
         VerticalAlignment::_Left => x,
-        VerticalAlignment::Middle => (screen_width - width)  / 2.0 + x,
-        VerticalAlignment::Right => (screen_width - width) + x
+        VerticalAlignment::Middle => (window_width - width) / 2.0 + x,
+        VerticalAlignment::Right =>  (window_width - width) + x
     };
 
     let y = match *h_align {
         HorizontalAlignment::Top => y,
-        HorizontalAlignment::Middle => (screen_height - height) / 2.0 + y,
-        HorizontalAlignment::Bottom => (screen_height - height) + y
+        HorizontalAlignment::Middle => (window_height - height) / 2.0 + y,
+        HorizontalAlignment::Bottom => (window_height - height) + y
     };
 
     (x, y)
@@ -42,7 +40,7 @@ fn get_location(x: f64, y: f64, width: f64, height: f64, v_align: &VerticalAlign
 
 // A button on the UI
 pub struct Button {
-    image: &'static str,
+    image: SetImage,
     x: f64,
     y: f64,
     width: f64,
@@ -55,12 +53,9 @@ pub struct Button {
 
 impl Button {
     // Add a new button
-    pub fn new(image: &'static str, x: f64, y: f64, scale: f64, resources: &Resources,
-               v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {
-        let image_resource = resources.image(image);
-        
-        let width = image_resource.get_width() as f64 * scale;
-        let height = image_resource.get_height() as f64 * scale;
+    pub fn new(image: SetImage, x: f64, y: f64, scale: f64, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {     
+        let width = image.width() * scale;
+        let height = image.height() * scale;
 
         Button {
             x, y, width, height, scale, v_align, h_align, image,
@@ -70,14 +65,14 @@ impl Button {
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &Resources) {
-        let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
+        let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx.width() as f64, ctx.height() as f64);
 
-        image(resources.image(self.image), ctx.transform.trans(x, y).scale(self.scale, self.scale), gl);
+        resources.render(&self.image, ctx.transform.trans(x, y).scale(self.scale, self.scale), gl)
     }
 
     // Calculate if the button was pressed
-    pub fn clicked(&self, ctx: &Context, x: f64, y: f64) -> bool {
-        let (pos_x, pos_y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
+    pub fn clicked(&self, window_size: &WindowSize, x: f64, y: f64) -> bool {
+        let (pos_x, pos_y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, window_size.width, window_size.height);
 
         x >= pos_x && x <= pos_x + self.width &&
         y >= pos_y && y <= pos_y + self.height
@@ -109,20 +104,14 @@ impl TextDisplay {
 
         // Iterate through the non-empty lines
         for line in self.text.split('\n').filter(|line| !line.is_empty()) {
-            let width = resources.font.width(REGULAR.font_size, &line);
-            let height = REGULAR.font_size as f64;
+            let width = resources.font_width(&line);
+            let height = resources.font_height();
 
             y_offset += height;
 
-            let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx);
+            let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx.width(), ctx.height());
 
-            let rendered = REGULAR.draw(
-                &line,
-                &mut resources.font,
-                &DrawState::default(),
-                ctx.transform.trans(x, y + y_offset),
-                gl
-            );
+            resources.render_text(&line, WHITE, ctx.transform.trans(x, y + y_offset), gl);
         }
     }
 }
@@ -167,10 +156,10 @@ impl UI {
     }
 
     // Get the first active clicked button at a location
-    pub fn clicked(&self, ctx: &Context, x: f64, y: f64) -> Option<usize> {
+    pub fn clicked(&self, window_size: &WindowSize, x: f64, y: f64) -> Option<usize> {
         self.buttons.iter()
             .enumerate()
-            .find(|&(_, button)| button.active && button.clicked(ctx, x, y))
+            .find(|&(_, button)| button.active && button.clicked(window_size, x, y))
             .map(|(i, _)| i)
     }
 }

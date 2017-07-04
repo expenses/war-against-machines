@@ -11,7 +11,7 @@ macro_rules! clamp {
 }
 
 // Ensure that a floating point value is between lower and upper value (as usize)
-pub fn clamp_float(value: f32, lower: usize, upper: usize) -> usize {
+pub fn clamp_float(value: f64, lower: usize, upper: usize) -> usize {
     let value = value.round();
     let value = if value < 0.0 { 0 } else { value as usize };
 
@@ -40,9 +40,9 @@ pub fn chance_to_hit(a_x: usize, a_y: usize, b_x: usize, b_y: usize) -> f32 {
 }
 
 // Convert a rotation for drawing on the map
-pub fn convert_rotation(rotation: f32) -> f64 {
+pub fn convert_rotation(rotation: f64) -> f64 {
     // Rotate by 45'
-    let rotation = rotation + 45.0f32.to_radians();
+    let rotation = rotation + 45.0_f64.to_radians();
 
     // Convert to cartesian form
     let (x, y) = (rotation.cos(), rotation.sin());
@@ -51,23 +51,20 @@ pub fn convert_rotation(rotation: f32) -> f64 {
     let y = y * 0.5;
 
     // Convert back into polar form
-    let rotation = y.atan2(x);
-
-    // Return the degrees as f64
-    rotation.to_degrees() as f64
+    y.atan2(x)
 }
 
 pub trait Dimensions {
-    fn get_width(&self) -> f64;
-    fn get_height(&self) -> f64;
+    fn width(&self) -> f64;
+    fn height(&self) -> f64;
 }
 
 impl Dimensions for Context {
-    fn get_width(&self) -> f64 {
+    fn width(&self) -> f64 {
         self.get_view_size()[0]
     }
 
-    fn get_height(&self) -> f64 {
+    fn height(&self) -> f64 {
         self.get_view_size()[1]
     }
 }

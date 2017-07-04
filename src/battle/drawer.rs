@@ -1,107 +1,42 @@
 // A drawer struct for drawing the map and battle items
 
-use sdl2::render::{Texture, Canvas};
-use sdl2::rect::Rect;
-use sdl2::video::Window;
-
 use battle::Battle;
 use battle::units::UnitSide;
 use battle::tiles::Visibility;
 use battle::animations::Animation;
 use colours;
 use Resources;
-use context::Context;
-use utils::{clamp_float, convert_rotation};
+use utils::{clamp_float, convert_rotation, Dimensions};
 
-const TILE_WIDTH: f32 = 48.0;
-const TILE_HEIGHT: f32 = 24.0;
-const TILE_IMAGE_SIZE: f32 = 48.0;
+use graphics::{Context, Transformed};
+use graphics::math::Matrix2d;
+use opengl_graphics::GlGraphics;
+use resources::SetImage;
+use WindowSize;
 
-const DEFAULT_ZOOM: f32 = 2.0;
-const ZOOM_MAX: f32 = 10.0;
-const ZOOM_MIN: f32 = 1.0;
+const TILE_WIDTH: f64 = 48.0;
+const TILE_HEIGHT: f64 = 24.0;
+const TILE_IMAGE_SIZE: f64 = 48.0;
+
+const DEFAULT_ZOOM: f64 = 2.0;
+const ZOOM_MAX: f64 = 10.0;
+const ZOOM_MIN: f64 = 1.0;
 
 // Convert coordinates from isometric
-pub fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
+pub fn from_map_coords(x: f64, y: f64) -> (f64, f64) {
     (x - y, x + y)
 }
 
 // Convert coordinates to isometric
-pub fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
+pub fn to_map_coords(x: f64, y: f64) -> (f64, f64) {
     (y + x, y - x)
-}
-
-// A struct to abstract drawing to a canvas
-struct CanvasTexture<'a> {
-    canvas: &'a mut Canvas<Window>,
-    width: f32,
-    height: f32,
-    camera: &'a Camera
-}
-
-impl<'a> CanvasTexture<'a> {
-    // Create a new CanvasTexture
-    fn new(canvas: &'a mut Canvas<Window>, width: f32, height: f32, camera: &'a Camera) -> CanvasTexture<'a> {
-        CanvasTexture {
-            canvas, width, height, camera
-        }
-    }
-
-    // Clear the canvas
-    fn clear(&mut self) {
-        self.canvas.clear();
-    }
-
-    // Draw a texture on the canvas at (x, y) at the same size as the image
-    fn draw(&mut self, image: &Texture, x: i32, y: i32) {
-        let query = image.query();
-
-        self.canvas.copy(image, None, Some(Rect::new(x, y, query.width, query.height))).unwrap();
-    }
-
-    // Draw a tile at the correct location if it is on screen
-    fn draw_if_visible(&mut self, image: &Texture, x: usize, y: usize) {
-        if let Some((x, y)) = self.draw_location(x as f32, y as f32) {
-            self.draw(image, x, y);
-        }
-    }
-
-    // Draw a texture with a particular rotation
-    fn draw_with_rotation(&mut self, image: &Texture, x: i32, y: i32, angle: f64) {
-        let query = image.query();
-
-        self.canvas.copy_ex(image, None, Some(Rect::new(x, y, query.width, query.height)),
-                            angle, None, false, false).unwrap();
-    }
-
-    // Calculate the correct position to draw a tile on the screen
-    fn draw_location(&self, x: f32, y: f32) -> Option<(i32, i32)> {
-        // Change x and y from map coords to screen coords
-        let (x, y) = from_map_coords(x, y);
-
-        // Scale up the values
-        let x = (x * TILE_WIDTH  - (self.camera.x * TILE_WIDTH  - self.width )) / 2.0;
-        let y = (y * TILE_HEIGHT - (self.camera.y * TILE_HEIGHT - self.height)) / 2.0;
-
-        // Calculate the minimum and maximum locations that a tile could be at to be on screen
-        let min = -(TILE_IMAGE_SIZE as f32) * self.camera.zoom;
-        let max_x = (self.width  + TILE_IMAGE_SIZE / 2.0) * self.camera.zoom;
-        let max_y = (self.height + TILE_IMAGE_SIZE / 2.0) * self.camera.zoom;
-
-        // if a tile is on screen, return the values as i32s
-        if x > min && x < max_x && y > min && y < max_y {
-            Some((x as i32, y as i32))
-        } else {
-            None
-        }
-    }
 }
 
 // A simple camera for what the user is looking at
 pub struct Camera {
-    pub x: f32,
-    pub y: f32,
-    zoom: f32
+    pub x: f64,
+    pub y: f64,
+    zoom: f64
 }
 
 // The drawer struct
@@ -118,15 +53,38 @@ impl Drawer {
     }
 
     // Zoom in the camera by a particular amount, checking if it's zoomed in/out too far
-    pub fn zoom(&mut self, amount: f32) {
+    pub fn zoom(&mut self, amount: f64) {
         self.camera.zoom += amount * self.camera.zoom;
 
         if self.camera.zoom > ZOOM_MAX { self.camera.zoom = ZOOM_MAX; }
         if self.camera.zoom < ZOOM_MIN { self.camera.zoom = ZOOM_MIN; }
     }
 
-    // Draw a tile at (x, y)
-    fn draw_tile(&self, x: usize, y: usize, canvas: &mut CanvasTexture, resources: &Resources, battle: &Battle) {
+    fn draw_location(&self, ctx: &Context, x: f64, y: f64) -> Option<(f64, f64)> {
+        let (width, height) = (ctx.width(), ctx.height());
+        let (x, y) = from_map_coords(x, y);
+
+        let x = (x - self.camera.x) * TILE_WIDTH  / 2.0 * self.camera.zoom + (ctx.width()  / 2.0 - self.camera.x * self.camera.zoom);
+        let y = (y - self.camera.y) * TILE_HEIGHT / 2.0 * self.camera.zoom + (ctx.height() / 2.0 - self.camera.y * self.camera.zoom);
+
+        if x > -TILE_IMAGE_SIZE * self.camera.zoom && y > -TILE_IMAGE_SIZE * 2.0 * self.camera.zoom && x < width && y < height {
+            Some((x, y))
+        } else {
+            None
+        }
+    }
+
+    fn draw_if_visible(&self, image: &SetImage, x: usize, y: usize, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
+        if let Some((x, y)) = self.draw_location(ctx, x as f64, y as f64) {
+            resources.render(image, self.transformation(ctx, x, y), gl);
+        }
+    }
+
+    fn transformation(&self, ctx: &Context, x: f64, y: f64) -> Matrix2d {
+        ctx.transform.trans(x, y).scale(self.camera.zoom, self.camera.zoom)
+    }
+
+    pub fn draw_tile(&self, x: usize, y: usize, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources, battle: &Battle) {
         // Get the tile
         let tile = battle.map.tiles.at(x, y);
 
@@ -136,13 +94,15 @@ impl Drawer {
         }
 
         // If the tile is on the screen, draw it
-        if let Some((screen_x, screen_y)) = canvas.draw_location(x as f32, y as f32) {
+        if let Some((screen_x, screen_y)) = self.draw_location(ctx, x as f64, y as f64) {
+            let transformation = self.transformation(ctx, screen_x, screen_y);
+
             // Draw the tile base
-            canvas.draw(resources.image(&tile.base), screen_x, screen_y);
+            resources.render(&tile.base, transformation, gl);
 
             // Draw the tile decoration
             if let Some(ref obstacle) = tile.obstacle {
-                canvas.draw(resources.image(obstacle), screen_x, screen_y);
+                resources.render(obstacle, transformation, gl);
             }
 
             // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
@@ -151,21 +111,21 @@ impl Drawer {
                     if cursor_x == x && cursor_y == y {
                         // Determine the cursor colour
                         let image = if !tile.walkable() {
-                            "cursor_unwalkable"
+                            SetImage::CursorUnwalkable
                         } else if battle.map.units.at(x, y).is_some() {
-                            "cursor_unit"
+                            SetImage::CursorUnit
                         } else {
-                            "cursor"
+                            SetImage::Cursor
                         };
 
-                        canvas.draw(resources.image(image), screen_x, screen_y);
+                        resources.render(&image, transformation, gl);
                     }
                 }
             }
 
             if tile.player_visibility != Visibility::Foggy {
                 for item in &tile.items {
-                    canvas.draw(resources.image(&item.image), screen_x, screen_y);
+                    resources.render(&item.image, transformation, gl);
                 }
 
                 // Draw a unit at the position
@@ -173,26 +133,25 @@ impl Drawer {
                     // Draw the cursor to show that the unit is selected
                     if let Some(selected) = battle.selected {
                         if selected == index {
-                            canvas.draw(resources.image("cursor_unit"), screen_x, screen_y);
+                            resources.render(&SetImage::CursorUnit, transformation, gl);
                         }
                     }
 
-                    canvas.draw(resources.image(&unit.image), screen_x, screen_y);
+                    resources.render(&unit.image, transformation, gl);
                 }
             } else {
-                canvas.draw(resources.image("fog"), screen_x, screen_y);
+                resources.render(&SetImage::Fog, transformation, gl);
             }
         }
     }
 
-    // Draw the map onto a CanvasTexture
-    fn draw_to_canvas(&self, canvas: &mut CanvasTexture, resources: &Resources, battle: &Battle) {
+    pub fn draw_battle(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources, battle: &Battle) {
         let map = &battle.map;
 
         // Draw all the tiles
         for x in 0 .. map.tiles.cols {
             for y in 0 .. map.tiles.rows {
-                self.draw_tile(x, y, canvas, resources, battle);
+                self.draw_tile(x, y, ctx, gl, resources, battle);
             }
         }
 
@@ -200,13 +159,13 @@ impl Drawer {
 
         for x in 0 .. map.tiles.cols {
             if map.tiles.at(x, map.tiles.rows - 1).visible() {
-                canvas.draw_if_visible(resources.image("left_edge"), x + 1, map.tiles.rows);
+                self.draw_if_visible(&SetImage::LeftEdge, x + 1, map.tiles.rows, ctx, gl, resources);
             }
         }
 
         for y in 0 .. map.tiles.rows {
             if map.tiles.at(map.tiles.cols - 1, y).visible() {
-                canvas.draw_if_visible(resources.image("right_edge"), map.tiles.cols, y + 1);
+                self.draw_if_visible(&SetImage::RightEdge, map.tiles.cols, y + 1, ctx, gl, resources);
             }
         }
 
@@ -219,15 +178,18 @@ impl Drawer {
                 for point in points {
                     total_cost += point.cost;
 
-                    if let Some((x, y)) = canvas.draw_location(point.x as f32, point.y as f32) {
+                    if let Some((x, y)) = self.draw_location(ctx, point.x as f64, point.y as f64) {
                         // Render the tile
-                        canvas.draw(resources.image(if total_cost > unit.moves {
-                            "path_unreachable"
+
+                        let image = if total_cost > unit.moves {
+                            SetImage::PathUnreachable
                         } else if total_cost + unit.weapon.info().cost > unit.moves {
-                            "path_no_weapon"
+                            SetImage::PathCannotFire
                         } else {
-                            "path"
-                        }), x, y);
+                            SetImage::Path
+                        };
+
+                        resources.render(&image, self.transformation(ctx, x, y), gl);
                     }
                 }
 
@@ -236,13 +198,14 @@ impl Drawer {
                 for point in points {
                     total_cost += point.cost;
 
-                    if let Some((x, y)) = canvas.draw_location(point.x as f32, point.y as f32) {
+                    if let Some((x, y)) = self.draw_location(ctx, point.x as f64, point.y as f64) {
+                        let cost = format!("{}", total_cost);
+
+                        let offset_x = (TILE_WIDTH - resources.font_width(&cost)) / 2.0 * self.camera.zoom;
+                        let offset_y = TILE_WIDTH / 2.0 * self.camera.zoom;
+
                         // Render the path cost
-                        let cost = resources.render("main", &format!("{}", total_cost), colours::OFF_WHITE);
-
-                        let center = (TILE_WIDTH - cost.query().width as f32) / 2.0;
-
-                        canvas.draw(&cost, x + center as i32, y);
+                        resources.render_text(&cost, colours::OFF_WHITE, self.transformation(ctx, x + offset_x, y + offset_y), gl);
                     }
                 }
             }
@@ -251,9 +214,9 @@ impl Drawer {
         // Draw the firing crosshair if the cursor is on an ai unit and a unit is selected
         if battle.cursor_on_ai_unit() && battle.selected.is_some() {
             if let Some((x, y)) = battle.cursor.position {
-                if let Some((screen_x, screen_y)) = canvas.draw_location(x as f32, y as f32) {
+                if let Some((screen_x, screen_y)) = self.draw_location(ctx, x as f64, y as f64) {
                     // Draw the crosshair
-                    canvas.draw(resources.image("cursor_crosshair"), screen_x, screen_y);
+                    resources.render(&SetImage::CursorCrosshair, self.transformation(ctx, screen_x, screen_y), gl);
 
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
                     if let Some((firing, target)) = battle.selected.and_then(|firing|
@@ -269,9 +232,12 @@ impl Drawer {
                             let hit_chance = firing.chance_to_hit(target.x, target.y) * hit_modifier * 100.0;
 
                             // Render it and draw it at the center
-                            let chance = resources.render("main", &format!("{:0.3}%", hit_chance), colours::WHITE);
-                            let center = (TILE_WIDTH - chance.query().width as f32) / 2.0;
-                            canvas.draw(&chance, screen_x + center as i32, screen_y - TILE_HEIGHT as i32);
+
+                            let hit_chance = format!("{:0.3}%", hit_chance);
+
+                            let offset_x = (TILE_WIDTH - resources.font_width(&hit_chance)) / 2.0 * self.camera.zoom;
+
+                            resources.render_text(&hit_chance, colours::WHITE, self.transformation(ctx, screen_x + offset_x, screen_y), gl);                            
                         }
                     }
                 }
@@ -291,53 +257,27 @@ impl Drawer {
 
             // If the bullet is visable and on screen, draw it with the right rotation
             if visible {
-                if let Some((x, y)) = canvas.draw_location(bullet.x, bullet.y) {
-                    canvas.draw_with_rotation(resources.image(bullet.image), x, y, convert_rotation(bullet.direction));
+                if let Some((x, y)) = self.draw_location(ctx, bullet.x, bullet.y) {
+                    resources.render_with_rotation(
+                        &bullet.image,
+                        convert_rotation(bullet.direction),
+                        self.transformation(ctx, x, y),
+                        gl
+                    );
                 }
             }
         }
     }
 
-    // Draw the battle
-    pub fn draw_battle(&self, ctx: &mut Context, resources: &Resources, battle: &Battle) {
-        // Get the width and height of the screen
-        let (width, height) = (ctx.get_width(), ctx.get_height());
-
-        // Create a texture to render into
-        let mut texture = resources.create_texture(width, height);
-
-        // Convert the width and height to floats
-        let (width, height) = (width as f32, height as f32);
-
-        // As I had problems with seams between textures before,
-        // the strategy to render the map is to render it into the texture
-        // and _then_ scale it to the screen, so here we use the canvas as a texture
-        // and wrap it in a CanvasTexture object.
-        ctx.canvas.with_texture_canvas(&mut texture, |canvas| {
-            let mut canvas = CanvasTexture::new(canvas, width, height, &self.camera);
-            // Clear the canvas
-            canvas.clear();
-
-            // And draw to it
-            self.draw_to_canvas(&mut canvas, resources, battle);
-        }).unwrap(); 
-
-        // Work out the center of the screen
-        let (center_x, center_y) = (width / 2.0, height / 2.0);
-
-        // Draw the map texture onto the screen at the correct location
-        ctx.draw(&texture, center_x - center_x * self.camera.zoom, center_y - center_y * self.camera.zoom, self.camera.zoom);
-    }
-
     // Work out which tile is under the cursor
-    pub fn tile_under_cursor(&self, ctx: &mut Context, x: f32, y: f32) -> (usize, usize) {
+    pub fn tile_under_cursor(&self, x: f64, y: f64, window_size: &WindowSize) -> (usize, usize) {
         // Get the center of the window
-        let center_x = ctx.get_width()  as f32 / 2.0;
-        let center_y = ctx.get_height() as f32 / 2.0;
+        let center_x = window_size.width  / 2.0;
+        let center_y = window_size.height / 2.0;
 
         // Work out the position of the mouse on the screen relative to the camera
-        let x = (x - center_x) / TILE_WIDTH  / self.camera.zoom + self.camera.x / 2.0 - 0.5;
-        let y = (y - center_y) / TILE_HEIGHT / self.camera.zoom + self.camera.y / 2.0 - 0.5;
+        let x = (x - center_x + self.camera.x * self.camera.zoom) / TILE_WIDTH  / self.camera.zoom + self.camera.x / 2.0 - 0.5;
+        let y = (y - center_y + self.camera.y * self.camera.zoom) / TILE_HEIGHT / self.camera.zoom + self.camera.y / 2.0 - 0.5;
 
         // Account for the images being square
         let y = y - 1.0;

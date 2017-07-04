@@ -5,16 +5,16 @@ authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]
 
-## General
-
-# Random number generation
+# General
+## Random number generation
 rand = "*"
-# Unit pathfinding
+## Unit pathfinding
 pathfinding = "*"
-# For the ability to use 'min_by_key' with f32s
+## For the ability to use 'min_by_key' with f32s
 ord_subset = "*"
-# For 'retain_mut'
+## For 'retain_mut'
 odds = "*"
+
 # Serialization/deserialization
 serde = "*"
 serde_derive = "*"
@@ -23,17 +23,17 @@ toml = "*"
 ## Efficiently-serialized data
 bincode = "*"
 
-## Engine
+# Resource loading
+## Loading images
+image = "*"
+## Loading and playing sounds
+rodio = "*"
 
-# Base piston dependencies
+# Engine
+## Base piston dependencies
 piston = "*"
 piston2d-graphics = "*"
-
-# Glutin for windowing
+## Glutin for windowing
 pistoncore-glutin_window = "*"
-
-# OpenGL backend
+## OpenGL backend
 piston2d-opengl_graphics = "*"
-
-# Loading images
-image = "*"
