@@ -5,6 +5,11 @@ environment:
     TOOLCHAIN: x86_64-pc-windows-msvc
     LIB: C:\Users\appveyor\.multirust\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\x86_64-pc-windows-msvc\lib
 
+# Cache files
+cache:
+    - target
+    - C:\Users\appveyor\.cargo\registry
+
 install:
   # Install Rust (following https://github.com/BurntSushi/ripgrep/blob/master/appveyor.yml)
   - curl -sSf -o rustup-init.exe https://win.rustup.rs/

@@ -11,6 +11,7 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate glutin_window;
 extern crate image;
+extern crate rodio;
 
 use piston::window::WindowSettings;
 use piston::event_loop::{Events, EventSettings, EventLoop};
@@ -26,6 +27,7 @@ mod ui;
 mod weapons;
 #[macro_use]
 mod utils;
+#[macro_use]
 mod resources;
 mod colours;
 mod items;
@@ -174,7 +176,11 @@ fn main() {
     let mut gl = GlGraphics::new(opengl);
     let mut events = Events::new(EventSettings::new().ups(60));
 
-    let resources = Resources::new("resources/tileset.png", "resources/font.ttf", 20);
+    let resources = Resources::new(
+        bytes!("tileset.png"),
+        bytes!("font.ttf"), 20,
+        [bytes!("audio/plasma.ogg"), bytes!("audio/walk.ogg")]
+    );
 
     let mut app = App::new(resources, settings);
 

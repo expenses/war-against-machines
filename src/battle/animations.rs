@@ -6,7 +6,7 @@ use odds::vec::VecExt;
 
 use battle::map::Map;
 use battle::units::Unit;
-use resources::{Resources, SetImage};
+use resources::{Resources, SetImage, SoundEffect};
 
 const MARGIN: f64 = 5.0;
 const BULLET_SPEED: f64 = 0.5;
@@ -32,7 +32,7 @@ impl Walk {
 
     // Move the animation a step, and return if its still going
     // If not, move the unit
-    fn step(&mut self, map: &mut Map, _resources: &Resources) -> bool {
+    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
         self.status += WALK_SPEED;
         
         let still_going = self.status <= 1.0;
@@ -41,7 +41,7 @@ impl Walk {
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => {
                     unit.move_to(self.x, self.y, self.cost);
-                    //resources.play_audio("walk");
+                    resources.play_sound(SoundEffect::Walk);
                 }
                 _ => return true
             }
@@ -98,10 +98,10 @@ impl Bullet {
     }
     
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, map: &mut Map, _resources: &Resources) -> bool {
+    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if !self.started {
-            //resources.play_audio("plasma");
+            resources.play_sound(SoundEffect::Plasma);
             self.started = true;
         }
 

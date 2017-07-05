@@ -10,12 +10,24 @@ use graphics::draw_state::{DrawState, Blend};
 use graphics::text::Text;
 use graphics::Transformed;
 
+use rodio;
+use rodio::Source;
+
+use std::io::Cursor;
+use std::rc::Rc;
+
 const TILE: f64 = 48.0;
 const DRAW_STATE: DrawState = DrawState {
     blend: Some(Blend::Alpha),
     stencil: None,
     scissor: None
 };
+
+macro_rules! bytes {
+    ($file: expr) => (
+        include_bytes!(concat!("../resources/", $file))
+    )
+}
 
 macro_rules! rect {
     ($x: expr, $y: expr, $width: expr, $height: expr) => (
@@ -136,8 +148,8 @@ impl SetImage {
     }
 }
 
-fn load_texture(filename: &str, texture_settings: &TextureSettings) -> Texture {
-    let mut image = image::open(filename).unwrap().to_rgba();
+fn load_texture(bytes: &[u8], texture_settings: &TextureSettings) -> Texture {
+    let mut image = image::load_from_memory(bytes).unwrap().to_rgba();
 
     for pixel in image.pixels_mut() {
         let converted = gamma_srgb_to_linear([
@@ -158,30 +170,47 @@ fn load_texture(filename: &str, texture_settings: &TextureSettings) -> Texture {
     Texture::from_image(&image, texture_settings)
 }
 
+// Use reference-counting to avoid cloning the source each time
+type Audio = Rc<Vec<u8>>;
+
+// Load a piece of audio
+fn load_audio(bytes: &[u8]) -> Audio {
+    Rc::new(bytes.to_vec())
+}
+
+pub enum SoundEffect {
+    Plasma,
+    Walk,
+}
+
 // A struct to hold resources for the game such as images and fonts
 pub struct Resources {
     tileset: Texture,
     font: GlyphCache<'static>,
-    font_size: u32
+    font_size: u32,
+    audio: [Audio; 2]
 }
 
 impl Resources {
     // Create a new resource struct with a texture creator, font context and directory string
-    pub fn new(tileset: &str, font: &str, font_size: u32) -> Resources {  
+    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, audio: [&[u8]; 2]) -> Resources {  
         let tileset = load_texture(tileset, &TextureSettings::new().filter(Filter::Nearest));
 
         Resources {
             tileset, font_size,
-            font: GlyphCache::new(font).unwrap()
+            font: GlyphCache::from_bytes(font).unwrap(),
+            audio: [load_audio(audio[0]), load_audio(audio[1])]
         }
     }
 
+    // Render an image
     pub fn render(&self, image: &SetImage, transform: Matrix2d, gl: &mut GlGraphics) {
         Image::new()
             .src_rect(image.source())
             .draw(&self.tileset, &DRAW_STATE, transform, gl);
     }
 
+    // Render an image with a particular rotation
     pub fn render_with_rotation(&self, image: &SetImage, rotation: f64, transform: Matrix2d, gl: &mut GlGraphics) {
         // Get the center of the image
         let (center_x, center_y) = (image.width() / 2.0, image.height() / 2.0);
@@ -198,15 +227,35 @@ impl Resources {
         self.render(image, transform, gl);
     }
 
+    // Get the width of a string of text rendered with the font
     pub fn font_width(&mut self, string: &str) -> f64 {
         self.font.width(self.font_size, string)
     }
 
+    // Get the height of the font
     pub fn font_height(&self) -> f64 {
         self.font_size as f64
     }
 
+    // Render a string of text with a colour and transformation
     pub fn render_text(&mut self, string: &str, colour: Color, transform: Matrix2d, gl: &mut GlGraphics) {
-        Text::new_color(colour, self.font_size).draw(string, &mut self.font, &DRAW_STATE, transform, gl);
+        Text::new_color(colour, self.font_size)
+            .draw(string, &mut self.font, &DRAW_STATE, transform, gl);
+    }
+
+    pub fn play_sound(&self, sound: SoundEffect) {
+        let endpoint = rodio::get_default_endpoint().unwrap();
+
+        let sound = match sound {
+            SoundEffect::Plasma => self.audio[0].as_ref(),
+            SoundEffect::Walk => self.audio[1].as_ref()
+        };
+
+        // Clone the reference and wrap it in a cursor
+        let cursor = Cursor::new(sound.clone());
+        // Decode the audio
+        let decoder = rodio::Decoder::new(cursor).unwrap();
+        // Play it!
+        rodio::play_raw(&endpoint, decoder.convert_samples());
     }
 }
