@@ -227,7 +227,7 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<(usize, &'a Unit)> {
 fn damage_score(x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {
     // Return if the cost is too high
     if cost > unit.moves {
-        return 0.0
+        return 0.0;
     }
 
     // Get the weapon mode info

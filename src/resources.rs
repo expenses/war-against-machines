@@ -193,12 +193,14 @@ pub struct Resources {
 
 impl Resources {
     // Create a new resource struct with a texture creator, font context and directory string
-    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, audio: [&[u8]; 2]) -> Resources {  
-        let tileset = load_texture(tileset, &TextureSettings::new().filter(Filter::Nearest));
+    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, audio: [&[u8]; 2]) -> Resources { 
+        let settings = TextureSettings::new().filter(Filter::Nearest);
+
+        let tileset = load_texture(tileset, &settings);
 
         Resources {
             tileset, font_size,
-            font: GlyphCache::from_bytes(font).unwrap(),
+            font: GlyphCache::from_bytes(font, settings).unwrap(),
             audio: [load_audio(audio[0]), load_audio(audio[1])]
         }
     }

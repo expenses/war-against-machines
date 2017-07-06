@@ -9,12 +9,12 @@ use battle::units::Unit;
 use resources::{Resources, SetImage, SoundEffect};
 
 const MARGIN: f64 = 5.0;
-const BULLET_SPEED: f64 = 0.5;
-const WALK_SPEED: f32 = 0.1;
+const BULLET_SPEED: f64 = 30.0;
+const WALK_SPEED: f64 = 5.0;
 
 // A pretty simple walk animation
 pub struct Walk {
-    status: f32,
+    status: f64,
     unit_id: usize,
     x: usize,
     y: usize,
@@ -32,8 +32,8 @@ impl Walk {
 
     // Move the animation a step, and return if its still going
     // If not, move the unit
-    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
-        self.status += WALK_SPEED;
+    fn step(&mut self, map: &mut Map, resources: &Resources, dt: f64) -> bool {
+        self.status += WALK_SPEED * dt;
         
         let still_going = self.status <= 1.0;
 
@@ -98,7 +98,7 @@ impl Bullet {
     }
     
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, map: &mut Map, resources: &Resources) -> bool {
+    fn step(&mut self, map: &mut Map, resources: &Resources, dt: f64) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if !self.started {
             resources.play_sound(SoundEffect::Plasma);
@@ -106,8 +106,8 @@ impl Bullet {
         }
 
         // Move the bullet
-        self.x += self.direction.cos() * BULLET_SPEED;
-        self.y += self.direction.sin() * BULLET_SPEED;
+        self.x += self.direction.cos() * BULLET_SPEED * dt;
+        self.y += self.direction.sin() * BULLET_SPEED * dt;
 
         // Work out if the bullet is currently traveling or has reached the destination
 
@@ -140,15 +140,15 @@ pub type Animations = Vec<Animation>;
 
 // A trait for updating the animations
 pub trait UpdateAnimations {
-    fn update(&mut self, map: &mut Map, resources: &Resources);
+    fn update(&mut self, map: &mut Map, resources: &Resources, dt: f64);
 }
 
 impl UpdateAnimations for Animations {
     // Update all of the animations, keeping only those that are still going
-    fn update(&mut self, map: &mut Map, resources: &Resources) {
+    fn update(&mut self, map: &mut Map, resources: &Resources, dt: f64) {
         self.retain_mut(|mut animation| match *animation {
-            Animation::Walk(ref mut walk) => walk.step(map, resources),
-            Animation::Bullet(ref mut bullet) => bullet.step(map, resources)
+            Animation::Walk(ref mut walk) => walk.step(map, resources, dt),
+            Animation::Bullet(ref mut bullet) => bullet.step(map, resources, dt)
         });
     }
 }

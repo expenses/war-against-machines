@@ -186,7 +186,10 @@ impl UpdateCommands for CommandQueue {
         let finished = match self.first_mut() {
             Some(&mut Command::Fire(ref mut fire)) => fire.process(map, animations),
             Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations),
-            Some(&mut Command::Finished(ref mut finished)) => {finished.process(map); true}
+            Some(&mut Command::Finished(ref mut finished)) => {
+                finished.process(map);
+                true
+            }
             _ => false
         };
 

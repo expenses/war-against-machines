@@ -83,11 +83,11 @@ impl App {
     }
 
     // Update the game
-    fn update(&mut self, _dt: f64, window: &GlutinWindow) -> bool {
+    fn update(&mut self, dt: f64, window: &GlutinWindow) -> bool {
         self.window_size.update(window);
 
         if let Mode::Skirmish = self.mode {
-            if self.skirmish.update(&self.resources).is_some() {
+            if self.skirmish.update(&self.resources, dt).is_some() {
                 self.mode = Mode::Menu;
                 self.skirmish = Battle::new();
             }
@@ -178,7 +178,7 @@ fn main() {
 
     let resources = Resources::new(
         bytes!("tileset.png"),
-        bytes!("font.ttf"), 20,
+        bytes!("font.ttf"), 22,
         [bytes!("audio/plasma.ogg"), bytes!("audio/walk.ogg")]
     );
 

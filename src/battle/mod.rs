@@ -26,8 +26,8 @@ use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use settings::SkirmishSettings;
 use WindowSize;
 
-const CAMERA_SPEED: f64 = 0.2;
-const CAMERA_ZOOM_SPEED: f64 = 0.02;
+const CAMERA_SPEED: f64 = 10.0;
+const CAMERA_ZOOM_SPEED: f64 = 1.0;
 
 struct Mouse {
     x: f64,
@@ -167,14 +167,14 @@ impl Battle {
     }
 
     // Update the battle
-    pub fn update(&mut self, resources: &Resources) -> Option<BattleCallback> {
+    pub fn update(&mut self, resources: &Resources, dt: f64) -> Option<BattleCallback> {
         // Change camera variables if a key is being pressed
-        if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED; }
-        if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED; }
-        if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED; }
-        if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED; }
-        if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED) }
-        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED) }
+        if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED * dt; }
+        if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED * dt; }
+        if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED * dt; }
+        if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED * dt; }
+        if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt) }
+        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt) }
 
         if self.controller == Controller::AI &&
            self.command_queue.is_empty() &&
@@ -196,7 +196,7 @@ impl Battle {
             self.command_queue.update(&mut self.map, &mut self.animations);
         }
         // Update the animations
-        self.animations.update(&mut self.map, resources);
+        self.animations.update(&mut self.map, resources, dt);
 
         None
     }
