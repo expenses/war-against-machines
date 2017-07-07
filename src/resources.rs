@@ -1,4 +1,5 @@
 use image;
+use image::ImageFormat;
 use opengl_graphics::{Texture, TextureSettings, Filter, GlGraphics};
 use opengl_graphics::glyph_cache::GlyphCache;
 use graphics::character::CharacterCache;
@@ -9,9 +10,9 @@ use graphics::image::Image;
 use graphics::draw_state::{DrawState, Blend};
 use graphics::text::Text;
 use graphics::Transformed;
-
 use rodio;
-use rodio::Source;
+use rodio::{Source, Decoder};
+use settings::Settings;
 
 use std::io::Cursor;
 use std::rc::Rc;
@@ -23,18 +24,20 @@ const DRAW_STATE: DrawState = DrawState {
     scissor: None
 };
 
+// include_bytes! but prepends the resources directory
 macro_rules! bytes {
     ($file: expr) => (
         include_bytes!(concat!("../resources/", $file))
     )
 }
 
-macro_rules! rect {
+macro_rules! tiles {
     ($x: expr, $y: expr, $width: expr, $height: expr) => (
         [TILE * $x as f64, TILE * $y as f64, TILE * $width as f64, TILE * $height as f64]
     )
 }
 
+// An image in the tileset
 #[derive(Serialize, Deserialize, Copy, Clone)]
 pub enum SetImage {
     Base1,
@@ -87,69 +90,73 @@ pub enum SetImage {
 }
 
 impl SetImage {
+    // Get the location of the image in the tileset
     fn source(&self) -> [f64; 4] {
         match *self {
-            SetImage::Base1 => rect!(0, 0, 1, 1),
-            SetImage::Base2 => rect!(1, 0, 1, 1),
-            SetImage::Fog => rect!(2, 0, 1, 1),
+            SetImage::Base1 => tiles!(0, 0, 1, 1),
+            SetImage::Base2 => tiles!(1, 0, 1, 1),
+            SetImage::Fog => tiles!(2, 0, 1, 1),
             
-            SetImage::Ruin1 => rect!(0, 1, 1, 1),
-            SetImage::Ruin2 => rect!(1, 1, 1, 1),
-            SetImage::Ruin3 => rect!(2, 1, 1, 1),
+            SetImage::Ruin1 => tiles!(0, 1, 1, 1),
+            SetImage::Ruin2 => tiles!(1, 1, 1, 1),
+            SetImage::Ruin3 => tiles!(2, 1, 1, 1),
 
-            SetImage::Squaddie => rect!(0, 2, 1, 1),
-            SetImage::Machine => rect!(1, 2, 1, 1),
+            SetImage::Squaddie => tiles!(0, 2, 1, 1),
+            SetImage::Machine => tiles!(1, 2, 1, 1),
 
-            SetImage::PitTop => rect!(3, 0, 1, 1),
-            SetImage::PitLeft => rect!(4, 0, 1, 1),
-            SetImage::PitRight => rect!(5, 0, 1, 1),
-            SetImage::PitBottom => rect!(6, 0, 1, 1),
-            SetImage::PitCenter => rect!(7, 0, 1, 1),
-            SetImage::PitTL => rect!(3, 1, 1, 1),
-            SetImage::PitTR => rect!(4, 1, 1, 1),
-            SetImage::PitBL => rect!(5, 1, 1, 1),
-            SetImage::PitBR => rect!(6, 1, 1, 1),
+            SetImage::PitTop => tiles!(3, 0, 1, 1),
+            SetImage::PitLeft => tiles!(4, 0, 1, 1),
+            SetImage::PitRight => tiles!(5, 0, 1, 1),
+            SetImage::PitBottom => tiles!(6, 0, 1, 1),
+            SetImage::PitCenter => tiles!(7, 0, 1, 1),
+            SetImage::PitTL => tiles!(3, 1, 1, 1),
+            SetImage::PitTR => tiles!(4, 1, 1, 1),
+            SetImage::PitBL => tiles!(5, 1, 1, 1),
+            SetImage::PitBR => tiles!(6, 1, 1, 1),
 
-            SetImage::PlasmaBullet => rect!(0, 3, 1, 1),
-            SetImage::RegularBullet => rect!(1, 3, 1, 1),
+            SetImage::PlasmaBullet => tiles!(0, 3, 1, 1),
+            SetImage::RegularBullet => tiles!(1, 3, 1, 1),
 
-            SetImage::SquaddieCorpse => rect!(0, 4, 1, 1),
-            SetImage::MachineCorpse => rect!(1, 4, 1, 1),
-            SetImage::Skeleton => rect!(2, 4, 1, 1),
-            SetImage::Scrap => rect!(3, 4, 1, 1),
-            SetImage::Weapon => rect!(4, 4, 1, 1),
+            SetImage::SquaddieCorpse => tiles!(0, 4, 1, 1),
+            SetImage::MachineCorpse => tiles!(1, 4, 1, 1),
+            SetImage::Skeleton => tiles!(2, 4, 1, 1),
+            SetImage::Scrap => tiles!(3, 4, 1, 1),
+            SetImage::Weapon => tiles!(4, 4, 1, 1),
 
-            SetImage::Cursor => rect!(0, 5, 1, 1),
-            SetImage::CursorUnit => rect!(1, 5, 1, 1),
-            SetImage::CursorUnwalkable => rect!(2, 5, 1, 1),
-            SetImage::CursorCrosshair => rect!(3, 5, 1, 1),
+            SetImage::Cursor => tiles!(0, 5, 1, 1),
+            SetImage::CursorUnit => tiles!(1, 5, 1, 1),
+            SetImage::CursorUnwalkable => tiles!(2, 5, 1, 1),
+            SetImage::CursorCrosshair => tiles!(3, 5, 1, 1),
 
-            SetImage::Path => rect!(0, 6, 1, 1),
-            SetImage::PathCannotFire => rect!(1, 6, 1, 1),
-            SetImage::PathUnreachable => rect!(2, 6, 1, 1),
+            SetImage::Path => tiles!(0, 6, 1, 1),
+            SetImage::PathCannotFire => tiles!(1, 6, 1, 1),
+            SetImage::PathUnreachable => tiles!(2, 6, 1, 1),
 
-            SetImage::LeftEdge => rect!(0, 7, 1, 1),
-            SetImage::RightEdge => rect!(1, 7, 1, 1),
+            SetImage::LeftEdge => tiles!(0, 7, 1, 1),
+            SetImage::RightEdge => tiles!(1, 7, 1, 1),
 
-            SetImage::Title => rect!(0, 8, 10, 1),
+            SetImage::Title => tiles!(0, 8, 10, 1),
             
-            SetImage::EndTurnButton => rect!(0, 9, 1, 0.5),
-            SetImage::InventoryButton => rect!(0, 9.5, 1, 0.5),
-            SetImage::ChangeFireModeButton => rect!(1, 9, 1, 0.5)
+            SetImage::EndTurnButton => tiles!(0, 9, 1, 0.5),
+            SetImage::InventoryButton => tiles!(0, 9.5, 1, 0.5),
+            SetImage::ChangeFireModeButton => tiles!(1, 9, 1, 0.5)
         }
     }
 
+    // Get the width of the image
     pub fn width(&self) -> f64 {
         self.source()[2]
     }
 
+    // Get the height of the image
     pub fn height(&self) -> f64 {
         self.source()[3]
     }
 }
 
+// Load a png image and perform the sRGB -> linear conversion
 fn load_texture(bytes: &[u8], texture_settings: &TextureSettings) -> Texture {
-    let mut image = image::load_from_memory(bytes).unwrap().to_rgba();
+    let mut image = image::load_from_memory_with_format(bytes, ImageFormat::PNG).unwrap().to_rgba();
 
     for pixel in image.pixels_mut() {
         let converted = gamma_srgb_to_linear([
@@ -178,6 +185,7 @@ fn load_audio(bytes: &[u8]) -> Audio {
     Rc::new(bytes.to_vec())
 }
 
+// A sound effect
 pub enum SoundEffect {
     Plasma,
     Walk,
@@ -188,20 +196,21 @@ pub struct Resources {
     tileset: Texture,
     font: GlyphCache<'static>,
     font_size: u32,
-    audio: [Audio; 2]
+    sounds: [Audio; 2],
+    volume: f32
 }
 
 impl Resources {
-    // Create a new resource struct with a texture creator, font context and directory string
-    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, audio: [&[u8]; 2]) -> Resources { 
+    // Create the Resource with a tileset, font and audio
+    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, sounds: [&[u8]; 2]) -> Resources { 
         let settings = TextureSettings::new().filter(Filter::Nearest);
 
-        let tileset = load_texture(tileset, &settings);
-
         Resources {
-            tileset, font_size,
+            font_size,
+            tileset: load_texture(tileset, &settings),
             font: GlyphCache::from_bytes(font, settings).unwrap(),
-            audio: [load_audio(audio[0]), load_audio(audio[1])]
+            sounds: [load_audio(sounds[0]), load_audio(sounds[1])],
+            volume: 1.0
         }
     }
 
@@ -245,19 +254,25 @@ impl Resources {
             .draw(string, &mut self.font, &DRAW_STATE, transform, gl);
     }
 
-    pub fn play_sound(&self, sound: SoundEffect) {
-        let endpoint = rodio::get_default_endpoint().unwrap();
+    // Set the volume
+    pub fn set(&mut self, settings: &Settings) {
+        self.volume = settings.volume;
+    }
 
+    // Play a sound effect
+    pub fn play_sound(&self, sound: SoundEffect) {
+        // Get the sound effect
         let sound = match sound {
-            SoundEffect::Plasma => self.audio[0].as_ref(),
-            SoundEffect::Walk => self.audio[1].as_ref()
+            SoundEffect::Plasma => self.sounds[0].as_ref(),
+            SoundEffect::Walk => self.sounds[1].as_ref()
         };
 
         // Clone the reference and wrap it in a cursor
         let cursor = Cursor::new(sound.clone());
         // Decode the audio
-        let decoder = rodio::Decoder::new(cursor).unwrap();
+        let decoder = Decoder::new(cursor).unwrap();
         // Play it!
-        rodio::play_raw(&endpoint, decoder.convert_samples());
+        let endpoint = rodio::get_default_endpoint().unwrap();        
+        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(self.volume));
     }
 }

@@ -14,8 +14,7 @@ use utils::Dimensions;
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f64 = 50.0;
 const TOP_ITEM_OFFSET: f64 = 150.0;
-const WINDOW_SIZE_CHANGE: u32 = 10;
-const VOLUME_CHANGE: i32 = 4;
+const VOLUME_CHANGE: f32 = 0.05;
 
 // Callbacks that can be returned from key presses
 pub enum MenuCallback {
@@ -118,11 +117,7 @@ impl Menu {
                 ]),
                 Submenu::new(vec![
                     "Back".into(),
-                    format!("Volume: {}", settings.volume),
-                    format!("Width: {}", settings.width),
-                    format!("Height: {}", settings.height),
-                    "From screen size".into(),
-                    format!("Fullscreen: {}", settings.fullscreen),
+                    format!("Volume: {:.2}", settings.volume),
                     "Reset".into(),
                     "Save".into()
                 ]),
@@ -161,10 +156,7 @@ impl Menu {
         let settings = &mut self.submenus[SETTINGS];
 
         self.settings.clamp();
-        settings.set_item(1, format!("Volume: {}", self.settings.volume));
-        settings.set_item(2, format!("Width: {}", self.settings.width));
-        settings.set_item(3, format!("Height: {}", self.settings.height));
-        settings.set_item(5, format!("Fullscreen: {}", self.settings.fullscreen));
+        settings.set_item(1, format!("Volume: {:.2}", self.settings.volume));
     }
 
     fn refresh_skirmish_saves(&mut self) {
@@ -182,7 +174,7 @@ impl Menu {
     }
 
     // Handle key presses, returning an optional callback
-    pub fn handle_key(&mut self, key: Key) -> Option<MenuCallback> {
+    pub fn handle_key(&mut self, key: Key, resources: &mut Resources) -> Option<MenuCallback> {
         match key {
             // Rotate the selections up
             Key::Up | Key::W => self.submenus[self.submenu].rotate_up(),
@@ -207,18 +199,13 @@ impl Menu {
                 },
                 SETTINGS => match self.submenus[SETTINGS].selection {
                     0 => self.submenu = MAIN,
-                    4 => {
-                        self.settings.width = 100; //ctx.get_width();
-                        self.settings.height = 100; //ctx.get_height();
-                        self.refresh_settings();
-                    },
-                    6 => {
+                    2 => {
                         self.settings = Settings::default();
-                        //ctx.set(&self.settings);
+                        resources.set(&self.settings);
                         self.refresh_settings();
                     },
-                    7 => {
-                        //ctx.set(&self.settings);
+                    3 => {
+                        resources.set(&self.settings);
                         self.settings.save();
                     },
                     _ => {}
@@ -247,9 +234,6 @@ impl Menu {
                 SETTINGS => {
                     match self.submenus[SETTINGS].selection {
                         1 => self.settings.volume -= VOLUME_CHANGE,
-                        2 => self.settings.width -= WINDOW_SIZE_CHANGE,
-                        3 => self.settings.height -= WINDOW_SIZE_CHANGE,
-                        5 => self.settings.toggle_fullscreen(),
                         _ => {}
                     }
                     self.refresh_settings();
@@ -273,9 +257,6 @@ impl Menu {
                 SETTINGS => {
                     match self.submenus[SETTINGS].selection {
                         1 => self.settings.volume += VOLUME_CHANGE,
-                        2 => self.settings.width += WINDOW_SIZE_CHANGE,
-                        3 => self.settings.height += WINDOW_SIZE_CHANGE,
-                        5 => self.settings.toggle_fullscreen(),
                         _ => {}
                     }
                     self.refresh_settings();

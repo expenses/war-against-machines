@@ -1,13 +1,15 @@
 // Various utility functions
 
-use std::cmp::{max, min};
 use graphics::Context;
 
 // Ensure that a value is between lower and an upper value
 macro_rules! clamp {
-    ($value:expr, $lower:expr, $upper:expr) => (
-        min($upper, max($lower, $value))
-    )
+    ($value:expr, $lower:expr, $upper:expr) => ({
+        // Calculate the smaller value
+        let min = if $upper > $value {$value} else {$upper};
+        // Calculate the bigger value
+        if min > $lower {min} else {$lower}
+    })
 }
 
 // Ensure that a floating point value is between lower and upper value (as usize)

@@ -29,11 +29,6 @@ use WindowSize;
 const CAMERA_SPEED: f64 = 10.0;
 const CAMERA_ZOOM_SPEED: f64 = 1.0;
 
-struct Mouse {
-    x: f64,
-    y: f64
-}
-
 // A cursor on the map with a possible position
 pub struct Cursor {
     pub position: Option<(usize, usize)>
@@ -72,7 +67,6 @@ pub struct Battle {
     pub animations: Animations,
     pub command_queue: CommandQueue,
     controller: Controller,
-    mouse: Mouse
 }
 
 impl Battle {
@@ -127,7 +121,6 @@ impl Battle {
             animations: Animations::new(),
             command_queue: CommandQueue::new(),
             controller: Controller::Player,
-            mouse: Mouse {x: 0.0, y: 0.0}
         }
     }
 
@@ -263,10 +256,6 @@ impl Battle {
 
     // Move the cursor on the screen
     pub fn move_cursor(&mut self, x: f64, y: f64, window_size: &WindowSize) {
-        // Set the mouse position
-        self.mouse.x = x;
-        self.mouse.y = y;
-
         // Get the position where the cursor should be
         let (x, y) = self.drawer.tile_under_cursor(x, y, window_size);
 
@@ -281,9 +270,9 @@ impl Battle {
     }
 
     // Respond to mouse presses
-    pub fn mouse_button(&mut self, button: MouseButton, window_size: &WindowSize) {
+    pub fn mouse_button(&mut self, button: MouseButton, window_size: &WindowSize, mouse: (f64, f64)) {
         match button {
-            MouseButton::Left => match self.ui.clicked(window_size, self.mouse.x, self.mouse.y) {
+            MouseButton::Left => match self.ui.clicked(window_size, mouse) {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory

@@ -35,8 +35,8 @@ piston = "*"
 piston2d-graphics = "*"
 ## Glutin for windowing
 pistoncore-glutin_window = "*"
-## OpenGL backend (using my fork)
-piston2d-opengl_graphics = {git = "https://github.com/expenses/opengl_graphics", branch="texture_settings"}
+## OpenGL backend
+piston2d-opengl_graphics = "*"
 
 # Replace the rusttype version used by opengl_graphics with my own
 [replace]

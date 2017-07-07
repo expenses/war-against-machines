@@ -41,6 +41,8 @@ use settings::Settings;
 use battle::map::Map;
 
 const TITLE: &str = "War Against Machines";
+const WINDOW_WIDTH: u32 = 960;
+const WINDOW_HEIGHT: u32 = 540;
 
 // Which mode the game is in
 enum Mode {
@@ -67,7 +69,8 @@ struct App {
     mode: Mode,
     menu: menu::Menu,
     skirmish: Battle,
-    window_size: WindowSize
+    window_size: WindowSize,
+    mouse: (f64, f64)
 }
 
 impl App {
@@ -79,6 +82,7 @@ impl App {
             skirmish: Battle::new(),
             window_size: WindowSize {width: 0.0, height: 0.0},
             resources,
+            mouse: (0.0, 0.0)
         }
     }
 
@@ -100,7 +104,7 @@ impl App {
     fn handle_key_press(&mut self, key: Key) -> bool {
         match self.mode {
             // If the mode is the menu, respond to callbacks
-            Mode::Menu => if let Some(callback) = self.menu.handle_key(key) {
+            Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.resources) {
                 match callback {
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
@@ -132,6 +136,8 @@ impl App {
 
     // Handle mouse movement
     fn handle_mouse_motion(&mut self, x: f64, y: f64) -> bool {
+        self.mouse = (x, y);
+
         if let Mode::Skirmish = self.mode {
             self.skirmish.move_cursor(x, y, &self.window_size);
         }
@@ -142,7 +148,7 @@ impl App {
     // Handle mouse button presses
     fn handle_mouse_button(&mut self, button: MouseButton) -> bool {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.mouse_button(button, &self.window_size);
+            self.skirmish.mouse_button(button, &self.window_size, self.mouse);
         }
 
         true
@@ -167,7 +173,7 @@ fn main() {
     // Load (or use the default) settings
     let settings = Settings::load();
 
-    let mut window: GlutinWindow = WindowSettings::new(TITLE, (settings.width, settings.height))
+    let mut window: GlutinWindow = WindowSettings::new(TITLE, (WINDOW_WIDTH, WINDOW_HEIGHT))
         .vsync(true)
         .opengl(opengl)
         .build()
@@ -176,11 +182,13 @@ fn main() {
     let mut gl = GlGraphics::new(opengl);
     let mut events = Events::new(EventSettings::new().ups(60));
 
-    let resources = Resources::new(
+    let mut resources = Resources::new(
         bytes!("tileset.png"),
         bytes!("font.ttf"), 22,
-        [bytes!("audio/plasma.ogg"), bytes!("audio/walk.ogg")]
+        [bytes!("audio/plasma.ogg"), bytes!("audio/walk.ogg")],
     );
+
+    resources.set(&settings);
 
     let mut app = App::new(resources, settings);
 

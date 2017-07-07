@@ -156,10 +156,10 @@ impl UI {
     }
 
     // Get the first active clicked button at a location
-    pub fn clicked(&self, window_size: &WindowSize, x: f64, y: f64) -> Option<usize> {
+    pub fn clicked(&self, window_size: &WindowSize, mouse: (f64, f64)) -> Option<usize> {
         self.buttons.iter()
             .enumerate()
-            .find(|&(_, button)| button.active && button.clicked(window_size, x, y))
+            .find(|&(_, button)| button.active && button.clicked(window_size, mouse.0, mouse.1))
             .map(|(i, _)| i)
     }
 }

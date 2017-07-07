@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::{Read, Write};
-use std::cmp::{min, max};
 
 use battle::units::UnitType;
 
@@ -12,19 +11,13 @@ const MAX_MAP_SIZE: usize = 60;
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
-    pub volume: i32,
-    pub width: u32,
-    pub height: u32,
-    pub fullscreen: bool
+    pub volume: f32,
 }
 
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            volume: 128,
-            width: 960,
-            height: 600,
-            fullscreen: false
+            volume: 1.0
         }
     }
 }
@@ -45,14 +38,8 @@ impl Settings {
         file.write_all(&buffer).unwrap();
     }
 
-    pub fn toggle_fullscreen(&mut self) {
-        self.fullscreen = !self.fullscreen;
-    }
-
     pub fn clamp(&mut self) {
-        self.volume = clamp!(self.volume, 0, 128);
-        self.width = clamp!(self.width, 640, 1920);
-        self.height = clamp!(self.height, 480, 1080);
+        self.volume = clamp!(self.volume, 0.0, 1.0);
     }
 }
 
