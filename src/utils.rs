@@ -1,7 +1,5 @@
 // Various utility functions
 
-use graphics::Context;
-
 // Ensure that a value is between lower and an upper value
 macro_rules! clamp {
     ($value:expr, $lower:expr, $upper:expr) => ({
@@ -54,19 +52,4 @@ pub fn convert_rotation(rotation: f64) -> f64 {
 
     // Convert back into polar form
     y.atan2(x)
-}
-
-pub trait Dimensions {
-    fn width(&self) -> f64;
-    fn height(&self) -> f64;
-}
-
-impl Dimensions for Context {
-    fn width(&self) -> f64 {
-        self.get_view_size()[0]
-    }
-
-    fn height(&self) -> f64 {
-        self.get_view_size()[1]
-    }
 }

@@ -13,6 +13,7 @@ use graphics::Transformed;
 use rodio;
 use rodio::{Source, Decoder};
 use settings::Settings;
+use traits::Dimensions;
 
 use std::io::Cursor;
 use std::rc::Rc;
@@ -142,14 +143,16 @@ impl SetImage {
             SetImage::ChangeFireModeButton => tiles!(1, 9, 1, 0.5)
         }
     }
+}
 
+impl Dimensions for SetImage {
     // Get the width of the image
-    pub fn width(&self) -> f64 {
+    fn width(&self) -> f64 {
         self.source()[2]
     }
 
     // Get the height of the image
-    pub fn height(&self) -> f64 {
+    fn height(&self) -> f64 {
         self.source()[3]
     }
 }
@@ -187,8 +190,9 @@ fn load_audio(bytes: &[u8]) -> Audio {
 
 // A sound effect
 pub enum SoundEffect {
-    Plasma,
     Walk,
+    RegularShot,
+    PlasmaShot,
 }
 
 // A struct to hold resources for the game such as images and fonts
@@ -196,20 +200,24 @@ pub struct Resources {
     tileset: Texture,
     font: GlyphCache<'static>,
     font_size: u32,
-    sounds: [Audio; 2],
+    sounds: [Audio; 3],
     volume: f32
 }
 
 impl Resources {
     // Create the Resource with a tileset, font and audio
-    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, sounds: [&[u8]; 2]) -> Resources { 
+    pub fn new(tileset: &[u8], font: &'static [u8], font_size: u32, sounds: [&[u8]; 3]) -> Resources { 
         let settings = TextureSettings::new().filter(Filter::Nearest);
 
         Resources {
             font_size,
             tileset: load_texture(tileset, &settings),
             font: GlyphCache::from_bytes(font, settings).unwrap(),
-            sounds: [load_audio(sounds[0]), load_audio(sounds[1])],
+            sounds: [
+                load_audio(sounds[0]),
+                load_audio(sounds[1]),
+                load_audio(sounds[2])
+            ],
             volume: 1.0
         }
     }
@@ -263,8 +271,9 @@ impl Resources {
     pub fn play_sound(&self, sound: SoundEffect) {
         // Get the sound effect
         let sound = match sound {
-            SoundEffect::Plasma => self.sounds[0].as_ref(),
-            SoundEffect::Walk => self.sounds[1].as_ref()
+            SoundEffect::Walk => self.sounds[0].as_ref(),
+            SoundEffect::RegularShot => self.sounds[1].as_ref(),
+            SoundEffect::PlasmaShot => self.sounds[2].as_ref()
         };
 
         // Clone the reference and wrap it in a cursor

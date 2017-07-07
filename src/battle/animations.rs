@@ -7,6 +7,7 @@ use odds::vec::VecExt;
 use battle::map::Map;
 use battle::units::Unit;
 use resources::{Resources, SetImage, SoundEffect};
+use weapons::WeaponType;
 
 const MARGIN: f64 = 5.0;
 const BULLET_SPEED: f64 = 30.0;
@@ -58,7 +59,7 @@ pub struct Bullet {
     pub x: f64,
     pub y: f64,
     pub direction: f64,
-    pub image: SetImage,
+    pub weapon_type: WeaponType,
     left: bool,
     above: bool,
     target_id: usize,
@@ -90,18 +91,23 @@ impl Bullet {
            // Work out if the bullet started to the left/right and above/below the target
            left: x < target_x,
            above: y < target_y,
-           // Get the image of the bullet
-           image: unit.weapon.bullet(),
+           // Get the type of the firing weapon
+           weapon_type: unit.weapon.tag,
            // The bullet hasn't started moving
            started: false
         }
     }
     
+    // Get the image of the bullet
+    pub fn image(&self) -> SetImage {
+        self.weapon_type.bullet()
+    }
+
     // Move the bullet a step and work out if its still going or not
     fn step(&mut self, map: &mut Map, resources: &Resources, dt: f64) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if !self.started {
-            resources.play_sound(SoundEffect::Plasma);
+            resources.play_sound(self.weapon_type.fire_sound());
             self.started = true;
         }
 

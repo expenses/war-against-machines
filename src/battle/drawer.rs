@@ -6,7 +6,8 @@ use battle::tiles::Visibility;
 use battle::animations::Animation;
 use colours;
 use Resources;
-use utils::{clamp_float, convert_rotation, Dimensions};
+use utils::{clamp_float, convert_rotation};
+use traits::Dimensions;
 
 use graphics::{Context, Transformed};
 use graphics::math::Matrix2d;
@@ -129,10 +130,10 @@ impl Drawer {
                 }
 
                 // Draw a unit at the position
-                if let Some((index, unit)) = battle.map.units.at(x, y) {
+                if let Some(unit) = battle.map.units.at(x, y) {
                     // Draw the cursor to show that the unit is selected
                     if let Some(selected) = battle.selected {
-                        if selected == index {
+                        if selected == unit.id {
                             resources.render(&SetImage::CursorUnit, transformation, gl);
                         }
                     }
@@ -221,7 +222,7 @@ impl Drawer {
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
                     if let Some((firing, target)) = battle.selected.and_then(|firing|
                         map.units.get(firing).and_then(|firing|
-                            map.units.at(x, y).map(|(_, target)|
+                            map.units.at(x, y).map(|target|
                                 (firing, target)
                             )
                         )
@@ -259,7 +260,7 @@ impl Drawer {
             if visible {
                 if let Some((x, y)) = self.draw_location(ctx, bullet.x, bullet.y) {
                     resources.render_with_rotation(
-                        &bullet.image,
+                        &bullet.image(),
                         convert_rotation(bullet.direction),
                         self.transformation(ctx, x, y),
                         gl

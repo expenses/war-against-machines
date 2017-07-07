@@ -31,7 +31,7 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
 }
 
 // A point in the path
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct PathPoint {
     pub x: usize,
     pub y: usize,

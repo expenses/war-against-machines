@@ -1,7 +1,7 @@
 // A UI struct to display clickable buttons and text fields
 
 use graphics::{Context, Transformed};
-use utils::Dimensions;
+use traits::Dimensions;
 use opengl_graphics::GlGraphics;
 
 use resources::{Resources, SetImage};
@@ -22,17 +22,17 @@ pub enum HorizontalAlignment {
     Bottom
 }
 
-fn get_location(x: f64, y: f64, width: f64, height: f64, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, window_width: f64, window_height: f64) -> (f64, f64) {
+fn get_location(x: f64, y: f64, width: f64, height: f64, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, window: &Dimensions) -> (f64, f64) {
     let x = match *v_align {
         VerticalAlignment::_Left => x,
-        VerticalAlignment::Middle => (window_width - width) / 2.0 + x,
-        VerticalAlignment::Right =>  (window_width - width) + x
+        VerticalAlignment::Middle => (window.width() - width) / 2.0 + x,
+        VerticalAlignment::Right =>  (window.width() - width) + x
     };
 
     let y = match *h_align {
         HorizontalAlignment::Top => y,
-        HorizontalAlignment::Middle => (window_height - height) / 2.0 + y,
-        HorizontalAlignment::Bottom => (window_height - height) + y
+        HorizontalAlignment::Middle => (window.height() - height) / 2.0 + y,
+        HorizontalAlignment::Bottom => (window.height() - height) + y
     };
 
     (x, y)
@@ -65,14 +65,14 @@ impl Button {
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &Resources) {
-        let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx.width() as f64, ctx.height() as f64);
+        let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
 
         resources.render(&self.image, ctx.transform.trans(x, y).scale(self.scale, self.scale), gl)
     }
 
     // Calculate if the button was pressed
     pub fn clicked(&self, window_size: &WindowSize, x: f64, y: f64) -> bool {
-        let (pos_x, pos_y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, window_size.width, window_size.height);
+        let (pos_x, pos_y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, window_size);
 
         x >= pos_x && x <= pos_x + self.width &&
         y >= pos_y && y <= pos_y + self.height
@@ -109,7 +109,7 @@ impl TextDisplay {
 
             y_offset += height;
 
-            let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx.width(), ctx.height());
+            let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx);
 
             resources.render_text(&line, WHITE, ctx.transform.trans(x, y + y_offset), gl);
         }

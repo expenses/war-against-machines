@@ -9,7 +9,7 @@ use std::fs::read_dir;
 use colours::WHITE;
 use resources::{Resources, SetImage};
 use settings::{Settings, SkirmishSettings};
-use utils::Dimensions;
+use traits::Dimensions;
 
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f64 = 50.0;

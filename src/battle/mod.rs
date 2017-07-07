@@ -25,6 +25,7 @@ use resources::{Resources, SetImage};
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use settings::SkirmishSettings;
 use WindowSize;
+use traits::Dimensions;
 
 const CAMERA_SPEED: f64 = 10.0;
 const CAMERA_ZOOM_SPEED: f64 = 1.0;
@@ -35,7 +36,6 @@ pub struct Cursor {
 }
 
 // Whose turn is it
-#[derive(Eq, PartialEq)]
 enum Controller {
     Player,
     AI
@@ -128,12 +128,12 @@ impl Battle {
     pub fn start(&mut self, settings: &SkirmishSettings) {
         // Add player units
         for x in 0 .. settings.player_units {
-            self.map.units.push(Unit::new(settings.player_unit_type, UnitSide::Player, x, 0));
+            self.map.units.add(settings.player_unit_type, UnitSide::Player, x, 0);
         }
 
         // Add ai units
         for y in settings.cols - settings.ai_units .. settings.cols {
-            self.map.units.push(Unit::new(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1));
+            self.map.units.add(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1);
         }
         
         // Generate tiles
@@ -169,21 +169,21 @@ impl Battle {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt) }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt) }
 
-        if self.controller == Controller::AI &&
-           self.command_queue.is_empty() &&
-           self.animations.is_empty() &&
-           !ai::make_move(&self.map, &mut self.command_queue) {
-            
-            self.controller = Controller::Player;
-            self.map.turn += 1;
+        if let Controller::AI = self.controller {
+            if self.command_queue.is_empty() &&
+               self.animations.is_empty() &&
+               !ai::make_move(&self.map, &mut self.command_queue) {
+                self.controller = Controller::Player;
+                self.map.turn += 1;
 
-            if !self.map.units.any_alive(UnitSide::Player) {
-                return Some(BattleCallback::Lost);
-            } else if !self.map.units.any_alive(UnitSide::AI) {
-                return Some(BattleCallback::Won);
+                if !self.map.units.any_alive(UnitSide::Player) {
+                    return Some(BattleCallback::Lost);
+                } else if !self.map.units.any_alive(UnitSide::AI) {
+                    return Some(BattleCallback::Won);
+                }
             }
         }
-
+        
         // Update the command queue if there are no animations in progress
         if self.animations.is_empty() {
             self.command_queue.update(&mut self.map, &mut self.animations);
@@ -285,8 +285,8 @@ impl Battle {
                 _ => if let Some((x, y)) = self.cursor.position {
                     self.path = None;
                     self.selected = match self.map.units.at(x, y) {
-                        Some((id, unit)) => if unit.side == UnitSide::Player {
-                            Some(id)
+                        Some(unit) => if unit.side == UnitSide::Player {
+                            Some(unit.id)
                         } else {
                             None
                         },
@@ -298,16 +298,16 @@ impl Battle {
             MouseButton::Right => if let Some((x, y)) = self.cursor.position {
                 if let Some(player_unit_id) = self.selected {
                     // Don't do anything if it's the AI's turn
-                    if self.controller == Controller::AI {
+                    if let Controller::AI = self.controller {
                         return;
                     }
 
                     match self.map.units.at(x, y) {
                         // If an AI unit is under the cursor, push a fire command
-                        Some((ai_unit_id, ai_unit)) => {
+                        Some(ai_unit) => {
                             if ai_unit.side == UnitSide::AI {
                                 self.path = None;
-                                self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit_id)));
+                                self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit.id)));
                             }
                         }
                         _ => {
@@ -358,14 +358,14 @@ impl Battle {
     pub fn cursor_on_ai_unit(&self) -> bool {
         self.cursor.position
             .and_then(|(x, y)| self.map.units.at(x, y))
-            .map(|(_, unit)| unit.side == UnitSide::AI)
+            .map(|unit| unit.side == UnitSide::AI)
             .unwrap_or(false)
     }
 
     // End the current turn
     fn end_turn(&mut self) {
-        if self.controller == Controller::Player {
-            for (_, unit) in self.map.units.iter_mut() {
+        if let Controller::Player = self.controller {
+            for unit in self.map.units.iter_mut() {
                 unit.moves = unit.max_moves;
             }
 

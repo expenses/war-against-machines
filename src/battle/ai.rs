@@ -10,7 +10,6 @@ use battle::commands::{CommandQueue, Command, WalkCommand, FireCommand, Finished
 use utils::{chance_to_hit, distance_under, distance};
 
 // A move that the AI could take
-#[derive(Debug)]
 struct AIMove {
     x: usize,
     y: usize,
@@ -44,7 +43,7 @@ impl AIMove {
     fn fire_from_pos(unit: &Unit, map: &Map) -> AIMove {
         // Check if there is a closest unit and get it's ID and damage score
         let (target_id, score) = match closest_target(unit, map) {
-            Some((target_id, target)) => (Some(target_id), damage_score(unit.x, unit.y, 0, unit, target)),
+            Some(target) => (Some(target.id), damage_score(unit.x, unit.y, 0, unit, target)),
             None => (None, 0.0)
         };
 
@@ -75,7 +74,7 @@ impl AIMove {
 // Attempt to make a move and return true if there are possibly more moves to make
 pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
     // Get the first unit that can be moved
-    if let Some((unit_id, unit)) = next_unit(map) {
+    if let Some(unit) = next_unit(map) {
         // Determine if any targets are visible
         let visible_target = closest_target(unit, map).is_some();
 
@@ -96,19 +95,19 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 
         // If the move doesn't have a cost or a target, queue the 'finished' command to set the units moves to 0
         if ai_move.cost == 0 && ai_move.target_id.is_none() {
-            command_queue.push(Command::Finished(FinishedCommand::new(unit_id)));
+            command_queue.push(Command::Finished(FinishedCommand::new(unit.id)));
             return true;
         }
 
         // If the move has a path, queue the 'walk' command to walk along it
         if !ai_move.path.is_empty() {
-            command_queue.push(Command::Walk(WalkCommand::new(unit_id, map, ai_move.path)));
+            command_queue.push(Command::Walk(WalkCommand::new(unit.id, map, ai_move.path)));
         }
 
         // If the move has a target, fire at the target as many times as possible
         if let Some(target_id) = ai_move.target_id {
             for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.info().cost {
-                command_queue.push(Command::Fire(FireCommand::new(unit_id, target_id)));
+                command_queue.push(Command::Fire(FireCommand::new(unit.id, target_id)));
             }
         }
 
@@ -121,12 +120,10 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 }
 
 // Find the next ai unit that can be moved
-fn next_unit(map: &Map) -> Option<(usize, &Unit)> {
+fn next_unit(map: &Map) -> Option<&Unit> {
     map.units.iter()
         // Make sure that there is a player unit alive and find ai units with avaliable moves
-        .find(|&(_, unit)| map.units.any_alive(UnitSide::Player) && unit.side == UnitSide::AI && unit.moves > 0)
-        // Dereference the id
-        .map(|(unit_id, unit)| (*unit_id, unit))
+        .find(|unit| map.units.any_alive(UnitSide::Player) && unit.side == UnitSide::AI && unit.moves > 0)
 }
 
 // Return an AIMove where the amount of tiles searched is maximized
@@ -167,8 +164,8 @@ fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
 
             // If a path to the tile has been found and there is a closest target, check its damage score
             if let Some((path, cost)) = pathfind(unit, x, y, map) {
-                if let Some((target_id, target)) = closest_target(unit, map) {
-                    ai_move.compare(unit, AIMove::new(x, y, path, cost, Some(target_id), damage_score(x, y, cost, unit, target)));
+                if let Some(target) = closest_target(unit, map) {
+                    ai_move.compare(unit, AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target)));
                 }
             }
         }
@@ -180,7 +177,7 @@ fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
 // Return an AIMove where the chance_to_hit of the nearest unit is maximized
 fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
     // Find the closest target unit
-    let (_, target) = closest_target(unit, map).unwrap();
+    let target = closest_target(unit, map).unwrap();
     // Create a new AIMove of the chance to hit the target
     let mut ai_move = AIMove::from(unit, chance_to_hit(unit.x, unit.y, target.x, target.y));
 
@@ -194,7 +191,7 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
 
             // If a path to the tile has been found and there is a closest target, check its chance to hit
             if let Some((path, cost)) = pathfind(unit, x, y, map) {
-                if let Some((_, target)) = closest_target(unit, map) {
+                if let Some(target) = closest_target(unit, map) {
                     ai_move.compare(unit, AIMove::new(x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y)));
                 }
             }
@@ -212,15 +209,13 @@ fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
 }
 
 // Find the closest target unit to a unit on the map, if any
-fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<(usize, &'a Unit)> {
+fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<&'a Unit> {
     map.units.iter()
         // Filter to visible player units
-        .filter(|&(_, target)| target.side == UnitSide::Player &&
+        .filter(|target| target.side == UnitSide::Player &&
                                map.tiles.at(target.x, target.y).ai_visibility == Visibility::Visible)
         // Minimize distance
-        .ord_subset_min_by_key(|&(_, target)| distance(unit.x, unit.y, target.x, target.y))
-        // Dereference the id
-        .map(|(i, unit)| (*i, unit))
+        .ord_subset_min_by_key(|target| distance(unit.x, unit.y, target.x, target.y))
 }
 
 // Calculate the damage score for a tile

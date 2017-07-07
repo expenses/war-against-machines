@@ -32,6 +32,7 @@ mod resources;
 mod colours;
 mod items;
 mod settings;
+mod traits;
 
 use colours::BLACK;
 use battle::Battle;
@@ -39,6 +40,7 @@ use menu::{Menu, MenuCallback};
 use resources::Resources;
 use settings::Settings;
 use battle::map::Map;
+use traits::Dimensions;
 
 const TITLE: &str = "War Against Machines";
 const WINDOW_WIDTH: u32 = 960;
@@ -61,6 +63,11 @@ impl WindowSize {
         self.width = size.width as f64;
         self.height = size.height as f64;
     }
+}
+
+impl Dimensions for WindowSize {
+    fn width(&self) -> f64 {self.width}
+    fn height(&self) -> f64 {self.height}
 }
 
 // A struct for holding the game state
@@ -185,7 +192,11 @@ fn main() {
     let mut resources = Resources::new(
         bytes!("tileset.png"),
         bytes!("font.ttf"), 22,
-        [bytes!("audio/plasma.ogg"), bytes!("audio/walk.ogg")],
+        [
+            bytes!("audio/walk.ogg"),
+            bytes!("audio/regular_shot.ogg"),
+            bytes!("audio/plasma_shot.ogg")
+        ],
     );
 
     resources.set(&settings);

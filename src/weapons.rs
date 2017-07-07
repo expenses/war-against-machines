@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use resources::SetImage;
+use resources::{SetImage, SoundEffect};
 
 // The type of weapon
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -10,6 +10,24 @@ pub enum WeaponType {
     Rifle,
     MachineGun,
     PlasmaRifle
+}
+
+impl WeaponType {
+    // Get the corresponding bullet image
+    pub fn bullet(&self) -> SetImage {
+        match *self {
+            WeaponType::PlasmaRifle => SetImage::PlasmaBullet,
+            _ => SetImage::RegularBullet
+        }
+    }
+
+    // Get the corresponding fire sound
+    pub fn fire_sound(&self) -> SoundEffect {
+        match *self {
+            WeaponType::PlasmaRifle => SoundEffect::PlasmaShot,
+            _ => SoundEffect::RegularShot
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -96,17 +114,26 @@ impl Weapon {
     // Get the hit modifier, the firing cost and the bullets fired
     pub fn info(&self) -> FiringModeInfo {
         match self.modes[self.mode] {
-            FiringMode::SingleShot => FiringModeInfo {hit_modifier: 1.0,  cost: self.cost(1.0), bullets: self.base_bullets},
-            FiringMode::AimedShot  => FiringModeInfo {hit_modifier: 1.5,  cost: self.cost(2.0), bullets: self.base_bullets},
-            FiringMode::SemiAuto   => FiringModeInfo {hit_modifier: 0.75, cost: self.cost(1.5), bullets: self.base_bullets * 3},
-            FiringMode::FullAuto   => FiringModeInfo {hit_modifier: 0.66, cost: self.cost(2.5), bullets: self.base_bullets * 6}
-        }
-    }
-
-    pub fn bullet(&self) -> SetImage {
-        match self.tag {
-            WeaponType::PlasmaRifle => SetImage::PlasmaBullet,
-            _ => SetImage::RegularBullet
+            FiringMode::SingleShot => FiringModeInfo {
+                hit_modifier: 1.0, 
+                cost: self.cost(1.0),
+                bullets: self.base_bullets
+            },
+            FiringMode::AimedShot  => FiringModeInfo {
+                hit_modifier: 1.5,
+                cost: self.cost(2.0),
+                bullets: self.base_bullets
+            },
+            FiringMode::SemiAuto   => FiringModeInfo {
+                hit_modifier: 0.75,
+                cost: self.cost(1.5),
+                bullets: self.base_bullets * 3
+            },
+            FiringMode::FullAuto   => FiringModeInfo {
+                hit_modifier: 0.66,
+                cost: self.cost(2.5),
+                bullets: self.base_bullets * 6
+            }
         }
     }
 }

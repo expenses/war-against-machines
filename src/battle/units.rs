@@ -4,8 +4,7 @@ use rand;
 use rand::Rng;
 
 use std::fmt;
-use std::collections::HashMap;
-use std::collections::hash_map::{Iter, IterMut};
+use std::slice::{Iter, IterMut};
 
 use battle::tiles::Tiles;
 use items::{Item, ItemType};
@@ -105,6 +104,7 @@ pub enum UnitSide {
 // A struct for a unit in the game
 #[derive(Serialize, Deserialize)]
 pub struct Unit {
+    pub id: usize,
     pub tag: UnitType,
     pub side: UnitSide,
     pub x: usize,
@@ -121,7 +121,7 @@ pub struct Unit {
 
 impl Unit {
     // Create a new unit based on unit type
-    pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize) -> Unit {
+    fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: usize) -> Unit {
         match tag {
             UnitType::Squaddie => {                
                 let moves = 30;
@@ -130,7 +130,7 @@ impl Unit {
                 let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
 
                 Unit {
-                    tag, side, x, y, moves, health,
+                    tag, side, x, y, moves, health, id,
                     image: SetImage::Squaddie,
                     weapon: Weapon::new(*rng.choose(&weapons).unwrap()),
                     name: generate_squaddie_name(),
@@ -144,7 +144,7 @@ impl Unit {
                 let health = 150;
 
                 Unit {
-                    tag, side, x, y, moves, health,
+                    tag, side, x, y, moves, health, id,
                     image: SetImage::Machine,
                     weapon: Weapon::new(WeaponType::PlasmaRifle),
                     name: generate_machine_name(),
@@ -177,7 +177,7 @@ impl Unit {
 #[derive(Serialize, Deserialize)]
 pub struct Units {
     index: usize,
-    units: HashMap<usize, Unit>
+    units: Vec<Unit>
 }
 
 impl Units {
@@ -185,53 +185,54 @@ impl Units {
     pub fn new() -> Units {
         Units {
             index: 0,
-            units: HashMap::new()
+            units: Vec::new()
         }
     }
 
-    // Push a unit
-    pub fn push(&mut self, unit: Unit) {
-        self.units.insert(self.index, unit);
+    pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize) {
+        self.units.push(Unit::new(tag, side, x, y, self.index));
         self.index += 1;
     }
 
     // Iterate over the units
-    pub fn iter(&self) -> Iter<usize, Unit> {
+    pub fn iter(&self) -> Iter<Unit> {
         self.units.iter()
     }
 
     // Iterate mutably over the units
-    pub fn iter_mut(&mut self) -> IterMut<usize, Unit> {
+    pub fn iter_mut(&mut self) -> IterMut<Unit> {
         self.units.iter_mut()
     }
 
     // Get a reference to a unit with a specific ID, if th unit exists
     pub fn get(&self, id: usize) -> Option<&Unit> {
-        self.units.get(&id)
+        self.units.iter().find(|unit| unit.id == id)
     }
 
     // Get a mutable reference to a unit with a specific ID, if the unit exists
     pub fn get_mut(&mut self, id: usize) -> Option<&mut Unit> {
-        self.units.get_mut(&id)
+        self.units.iter_mut().find(|unit| unit.id == id)
     }
 
     // Return the ID and reference to a unit at (x, y)
-    pub fn at(&self, x: usize, y: usize) -> Option<(usize, &Unit)> {
-        self.iter()
-            .find(|&(_, unit)| unit.x == x && unit.y == y)
-            .map(|(i, unit)| (*i, unit))
+    pub fn at(&self, x: usize, y: usize) -> Option<&Unit> {
+        self.iter().find(|unit| unit.x == x && unit.y == y)
     }
 
     // Check if any units on a particular side are alive
     pub fn any_alive(&self, side: UnitSide) -> bool {
-        self.iter().any(|(_, unit)| unit.side == side)
+        self.iter().any(|unit| unit.side == side)
     }
 
     // Calculate if (x, y) is visible to any units on a particular side
     pub fn visible(&self, x: usize, y: usize, side: UnitSide) -> bool {
         self.iter()
-        .filter(|&(_, unit)| unit.side == side)
-        .any(|(_, unit)| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
+            .filter(|unit| unit.side == side)
+            .any(|unit| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
+    }
+
+    fn id_to_index(&self, id: usize) -> Option<usize> {
+        self.iter().enumerate().find(|&(_, unit)| unit.id == id).map(|(i, _)| i)
     }
 
     // Kill a unit and drop a corpse
@@ -252,7 +253,8 @@ impl Units {
         // Drop the corpse
         tiles.drop(x, y, corpse);
         // Remove the unit
-        self.units.remove(&id);
+        let to_remove = self.id_to_index(id).unwrap();
+        self.units.remove(to_remove);
         // Update the visibility of the tiles
         tiles.update_visibility(self);
     }
