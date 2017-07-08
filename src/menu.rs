@@ -233,7 +233,9 @@ impl Menu {
                 }
                 SETTINGS => {
                     match self.submenus[SETTINGS].selection {
-                        1 => self.settings.volume -= VOLUME_CHANGE,
+                        1 => if self.settings.volume > 0 {
+                            self.settings.volume -= VOLUME_CHANGE;
+                        },
                         _ => {}
                     }
                     self.refresh_settings();

@@ -18,11 +18,17 @@ Note that as these releases are build automatically, I may not have personally t
 
 ## Building
 
-Building requires installing the [SDL2 development libraries](https://github.com/AngryLawyer/rust-sdl2#sdl20-development-libraries).
-
-After those are installed, you can build the release with Cargo:
+The game can be built with:
 
     cargo build --release
+
+If you get an error like:
+
+    thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: "`"pkg-config" "--libs" "--cflags" "alsa"` did not exit successfully: exit code: 1
+
+This means that you will need to install the ALSA development libraries:
+
+    sudo apt-get install libasound2-dev
 
 ## Gameplay
 
