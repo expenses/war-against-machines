@@ -36,6 +36,7 @@ pub struct Cursor {
 }
 
 // Whose turn is it
+#[derive(Eq, PartialEq)]
 enum Controller {
     Player,
     AI
@@ -58,14 +59,14 @@ pub enum BattleCallback {
 // The main Battle struct the handles actions
 pub struct Battle {
     pub map: Map,
-    drawer: Drawer,
     pub cursor: Cursor,
-    keys: [bool; 6],
     pub selected: Option<u8>,
     pub path: Option<Vec<PathPoint>>,
-    ui: UI,
     pub animations: Animations,
     pub command_queue: CommandQueue,
+    drawer: Drawer,
+    keys: [bool; 6],
+    ui: UI,
     controller: Controller,
 }
 
@@ -166,21 +167,21 @@ impl Battle {
         if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED * dt; }
         if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED * dt; }
         if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED * dt; }
-        if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt) }
-        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt) }
+        if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt); }
+        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt); }
 
-        if let Controller::AI = self.controller {
-            if self.command_queue.is_empty() &&
-               self.animations.is_empty() &&
-               !ai::make_move(&self.map, &mut self.command_queue) {
-                self.controller = Controller::Player;
-                self.map.turn += 1;
+        if self.controller == Controller::AI &&
+           self.command_queue.is_empty() &&
+           self.animations.is_empty() &&
+           !ai::make_move(&self.map, &mut self.command_queue) {
+            
+            self.controller = Controller::Player;
+            self.map.turn += 1;
 
-                if !self.map.units.any_alive(UnitSide::Player) {
-                    return Some(BattleCallback::Lost);
-                } else if !self.map.units.any_alive(UnitSide::AI) {
-                    return Some(BattleCallback::Won);
-                }
+            if !self.map.units.any_alive(UnitSide::Player) {
+                return Some(BattleCallback::Lost);
+            } else if !self.map.units.any_alive(UnitSide::AI) {
+                return Some(BattleCallback::Won);
             }
         }
         
@@ -297,8 +298,8 @@ impl Battle {
             // Check if the cursor has a position and a unit is selected
             MouseButton::Right => if let Some((x, y)) = self.cursor.position {
                 if let Some(player_unit_id) = self.selected {
-                    // Don't do anything if it's the AI's turn
-                    if let Controller::AI = self.controller {
+                    // Don't do anything if it's the AI's turn or if there is a command in progress
+                    if self.controller == Controller::AI || !self.command_queue.is_empty() {
                         return;
                     }
 
@@ -364,7 +365,7 @@ impl Battle {
 
     // End the current turn
     fn end_turn(&mut self) {
-        if let Controller::Player = self.controller {
+        if self.controller == Controller::Player {
             for unit in self.map.units.iter_mut() {
                 unit.moves = unit.max_moves;
             }

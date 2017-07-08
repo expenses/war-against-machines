@@ -115,8 +115,8 @@ impl SetImage {
             SetImage::PitBL => tiles!(5, 1, 1, 1),
             SetImage::PitBR => tiles!(6, 1, 1, 1),
 
-            SetImage::PlasmaBullet => tiles!(0, 3, 1, 1),
-            SetImage::RegularBullet => tiles!(1, 3, 1, 1),
+            SetImage::RegularBullet => tiles!(0, 3, 1, 1),
+            SetImage::PlasmaBullet => tiles!(1, 3, 1, 1),
 
             SetImage::SquaddieCorpse => tiles!(0, 4, 1, 1),
             SetImage::MachineCorpse => tiles!(1, 4, 1, 1),
@@ -139,8 +139,8 @@ impl SetImage {
             SetImage::Title => tiles!(0, 8, 10, 1),
             
             SetImage::EndTurnButton => tiles!(0, 9, 1, 0.5),
-            SetImage::InventoryButton => tiles!(0, 9.5, 1, 0.5),
-            SetImage::ChangeFireModeButton => tiles!(1, 9, 1, 0.5)
+            SetImage::InventoryButton => tiles!(1, 9, 1, 0.5),
+            SetImage::ChangeFireModeButton => tiles!(2, 9, 1, 0.5),
         }
     }
 }

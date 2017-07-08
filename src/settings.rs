@@ -8,6 +8,7 @@ use toml;
 const FILENAME: &str = "settings.toml";
 const MIN_MAP_SIZE: usize = 10;
 const MAX_MAP_SIZE: usize = 60;
+const MAX_VOLUME: u8 = 100;
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
@@ -17,7 +18,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            volume: 100
+            volume: MAX_VOLUME
         }
     }
 }
@@ -39,7 +40,7 @@ impl Settings {
     }
 
     pub fn clamp(&mut self) {
-        self.volume = clamp!(self.volume, 0, 100);
+        self.volume = clamp!(self.volume, 0, MAX_VOLUME);
     }
 }
 
