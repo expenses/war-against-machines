@@ -201,7 +201,7 @@ pub struct Resources {
     font: GlyphCache<'static>,
     font_size: u32,
     sounds: [Audio; 3],
-    volume: f32
+    volume: u8
 }
 
 impl Resources {
@@ -218,7 +218,7 @@ impl Resources {
                 load_audio(sounds[1]),
                 load_audio(sounds[2])
             ],
-            volume: 1.0
+            volume: 100
         }
     }
 
@@ -282,6 +282,6 @@ impl Resources {
         let decoder = Decoder::new(cursor).unwrap();
         // Play it!
         let endpoint = rodio::get_default_endpoint().unwrap();        
-        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(self.volume));
+        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(self.volume as f32 / 100.0));
     }
 }

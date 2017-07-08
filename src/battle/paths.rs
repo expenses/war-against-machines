@@ -8,12 +8,12 @@ use battle::map::Map;
 use battle::units::Unit;
 
 // The cost for a unit to walk laterally
-pub const WALK_LATERAL_COST: usize = 2;
+pub const WALK_LATERAL_COST: u16 = 2;
 // The cost for a unit to walk diagonally
-pub const WALK_DIAGONAL_COST: usize = 3;
+pub const WALK_DIAGONAL_COST: u16 = 3;
 
 // Use the A Star algorithm to find a path between a unit and a destination
-pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, usize)> {
+pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, u16)> {
     if map.taken(dest_x, dest_y) {
         return None
     }
@@ -35,12 +35,12 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
 pub struct PathPoint {
     pub x: usize,
     pub y: usize,
-    pub cost: usize
+    pub cost: u16
 }
 
 impl PathPoint {
     // Create a new PathPoint
-    fn new(x: usize, y: usize, cost: usize) -> PathPoint {
+    fn new(x: usize, y: usize, cost: u16) -> PathPoint {
         PathPoint {
             x, y, cost
         }
@@ -61,7 +61,7 @@ impl PathPoint {
     }
 
     // Get the cost to a point
-    fn cost(&self, x: usize, y: usize) -> usize {
+    fn cost(&self, x: usize, y: usize) -> u16 {
         if self.x == x || self.y == y {
             WALK_LATERAL_COST
         } else {
@@ -70,7 +70,7 @@ impl PathPoint {
     }
 
     // Get the neighbours to a point
-    fn neighbours(&self, map: &Map) -> Vec<(PathPoint, usize)> {
+    fn neighbours(&self, map: &Map) -> Vec<(PathPoint, u16)> {
         let mut neighbours = Vec::new();
 
         let min_x = max(0, self.x as i32 - 1) as usize;

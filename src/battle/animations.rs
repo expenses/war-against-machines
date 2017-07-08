@@ -16,15 +16,15 @@ const WALK_SPEED: f64 = 5.0;
 // A pretty simple walk animation
 pub struct Walk {
     status: f64,
-    unit_id: usize,
+    unit_id: u8,
     x: usize,
     y: usize,
-    cost: usize
+    cost: u16
 }
 
 impl Walk {
     // Create a new walk animation
-    pub fn new(unit_id: usize, x: usize, y: usize, cost: usize) -> Walk {
+    pub fn new(unit_id: u8, x: usize, y: usize, cost: u16) -> Walk {
         Walk {
             unit_id, x, y, cost,
             status: 0.0
@@ -62,7 +62,7 @@ pub struct Bullet {
     pub weapon_type: WeaponType,
     left: bool,
     above: bool,
-    target_id: usize,
+    target_id: u8,
     target_x: f64,
     target_y: f64,
     will_hit: bool,
@@ -72,7 +72,7 @@ pub struct Bullet {
 
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
-    pub fn new(target_id: usize, unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) -> Bullet {
+    pub fn new(unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) -> Bullet {
         let x = unit.x as f64;
         let y = unit.y as f64;
         let target_x = target.x as f64;
@@ -87,7 +87,8 @@ impl Bullet {
         }
 
         Bullet {
-           x, y, direction, target_id, target_x, target_y, will_hit, lethal,
+           x, y, direction, target_x, target_y, will_hit, lethal,
+           target_id: target.id,
            // Work out if the bullet started to the left/right and above/below the target
            left: x < target_x,
            above: y < target_y,

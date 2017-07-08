@@ -11,13 +11,13 @@ const MAX_MAP_SIZE: usize = 60;
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
-    pub volume: f32,
+    pub volume: u8,
 }
 
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            volume: 1.0
+            volume: 100
         }
     }
 }
@@ -39,7 +39,7 @@ impl Settings {
     }
 
     pub fn clamp(&mut self) {
-        self.volume = clamp!(self.volume, 0.0, 1.0);
+        self.volume = clamp!(self.volume, 0, 100);
     }
 }
 

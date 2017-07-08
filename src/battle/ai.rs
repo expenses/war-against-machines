@@ -14,14 +14,14 @@ struct AIMove {
     x: usize,
     y: usize,
     path: Vec<PathPoint>,
-    cost: usize,
-    target_id: Option<usize>,
+    cost: u16,
+    target_id: Option<u8>,
     score: f32
 }
 
 impl AIMove {
     // Create a new AIMove
-    fn new(x: usize, y: usize, path: Vec<PathPoint>, cost: usize, target_id: Option<usize>, score: f32) -> AIMove {
+    fn new(x: usize, y: usize, path: Vec<PathPoint>, cost: u16, target_id: Option<u8>, score: f32) -> AIMove {
         AIMove {
             x, y, path, cost, target_id, score
         }
@@ -204,8 +204,8 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
 // If the tile is invisible or cannot be reached by the unit walking in a lateral direction
 fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
     map.tiles.at(x, y).ai_visibility == Visibility::Invisible ||
-    (unit.x as i32 - x as i32).abs() as usize * WALK_LATERAL_COST > unit.moves ||
-    (unit.y as i32 - y as i32).abs() as usize * WALK_LATERAL_COST > unit.moves
+    (unit.x as i32 - x as i32).abs() as u16 * WALK_LATERAL_COST > unit.moves ||
+    (unit.y as i32 - y as i32).abs() as u16 * WALK_LATERAL_COST > unit.moves
 }
 
 // Find the closest target unit to a unit on the map, if any
@@ -219,7 +219,7 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<&'a Unit> {
 }
 
 // Calculate the damage score for a tile
-fn damage_score(x: usize, y: usize, cost: usize, unit: &Unit, target: &Unit) -> f32 {
+fn damage_score(x: usize, y: usize, cost: u16, unit: &Unit, target: &Unit) -> f32 {
     // Return if the cost is too high
     if cost > unit.moves {
         return 0.0;

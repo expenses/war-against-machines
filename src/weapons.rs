@@ -40,16 +40,16 @@ pub enum FiringMode {
 
 pub struct FiringModeInfo {
     pub hit_modifier: f32,
-    pub cost: usize,
-    pub bullets: usize
+    pub cost: u16,
+    pub bullets: u8
 }
 
 // The struct for a weapon
 #[derive(Serialize, Deserialize)]
 pub struct Weapon {
     pub tag: WeaponType,
-    base_cost: usize,
-    base_bullets: usize,
+    base_cost: u16,
+    base_bullets: u8,
     pub damage: i16,
     pub mode: usize,
     pub modes: Vec<FiringMode>
@@ -107,8 +107,8 @@ impl Weapon {
         self.mode = (self.mode + 1) % self.modes.len()
     }
 
-    fn cost(&self, modifier: f32) -> usize {
-        (self.base_cost as f32 * modifier).ceil() as usize
+    fn cost(&self, modifier: f32) -> u16 {
+        (self.base_cost as f32 * modifier).ceil() as u16
     }
 
     // Get the hit modifier, the firing cost and the bullets fired

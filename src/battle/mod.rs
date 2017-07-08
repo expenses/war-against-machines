@@ -61,7 +61,7 @@ pub struct Battle {
     drawer: Drawer,
     pub cursor: Cursor,
     keys: [bool; 6],
-    pub selected: Option<usize>,
+    pub selected: Option<u8>,
     pub path: Option<Vec<PathPoint>>,
     ui: UI,
     pub animations: Animations,

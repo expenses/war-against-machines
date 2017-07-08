@@ -14,7 +14,7 @@ use traits::Dimensions;
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f64 = 50.0;
 const TOP_ITEM_OFFSET: f64 = 150.0;
-const VOLUME_CHANGE: f32 = 0.05;
+const VOLUME_CHANGE: u8 = 5;
 
 // Callbacks that can be returned from key presses
 pub enum MenuCallback {

@@ -104,7 +104,7 @@ pub enum UnitSide {
 // A struct for a unit in the game
 #[derive(Serialize, Deserialize)]
 pub struct Unit {
-    pub id: usize,
+    pub id: u8,
     pub tag: UnitType,
     pub side: UnitSide,
     pub x: usize,
@@ -112,8 +112,8 @@ pub struct Unit {
     pub weapon: Weapon,
     pub image: SetImage,
     pub name: String,
-    pub moves: usize,
-    pub max_moves: usize,
+    pub moves: u16,
+    pub max_moves: u16,
     pub health: i16,
     pub max_health: i16,
     pub inventory: Vec<Item>
@@ -121,7 +121,7 @@ pub struct Unit {
 
 impl Unit {
     // Create a new unit based on unit type
-    fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: usize) -> Unit {
+    fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
         match tag {
             UnitType::Squaddie => {                
                 let moves = 30;
@@ -157,7 +157,7 @@ impl Unit {
     }
 
     // Move the unit to a location with a specific cost
-    pub fn move_to(&mut self, x: usize, y: usize, cost: usize) {
+    pub fn move_to(&mut self, x: usize, y: usize, cost: u16) {
         self.x = x;
         self.y = y;
         self.moves -= cost;
@@ -176,7 +176,7 @@ impl Unit {
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize)]
 pub struct Units {
-    index: usize,
+    index: u8,
     units: Vec<Unit>
 }
 
@@ -205,13 +205,17 @@ impl Units {
     }
 
     // Get a reference to a unit with a specific ID, if th unit exists
-    pub fn get(&self, id: usize) -> Option<&Unit> {
-        self.units.iter().find(|unit| unit.id == id)
+    pub fn get(&self, id: u8) -> Option<&Unit> {
+        self.units
+            .binary_search_by_key(&id, |unit| unit.id).ok()
+            .and_then(move |id| self.units.get(id))
     }
 
     // Get a mutable reference to a unit with a specific ID, if the unit exists
-    pub fn get_mut(&mut self, id: usize) -> Option<&mut Unit> {
-        self.units.iter_mut().find(|unit| unit.id == id)
+    pub fn get_mut(&mut self, id: u8) -> Option<&mut Unit> {
+        self.units
+            .binary_search_by_key(&id, |unit| unit.id).ok()
+            .and_then(move |id| self.units.get_mut(id))
     }
 
     // Return the ID and reference to a unit at (x, y)
@@ -231,12 +235,15 @@ impl Units {
             .any(|unit| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
     }
 
-    fn id_to_index(&self, id: usize) -> Option<usize> {
-        self.iter().enumerate().find(|&(_, unit)| unit.id == id).map(|(i, _)| i)
+    fn id_to_index(&self, id: u8) -> Option<usize> {
+        self.iter()
+            .enumerate()
+            .find(|&(_, unit)| unit.id == id)
+            .map(|(i, _)| i)
     }
 
     // Kill a unit and drop a corpse
-    pub fn kill(&mut self, tiles: &mut Tiles, id: usize) {
+    pub fn kill(&mut self, tiles: &mut Tiles, id: u8) {
         let (x, y) = match self.get(id) {
             Some(unit) => (unit.x, unit.y),
             _ => return

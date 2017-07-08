@@ -9,12 +9,12 @@ use battle::animations::{Walk, Bullet, Animation, Animations};
 
 // Finish a units moves for a turn by setting them to 0
 pub struct FinishedCommand {
-    unit_id: usize
+    unit_id: u8
 }
 
 impl FinishedCommand {
     // Create a new finished command
-    pub fn new(unit_id: usize) -> FinishedCommand {
+    pub fn new(unit_id: u8) -> FinishedCommand {
         FinishedCommand {
             unit_id
         }
@@ -30,14 +30,14 @@ impl FinishedCommand {
 
 // Get one unit to fire on another
 pub struct FireCommand {
-    unit_id: usize,
-    target_id: usize,
-    status: Option<(f32, i16, usize)>
+    unit_id: u8,
+    target_id: u8,
+    status: Option<(f32, i16, u8)>
 }
 
 impl FireCommand {
     // Create a new fire command
-    pub fn new(unit_id: usize, target_id: usize) -> FireCommand {
+    pub fn new(unit_id: u8, target_id: u8) -> FireCommand {
         FireCommand {
             unit_id, target_id,
             status: None
@@ -93,7 +93,7 @@ impl FireCommand {
             // Push a bullet to the animation queue
             if let Some(unit) = map.units.get(self.unit_id) {
                 if let Some(target) = map.units.get(self.target_id) {
-                    animations.push(Animation::Bullet(Bullet::new(self.target_id, unit, target, will_hit, lethal)));
+                    animations.push(Animation::Bullet(Bullet::new(unit, target, will_hit, lethal)));
                 }
             }
 
@@ -121,14 +121,14 @@ fn visible_enemies(map: &Map, unit: &Unit) -> usize {
 
 // Move a unit along a path, checking if it spots an enemy unit along the way
 pub struct WalkCommand {
-    unit_id: usize,
+    unit_id: u8,
     visible_enemies: usize,
     path: Vec<PathPoint>,
 }
 
 impl WalkCommand {
     // Create a new walk command
-    pub fn new(unit_id: usize, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
+    pub fn new(unit_id: u8, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
         WalkCommand {
             unit_id, path,
             // Calculate the number of visible enemy units
