@@ -37,7 +37,3 @@ piston2d-graphics = "*"
 pistoncore-glutin_window = "*"
 ## OpenGL backend
 piston2d-opengl_graphics = "*"
-
-# Replace the rusttype version used by opengl_graphics with my own
-[replace]
-"rusttype:0.2.1" = {git = "https://github.com/expenses/rusttype"}

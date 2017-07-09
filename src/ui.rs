@@ -5,7 +5,6 @@ use traits::Dimensions;
 use opengl_graphics::GlGraphics;
 
 use resources::{Resources, SetImage};
-use colours::WHITE;
 use WindowSize;
 
 // The vertical alignment of an item
@@ -111,7 +110,7 @@ impl TextDisplay {
 
             let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx);
 
-            resources.render_text(&line, WHITE, ctx.transform.trans(x, y + y_offset), gl);
+            resources.render_text(&line, ctx.transform.trans(x, y + y_offset), gl);
         }
     }
 }

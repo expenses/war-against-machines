@@ -190,8 +190,7 @@ fn main() {
     let mut events = Events::new(EventSettings::new().ups(60));
 
     let mut resources = Resources::new(
-        bytes!("tileset.png"),
-        bytes!("font.ttf"), 22,
+        bytes!("tileset.png"), 2.0,
         [
             bytes!("audio/walk.ogg"),
             bytes!("audio/regular_shot.ogg"),

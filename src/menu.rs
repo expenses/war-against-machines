@@ -6,7 +6,6 @@ use opengl_graphics::GlGraphics;
 
 use std::fs::read_dir;
 
-use colours::WHITE;
 use resources::{Resources, SetImage};
 use settings::{Settings, SkirmishSettings};
 use traits::Dimensions;
@@ -50,7 +49,7 @@ impl Submenu {
 
             let center = (ctx.width() - resources.font_width(&string)) / 2.0;
 
-            resources.render_text(&string, WHITE, ctx.transform.trans(center, TOP_ITEM_OFFSET + i as f64 * 20.0), gl);
+            resources.render_text(&string, ctx.transform.trans(center, TOP_ITEM_OFFSET + i as f64 * 20.0), gl);
         }
     }
 

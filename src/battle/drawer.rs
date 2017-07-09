@@ -4,7 +4,6 @@ use battle::Battle;
 use battle::units::UnitSide;
 use battle::tiles::Visibility;
 use battle::animations::Animation;
-use colours;
 use Resources;
 use utils::{clamp_float, convert_rotation};
 use traits::Dimensions;
@@ -203,10 +202,10 @@ impl Drawer {
                         let cost = format!("{}", total_cost);
 
                         let offset_x = (TILE_WIDTH - resources.font_width(&cost)) / 2.0 * self.camera.zoom;
-                        let offset_y = TILE_WIDTH / 2.0 * self.camera.zoom;
+                        let offset_y = TILE_WIDTH / 4.0 * self.camera.zoom;
 
                         // Render the path cost
-                        resources.render_text(&cost, colours::OFF_WHITE, self.transformation(ctx, x + offset_x, y + offset_y), gl);
+                        resources.render_text(&cost, self.transformation(ctx, x + offset_x, y + offset_y), gl);
                     }
                 }
             }
@@ -238,7 +237,7 @@ impl Drawer {
 
                             let offset_x = (TILE_WIDTH - resources.font_width(&hit_chance)) / 2.0 * self.camera.zoom;
 
-                            resources.render_text(&hit_chance, colours::WHITE, self.transformation(ctx, screen_x + offset_x, screen_y), gl);                            
+                            resources.render_text(&hit_chance, self.transformation(ctx, screen_x + offset_x, screen_y), gl);                            
                         }
                     }
                 }
