@@ -27,10 +27,14 @@ impl Settings {
     pub fn load() -> Settings {
         let mut string = String::new();
 
-        File::open(FILENAME).ok()
+        let mut settings: Settings = File::open(FILENAME).ok()
             .and_then(|mut file| file.read_to_string(&mut string).ok())
             .and_then(|_| toml::from_str(&string).ok())
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        settings.clamp();
+
+        settings
     }
 
     pub fn save(&self) {

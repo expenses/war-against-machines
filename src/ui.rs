@@ -9,7 +9,7 @@ use WindowSize;
 
 // The vertical alignment of an item
 pub enum VerticalAlignment {
-    _Left,
+    Left,
     Middle,
     Right
 }
@@ -21,20 +21,20 @@ pub enum HorizontalAlignment {
     Bottom
 }
 
-fn get_location(x: f64, y: f64, width: f64, height: f64, v_align: &VerticalAlignment, h_align: &HorizontalAlignment, window: &Dimensions) -> (f64, f64) {
-    let x = match *v_align {
-        VerticalAlignment::_Left => x,
-        VerticalAlignment::Middle => (window.width() - width) / 2.0 + x,
-        VerticalAlignment::Right =>  (window.width() - width) + x
-    };
+fn get_x(x: f64, width: f64, screen_width: f64, v_align: &VerticalAlignment) -> f64 {
+    match *v_align {
+        VerticalAlignment::Left => x,
+        VerticalAlignment::Middle => (screen_width - width) / 2.0 + x,
+        VerticalAlignment::Right => (screen_width - width) + x
+    }
+}
 
-    let y = match *h_align {
+fn get_y(y: f64, height: f64, screen_height: f64, h_align: &HorizontalAlignment) -> f64 {
+    match *h_align {
         HorizontalAlignment::Top => y,
-        HorizontalAlignment::Middle => (window.height() - height) / 2.0 + y,
-        HorizontalAlignment::Bottom => (window.height() - height) + y
-    };
-
-    (x, y)
+        HorizontalAlignment::Middle => (screen_height - height) / 2.0 + y,
+        HorizontalAlignment::Bottom => (screen_height - height) + y
+    }
 }
 
 // A button on the UI
@@ -64,14 +64,16 @@ impl Button {
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &Resources) {
-        let (x, y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, ctx);
+        let x = get_x(self.x, self.width, ctx.width(), &self.v_align);
+        let y = get_y(self.y, self.height, ctx.height(), &self.h_align);
 
         resources.render(&self.image, ctx.transform.trans(x, y).scale(self.scale, self.scale), gl)
     }
 
     // Calculate if the button was pressed
     pub fn clicked(&self, window_size: &WindowSize, x: f64, y: f64) -> bool {
-        let (pos_x, pos_y) = get_location(self.x, self.y, self.width, self.height, &self.v_align, &self.h_align, window_size);
+        let pos_x = get_x(self.x, self.width, window_size.width, &self.v_align);
+        let pos_y = get_y(self.y, self.height, window_size.height, &self.h_align);
 
         x >= pos_x && x <= pos_x + self.width &&
         y >= pos_y && y <= pos_y + self.height
@@ -80,37 +82,38 @@ impl Button {
 
 // A text display on the UI
 pub struct TextDisplay {
+    pub text: String,
     x: f64,
     y: f64,
     v_align: VerticalAlignment,
     h_align: HorizontalAlignment,
-    text: String,
     active: bool
 }
 
 impl TextDisplay {
     // Create a new text display
-    pub fn new(x: f64, y: f64, v_align: VerticalAlignment, h_align: HorizontalAlignment, active: bool, text: &str) -> TextDisplay {
+    pub fn new(x: f64, y: f64, v_align: VerticalAlignment, h_align: HorizontalAlignment, active: bool) -> TextDisplay {
         TextDisplay {
             x, y, v_align, h_align, active,
-            text: text.into()
+            text: "".into()
         }
+    }
+
+    pub fn append(&mut self, string: &str) {
+        self.text.push_str(&format!("\n{}", string));
     }
 
     // Draw the text display on the screen
     fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
-        let mut y_offset = 0.0;
+        let height = resources.font_height() * self.text.lines().count() as f64;
+        let mut y = get_y(self.y, height, ctx.height(), &self.h_align);
+        
+        for line in self.text.lines() {
+            let width = resources.font_width(line);
+            let x = get_x(self.x, width, ctx.width(), &self.v_align);
 
-        // Iterate through the non-empty lines
-        for line in self.text.split('\n').filter(|line| !line.is_empty()) {
-            let width = resources.font_width(&line);
-            let height = resources.font_height();
-
-            y_offset += height;
-
-            let (x, y) = get_location(self.x, self.y, width, height, &self.v_align, &self.h_align, ctx);
-
-            resources.render_text(&line, ctx.transform.trans(x, y + y_offset), gl);
+            resources.render_text(line, ctx.transform.trans(x, y), gl);
+            y += resources.font_height();
         }
     }
 }
@@ -134,9 +137,9 @@ impl UI {
         self.text_displays[display].active = !self.text_displays[display].active;
     }
 
-    // Set the text of a text display
-    pub fn set_text(&mut self, display: usize, text: String) {
-        self.text_displays[display].text = text;
+    // Get a mutable reference to a text display
+    pub fn ref_mut(&mut self, display: usize) -> &mut TextDisplay {
+        &mut self.text_displays[display]
     }
 
     // Draw all the active buttons and text displays

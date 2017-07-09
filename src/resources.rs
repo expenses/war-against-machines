@@ -8,6 +8,7 @@ use graphics::draw_state::{DrawState, Blend};
 use graphics::Transformed;
 use rodio;
 use rodio::{Source, Decoder};
+
 use settings::Settings;
 use traits::Dimensions;
 
@@ -243,8 +244,9 @@ impl ImageSource for char {
             ',' => char_loc!(307, 2),
             '.' => char_loc!(310, 1),
             '%' => char_loc!(312, 3),
-            ' ' => char_loc!(316, 4),
-            _ => char_loc!(321, 4),
+            '!' => char_loc!(316, 1),
+            ' ' => char_loc!(318, 4),
+            _ => char_loc!(323, 4),
         }
     }
 }
@@ -356,7 +358,7 @@ impl Resources {
 
     // Get the height of the font
     pub fn font_height(&self) -> f64 {
-        FONT_HEIGHT * self.font_size
+        (FONT_HEIGHT + CHARACTER_GAP) * self.font_size
     }
 
     // Render a string of text with a colour and transformation
@@ -368,7 +370,7 @@ impl Resources {
                 .src_rect(character.source())
                 .draw(&self.tileset, &DRAW_STATE, transform.scale(self.font_size, self.font_size).trans(width, 0.0), gl);
             width += character.width();
-        }
+        }        
     }
 
     // Set the volume

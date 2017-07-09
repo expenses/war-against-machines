@@ -106,8 +106,9 @@ impl Battle {
                 )
             ],
             vec![
-                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Top, true, "-"),
-                TextDisplay::new(0.0, -100.0, VerticalAlignment::Middle, HorizontalAlignment::Middle, false, "-")
+                TextDisplay::new(0.0, 10.0, VerticalAlignment::Middle, HorizontalAlignment::Top, true),
+                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Middle, false),
+                TextDisplay::new(10.0, -10.0, VerticalAlignment::Left, HorizontalAlignment::Bottom, true)
             ]
         );
 
@@ -177,6 +178,7 @@ impl Battle {
             
             self.controller = Controller::Player;
             self.map.turn += 1;
+            self.ui.ref_mut(2).append(&format!("Turn {} started", self.map.turn));
 
             if !self.map.units.any_alive(UnitSide::Player) {
                 return Some(BattleCallback::Lost);
@@ -187,7 +189,7 @@ impl Battle {
         
         // Update the command queue if there are no animations in progress
         if self.animations.is_empty() {
-            self.command_queue.update(&mut self.map, &mut self.animations);
+            self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.ref_mut(2));
         }
         // Update the animations
         self.animations.update(&mut self.map, resources, dt);
@@ -213,7 +215,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.set_text(0, format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected));
+        self.ui.ref_mut(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
 
         // Create the inventory string
         let inventory_string = match self.selected_unit() {
@@ -249,7 +251,7 @@ impl Battle {
             _ => "No unit selected".into()
         };
         
-        self.ui.set_text(1, inventory_string);
+        self.ui.ref_mut(1).text = inventory_string;
 
         // Draw the UI
         self.ui.draw(ctx, gl, resources);

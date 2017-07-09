@@ -6,6 +6,7 @@ use battle::map::Map;
 use battle::units::{Unit, UnitSide};
 use battle::paths::PathPoint;
 use battle::animations::{Walk, Bullet, Animation, Animations};
+use ui::TextDisplay;
 
 // Finish a units moves for a turn by setting them to 0
 pub struct FinishedCommand {
@@ -138,7 +139,7 @@ impl WalkCommand {
 
     // Process the walk command, moving the unit one tile along the path and checking
     // if it spots an enemy unit
-    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations) -> bool {
+    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> bool {
         // Get the path x, y and cost
         let (x, y, cost) = {
             let point = &self.path[0];
@@ -146,12 +147,18 @@ impl WalkCommand {
         };
 
         if let Some(unit) = map.units.get(self.unit_id) {
-            // If there are more visible enemies now than when the walk began
-            // or if the move costs too much
-            // or if the tile is taken, end the walk
-            if visible_enemies(map, unit) > self.visible_enemies ||
-               unit.moves < cost ||
-               map.units.at(x, y).is_some() {
+            // If there are more visible enemies than there were when the walk started, end it
+            if visible_enemies(map, unit) > self.visible_enemies {
+                // Log a message to the player that an enemy was spotted
+                if unit.side == UnitSide::Player {
+                    log.append("Enemy spotted!");
+                }
+
+                return true;
+            }
+
+            // If the move costs too much or if the tile is taken, end the walk
+            if unit.moves < cost || map.units.at(x, y).is_some() {
                 return true;
             } else {
                 // Otherwise, add a walk to the animation queue
@@ -177,15 +184,15 @@ pub enum Command {
 pub type CommandQueue = Vec<Command>;
 
 pub trait UpdateCommands {
-    fn update(&mut self, map: &mut Map, animations: &mut Animations);
+    fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay);
 }
 
 impl UpdateCommands for CommandQueue {
     // Update the first item of the command queue
-    fn update(&mut self, map: &mut Map, animations: &mut Animations) {
+    fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
         let finished = match self.first_mut() {
             Some(&mut Command::Fire(ref mut fire)) => fire.process(map, animations),
-            Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations),
+            Some(&mut Command::Walk(ref mut walk)) => walk.process(map, animations, log),
             Some(&mut Command::Finished(ref mut finished)) => {
                 finished.process(map);
                 true

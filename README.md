@@ -14,7 +14,7 @@ Written in [Rust](https://www.rust-lang.org).
 
 Releases can be found on the [releases page](https://github.com/expenses/war-against-machines/releases).
 
-Note that as these releases are build automatically, I may not have personally tested them.
+Note that as these releases are built automatically, I may not have personally tested them.
 
 ## Building
 
