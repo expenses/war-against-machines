@@ -36,7 +36,7 @@ impl Context {
     pub fn new(event_loop: &EventsLoop, title: String, width: u32, height: u32, tileset: &[u8], audio: [&[u8]; 3]) -> Context {
         let renderer = Renderer::new(event_loop, tileset, title, width, height);
 
-        // Create the renderer!
+        // Create the context!
         Context {
             renderer,
             width: width as f32,
@@ -47,22 +47,28 @@ impl Context {
         }
     }
 
-    // Resize the renderer window
+    // Resize the context
     pub fn resize(&mut self, width: f32, height: f32) {
         self.width = width;
         self.height = height;
-        // Update the view
+        // resize the renderer
         self.renderer.resize(width, height);
     }
 
+    // Render text
     pub fn render_text(&mut self, string: &str, mut x: f32, y: f32, colour: [f32; 4]) {
+        // Center the text on its width
         x -= self.font_width(string) / 2.0;
 
+        // get the scale to render the text at
         let scale = self.font_size;
 
+        // Render each character
         for character in string.chars() {
+            // Offset the character by its width
             x += (character.width() + CHARACTER_GAP) / 2.0 * scale;
             
+            // Render the character
             self.renderer.render(Properties {
                 src: character.source(),
                 dest: [x, y, character.width() * scale, character.height() * scale],
@@ -70,10 +76,12 @@ impl Context {
                 overlay_colour: colour
             });
 
+            // Move to the start of the next character
             x += (character.width() + CHARACTER_GAP) / 2.0 * scale;
         }
     }
 
+    // Render an image
     pub fn render(&mut self, image: &Image, x: f32, y: f32, scale: f32) {
         self.renderer.render(Properties {
             src: image.source(),
@@ -83,6 +91,7 @@ impl Context {
         });
     }
 
+    // Render an image with a colour overlay
     pub fn render_with_overlay(&mut self, image: &Image, x: f32, y: f32, scale: f32, colour: [f32; 4]) {
         self.renderer.render(Properties {
             src: image.source(),
@@ -92,6 +101,7 @@ impl Context {
         });
     }
 
+    // Render an image with a particular rotation
     pub fn render_with_rotation(&mut self, image: &Image, x: f32, y: f32, scale: f32, rotation: f32) {
         self.renderer.render(Properties {
             src: image.source(),
@@ -101,15 +111,17 @@ impl Context {
         });
     }
 
+    // Get the width that a string would be rendered at
     pub fn font_width(&self, string: &str) -> f32 {
         string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.font_size)
     }
 
+    // Get the height of rendered text
     pub fn font_height(&self) -> f32 {
         FONT_HEIGHT * self.font_size
     }
 
-    // Flush the renderer and swap buffers
+    // Flush the renderer
     pub fn flush(&mut self) {
         self.renderer.flush();
     }
@@ -119,6 +131,7 @@ impl Context {
         self.renderer.clear(colours::BLACK);
     }
 
+    // Set the context from settings
     pub fn set(&mut self, settings: &Settings) {
         self.volume = settings.volume;
     }

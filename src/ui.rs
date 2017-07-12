@@ -54,10 +54,12 @@ impl Button {
         }
     }
 
+    // Get the width of the button
     fn width(&self) -> f32 {
         self.image.width() * self.scale
     }
 
+    // Get the height of the button
     fn height(&self) -> f32 {
         self.image.height() * self.scale
     }
@@ -99,6 +101,7 @@ impl TextDisplay {
         }
     }
 
+    // Append a string onto the text display
     pub fn append(&mut self, string: &str) {
         self.text.push_str(&format!("\n{}", string));
     }

@@ -103,10 +103,12 @@ impl Weapon {
         }
     }
 
+    // Change the fire mode
     pub fn change_mode(&mut self) {
         self.mode = (self.mode + 1) % self.modes.len()
     }
 
+    // get the firing cost
     fn cost(&self, modifier: f32) -> u16 {
         (self.base_cost as f32 * modifier).ceil() as u16
     }

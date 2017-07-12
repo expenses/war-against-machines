@@ -46,11 +46,11 @@ impl Submenu {
 
             // Render the string
             let y = ctx.height / 2.0 - TOP_ITEM_OFFSET - i as f32 * 20.0;
-
             ctx.render_text(&string, 0.0, y, WHITE);
         }
     }
 
+    // Get the selected item
     fn selected(&self) -> String {
         self.list[self.selection].clone()
     }
@@ -134,7 +134,7 @@ impl Menu {
         self.submenus[self.submenu].render(ctx);
     }
 
-    // Refresh the skirmish settings
+    // Refresh the skirmish submenu
     fn refresh_skirmish(&mut self) {
         let skirmish = &mut self.submenus[SKIRMISH];
         
@@ -147,6 +147,7 @@ impl Menu {
         skirmish.set_item(9, format!("AI unit type: {}", self.skirmish_settings.ai_unit_type));
     }
 
+    // refresh the settings submenu
     fn refresh_settings(&mut self) {
         let settings = &mut self.submenus[SETTINGS];
 
@@ -154,6 +155,7 @@ impl Menu {
         settings.set_item(1, format!("Volume: {:.2}", self.settings.volume));
     }
 
+    // refresh the saves submenu
     fn refresh_skirmish_saves(&mut self) {
         let mut files: Vec<String> = read_dir("savegames/skirmishes").unwrap()
             .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))

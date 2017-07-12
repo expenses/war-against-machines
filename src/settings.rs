@@ -15,6 +15,7 @@ pub struct Settings {
     pub volume: u8,
 }
 
+// The default settings
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
@@ -24,6 +25,7 @@ impl Default for Settings {
 }
 
 impl Settings {
+    // Load the settings or use the defaults
     pub fn load() -> Settings {
         let mut string = String::new();
 
@@ -37,12 +39,14 @@ impl Settings {
         settings
     }
 
+    // Save the settings
     pub fn save(&self) {
         let mut file = File::create(FILENAME).unwrap();
         let buffer = toml::to_vec(self).unwrap();
         file.write_all(&buffer).unwrap();
     }
 
+    // Make sure the volume isn't too high
     pub fn clamp(&mut self) {
         self.volume = clamp!(self.volume, 0, MAX_VOLUME);
     }
@@ -58,6 +62,7 @@ pub struct SkirmishSettings {
     pub ai_unit_type: UnitType
 }
 
+// The default skirmish settings
 impl Default for SkirmishSettings {
     fn default() -> SkirmishSettings {
         SkirmishSettings {

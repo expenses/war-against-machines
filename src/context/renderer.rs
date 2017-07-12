@@ -32,7 +32,7 @@ type CommandBuffer = gfx_device_gl::CommandBuffer;
 type Device = gfx_device_gl::Device;
 type Texture = ShaderResourceView<Resources, [f32; 4]>;
 
-// Load a texture
+// Load a texture from memory and return it and its dimensions
 fn load_texture(factory: &mut Factory, bytes: &[u8]) -> ([f32; 2], Texture) {
     let img = image::load_from_memory(bytes).unwrap().to_rgba();
     let (width, height) = img.dimensions();
@@ -44,19 +44,23 @@ fn load_texture(factory: &mut Factory, bytes: &[u8]) -> ([f32; 2], Texture) {
 
 // Define the rendering stuff
 gfx_defines! {
+    // The input vertex
     vertex Vertex {
         pos: [f32; 2] = "in_pos",
         uv: [f32; 2] = "in_uv",
     }
 
+    // Constants for rendering
     constant Constants {
         tileset: [f32; 2] = "constant_tileset",
     }
 
+    // Global settings
     constant Global {
         resolution: [f32; 2] = "global_resolution",
     }
 
+    // Settings for the current image
     constant Properties {
         src: [f32; 4] = "prop_src",
         dest: [f32; 4] = "prop_dest",
@@ -64,6 +68,7 @@ gfx_defines! {
         rotation: f32 = "prop_rotation",
     }
     
+    // The pipeline
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
         properties: gfx::ConstantBuffer<Properties> = "Properties",
@@ -117,7 +122,7 @@ impl Renderer {
 
         // Load the texture
         let (tileset_size, tileset) = load_texture(&mut factory, tileset);
-        // Create a Nearest-Neighbor sampler 
+        // Create a Nearest-Neighbor sampler (with basic mipmapping)
         let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Mipmap, WrapMode::Clamp));
 
         // Create the pipeline data
@@ -135,11 +140,13 @@ impl Renderer {
             encoder, data, pso, slice, window, device, depth
         };
 
+        // Set the constants buffer
         renderer.encoder.update_constant_buffer(
             &renderer.data.constants,
             &Constants {tileset: tileset_size}
         );
 
+        // Set the global buffer
         renderer.encoder.update_constant_buffer(
             &renderer.data.global,
             &Global {resolution: [width as f32, height as f32]}
@@ -150,13 +157,17 @@ impl Renderer {
 
     // Resize the renderer window
     pub fn resize(&mut self, width: f32, height: f32) {
+        // Update the global buffer
         self.encoder.update_constant_buffer(&self.data.global, &Global {resolution: [width, height]});
         // Update the view
         gfx_window_glutin::update_views(&self.window, &mut self.data.out, &mut self.depth);
     }
 
+    // Render a image from a set of properties
     pub fn render(&mut self, properties: Properties) {
+        // Update the properties buffer
         self.encoder.update_constant_buffer(&self.data.properties, &properties);
+        // Draw the image
         self.encoder.draw(&self.slice, &self.pso, &self.data);
     }
 

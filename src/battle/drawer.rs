@@ -178,7 +178,7 @@ impl Drawer {
                     total_cost += point.cost;
 
                     if let Some((x, y)) = self.draw_location(ctx, point.x as f32, point.y as f32) {
-                        // Render the tile
+                        // Render the path tile
 
                         let image = if total_cost > unit.moves {
                             Image::PathUnreachable

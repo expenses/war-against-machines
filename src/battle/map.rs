@@ -43,6 +43,7 @@ impl Map {
             .count()
     }
 
+    // Load a skirmish if possible
     pub fn load_skirmish(filename: &str) -> Option<Map> {
         let path = Path::new("savegames/skirmishes").join(filename);
 
@@ -50,6 +51,7 @@ impl Map {
             .and_then(|mut file| bincode::deserialize_from(&mut file, SIZE_LIMIT).ok())
     }
 
+    // Save the skirmish
     pub fn save_skrimish(&self, filename: &str) -> Option<()> {
         let directory = Path::new("savegames/skirmishes");
 
