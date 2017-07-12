@@ -1,18 +1,17 @@
 // The main menu of the game
 
-use piston::input::Key;
-use graphics::{Context, Transformed};
-use opengl_graphics::GlGraphics;
+use glutin::VirtualKeyCode;
 
 use std::fs::read_dir;
 
-use resources::{Resources, SetImage};
+use colours::WHITE;
+use context::Context;
+use resources::Image;
 use settings::{Settings, SkirmishSettings};
-use traits::Dimensions;
 
 const MAP_SIZE_CHANGE: usize = 5;
-const TITLE_TOP_OFFSET: f64 = 50.0;
-const TOP_ITEM_OFFSET: f64 = 150.0;
+const TITLE_TOP_OFFSET: f32 = 50.0;
+const TOP_ITEM_OFFSET: f32 = 150.0;
 const VOLUME_CHANGE: u8 = 5;
 
 // Callbacks that can be returned from key presses
@@ -25,7 +24,7 @@ pub enum MenuCallback {
 // A submenu inside the main menu
 struct Submenu {
     selection: usize,
-    list: Vec<String>
+    list: Vec<String>,
 }
 
 impl Submenu {
@@ -33,12 +32,12 @@ impl Submenu {
     fn new(list: Vec<String>) -> Submenu {
         Submenu {
             selection: 0,
-            list
+            list,
         }
     }
 
     // Draw the items in the submenu
-    fn render(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
+    fn render(&self, ctx: &mut Context) {
         for (i, item) in self.list.iter().enumerate() {
             let mut string = item.clone();
 
@@ -46,10 +45,9 @@ impl Submenu {
             if i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
+            let y = ctx.height / 2.0 - TOP_ITEM_OFFSET - i as f32 * 20.0;
 
-            let center = (ctx.width() - resources.font_width(&string)) / 2.0;
-
-            resources.render_text(&string, ctx.transform.trans(center, TOP_ITEM_OFFSET + i as f64 * 20.0), gl);
+            ctx.render_text(&string, 0.0, y, WHITE);
         }
     }
 
@@ -127,15 +125,13 @@ impl Menu {
     }
 
     // Draw the menu
-    pub fn render(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
+    pub fn render(&self, ctx: &mut Context) {
         // Draw the title
-        let title = SetImage::Title;
-        let center = (ctx.width() - title.width() as f64) / 2.0;
-
-        resources.render(&title, ctx.transform.trans(center, TITLE_TOP_OFFSET), gl);
+        let y = ctx.height / 2.0 - TITLE_TOP_OFFSET;
+        ctx.render(&Image::Title, 0.0, y, 1.0);
 
         // Draw the selected submenu
-        self.submenus[self.submenu].render(ctx, gl, resources);
+        self.submenus[self.submenu].render(ctx);
     }
 
     // Refresh the skirmish settings
@@ -173,14 +169,14 @@ impl Menu {
     }
 
     // Handle key presses, returning an optional callback
-    pub fn handle_key(&mut self, key: Key, resources: &mut Resources) -> Option<MenuCallback> {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, ctx: &mut Context) -> Option<MenuCallback> {
         match key {
             // Rotate the selections up
-            Key::Up | Key::W => self.submenus[self.submenu].rotate_up(),
+            VirtualKeyCode::Up | VirtualKeyCode::W => self.submenus[self.submenu].rotate_up(),
             // Rotate the selections down
-            Key::Down | Key::S => self.submenus[self.submenu].rotate_down(),
+            VirtualKeyCode::Down | VirtualKeyCode::S => self.submenus[self.submenu].rotate_down(),
             // Perform actions on the selection 
-            Key::Return => match self.submenu {
+            VirtualKeyCode::Return => match self.submenu {
                 MAIN => match self.submenus[MAIN].selection {
                     0 => self.submenu = SKIRMISH,
                     1 => self.submenu = SETTINGS,
@@ -200,11 +196,11 @@ impl Menu {
                     0 => self.submenu = MAIN,
                     2 => {
                         self.settings = Settings::default();
-                        resources.set(&self.settings);
+                        ctx.set(&self.settings);
                         self.refresh_settings();
                     },
                     3 => {
-                        resources.set(&self.settings);
+                        ctx.set(&self.settings);
                         self.settings.save();
                     },
                     _ => {}
@@ -217,7 +213,7 @@ impl Menu {
                 _ => {}
             },
             // Lower the skimish settings
-            Key::Left | Key::A => match self.submenu {
+            VirtualKeyCode::Left | VirtualKeyCode::A => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
                         4 => self.skirmish_settings.cols -= MAP_SIZE_CHANGE,
@@ -242,7 +238,7 @@ impl Menu {
                 _ => {}
             },
             // Raise the skimish settings
-            Key::Right | Key::D => match self.submenu {
+            VirtualKeyCode::Right | VirtualKeyCode::D => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
                         4 => self.skirmish_settings.cols += MAP_SIZE_CHANGE,
@@ -264,7 +260,7 @@ impl Menu {
                 }
                 _ => {}
             },
-            Key::Escape => return Some(MenuCallback::Quit),
+            VirtualKeyCode::Escape => return Some(MenuCallback::Quit),
             _ => {}
         }
 

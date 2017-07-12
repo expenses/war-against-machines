@@ -9,11 +9,9 @@ mod animations;
 mod ai;
 mod commands;
 
-use std::fmt;
+use glutin::{VirtualKeyCode, MouseButton};
 
-use piston::input::{Key, MouseButton};
-use graphics::Context;
-use opengl_graphics::GlGraphics;
+use std::fmt;
 
 use battle::drawer::Drawer;
 use battle::paths::{pathfind, PathPoint};
@@ -21,14 +19,13 @@ use battle::animations::{Animations, UpdateAnimations};
 use battle::commands::{CommandQueue, Command, UpdateCommands, FireCommand, WalkCommand};
 use battle::units::{Unit, UnitSide};
 use battle::map::Map;
-use resources::{Resources, SetImage};
+use resources::{ImageSource, Image};
+use context::Context;
 use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
 use settings::SkirmishSettings;
-use WindowSize;
-use traits::Dimensions;
 
-const CAMERA_SPEED: f64 = 10.0;
-const CAMERA_ZOOM_SPEED: f64 = 1.0;
+const CAMERA_SPEED: f32 = 10.0;
+const CAMERA_ZOOM_SPEED: f32 = 1.0;
 
 // A cursor on the map with a possible position
 pub struct Cursor {
@@ -74,14 +71,14 @@ impl Battle {
     // Create a new Battle
     pub fn new() -> Battle {
         let scale = 2.0;
-        let width_offset = SetImage::EndTurnButton.width() * -scale;
+        let width_offset = Image::EndTurnButton.width() * -scale;
 
         // Create the UI and add the buttons and text display
 
         let ui = UI::new(
             vec![
                 Button::new(
-                    SetImage::EndTurnButton,
+                    Image::EndTurnButton,
                     0.0,
                     0.0,
                     scale,
@@ -89,7 +86,7 @@ impl Battle {
                     HorizontalAlignment::Bottom
                 ),
                 Button::new(
-                    SetImage::InventoryButton,
+                    Image::InventoryButton,
                     width_offset,
                     0.0,
                     scale,
@@ -97,7 +94,7 @@ impl Battle {
                     HorizontalAlignment::Bottom
                 ),
                 Button::new(
-                    SetImage::ChangeFireModeButton,
+                    Image::ChangeFireModeButton,
                     width_offset * 2.0,
                     0.0,
                     scale,
@@ -143,17 +140,19 @@ impl Battle {
     }
 
     // Handle keypresses
-    pub fn handle_key(&mut self, key: Key, pressed: bool) -> bool {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
         match key {
-            Key::Up    | Key::W => self.keys[0] = pressed,
-            Key::Down  | Key::S => self.keys[1] = pressed,
-            Key::Left  | Key::A => self.keys[2] = pressed,
-            Key::Right | Key::D => self.keys[3] = pressed,
-            Key::O              => self.keys[4] = pressed,
-            Key::P              => self.keys[5] = pressed,
-            Key::Escape         => {
-                self.map.save_skrimish("autosave.sav");
-                return false;
+            VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys[0] = pressed,
+            VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys[1] = pressed,
+            VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys[2] = pressed,
+            VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
+            VirtualKeyCode::O => self.keys[4] = pressed,
+            VirtualKeyCode::P => self.keys[5] = pressed,
+            VirtualKeyCode::Escape => {
+                if pressed {
+                    self.map.save_skrimish("autosave.sav");
+                    return false;
+                }
             }
             _ => {}
         };
@@ -162,10 +161,10 @@ impl Battle {
     }
 
     // Update the battle
-    pub fn update(&mut self, resources: &Resources, dt: f64) -> Option<BattleCallback> {
+    pub fn update(&mut self, ctx: &Context, dt: f32) -> Option<BattleCallback> {
         // Change camera variables if a key is being pressed
-        if self.keys[0] { self.drawer.camera.y -= CAMERA_SPEED * dt; }
-        if self.keys[1] { self.drawer.camera.y += CAMERA_SPEED * dt; }
+        if self.keys[0] { self.drawer.camera.y += CAMERA_SPEED * dt; }
+        if self.keys[1] { self.drawer.camera.y -= CAMERA_SPEED * dt; }
         if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED * dt; }
         if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED * dt; }
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt); }
@@ -192,19 +191,19 @@ impl Battle {
             self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.ref_mut(2));
         }
         // Update the animations
-        self.animations.update(&mut self.map, resources, dt);
+        self.animations.update(&mut self.map, ctx, dt);
 
         None
     }
 
     // Draw both the map and the UI
-    pub fn draw(&mut self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
-        self.drawer.draw_battle(ctx, gl, resources, self);
-        self.draw_ui(ctx, gl, resources);
+    pub fn draw(&mut self, ctx: &mut Context) {
+        self.drawer.draw_battle(ctx, self);
+        self.draw_ui(ctx);
     }
 
     // Draw the UI
-    fn draw_ui(&mut self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
+    fn draw_ui(&mut self, ctx: &mut Context) {
         // Get a string of info about the selected unit
         let selected = match self.selected_unit() {
             Some(unit) => format!(
@@ -254,13 +253,13 @@ impl Battle {
         self.ui.ref_mut(1).text = inventory_string;
 
         // Draw the UI
-        self.ui.draw(ctx, gl, resources);
+        self.ui.draw(ctx);
     }
 
     // Move the cursor on the screen
-    pub fn move_cursor(&mut self, x: f64, y: f64, window_size: &WindowSize) {
+    pub fn move_cursor(&mut self, x: f32, y: f32) {
         // Get the position where the cursor should be
-        let (x, y) = self.drawer.tile_under_cursor(x, y, window_size);
+        let (x, y) = self.drawer.tile_under_cursor(x, y);
 
         // Set cursor position if it is on the map and visible
         self.cursor.position = if x < self.map.tiles.cols &&
@@ -273,9 +272,9 @@ impl Battle {
     }
 
     // Respond to mouse presses
-    pub fn mouse_button(&mut self, button: MouseButton, window_size: &WindowSize, mouse: (f64, f64)) {
+    pub fn mouse_button(&mut self, button: MouseButton, mouse: (f32, f32), ctx: &Context) {
         match button {
-            MouseButton::Left => match self.ui.clicked(window_size, mouse) {
+            MouseButton::Left => match self.ui.clicked(ctx, mouse) {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory

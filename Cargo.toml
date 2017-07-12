@@ -30,10 +30,9 @@ image = "*"
 rodio = "*"
 
 # Engine
-## Base piston dependencies
-piston = "*"
-piston2d-graphics = "*"
-## Glutin for windowing
-pistoncore-glutin_window = "*"
-## OpenGL backend
-piston2d-opengl_graphics = "*"
+## Gfx backend over OpenGL
+gfx = "*"
+gfx_device_gl = "*"
+## Windowing and connecting with Gfx
+glutin = "0.8.1"
+gfx_window_glutin = "*"

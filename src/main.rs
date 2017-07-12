@@ -6,41 +6,37 @@ extern crate toml;
 #[macro_use]
 extern crate serde_derive;
 extern crate bincode;
-extern crate piston;
-extern crate graphics;
-extern crate opengl_graphics;
-extern crate glutin_window;
+#[macro_use]
+extern crate gfx;
+extern crate gfx_device_gl;
+extern crate glutin;
+extern crate gfx_window_glutin;
 extern crate image;
 extern crate rodio;
 
-use piston::window::WindowSettings;
-use piston::event_loop::{Events, EventSettings, EventLoop};
-use piston::input::{Input, Key, Button, MouseButton, Motion};
-use piston::window::Window;
-use graphics::{Context, clear};
-use glutin_window::GlutinWindow;
-use opengl_graphics::{GlGraphics, OpenGL};
+use std::time::Instant;
+
+use glutin::{Event, WindowEvent, ElementState, VirtualKeyCode, MouseButton};
 
 mod battle;
-mod menu;
-mod ui;
 mod weapons;
-#[macro_use]
-mod utils;
+mod items;
+mod ui;
 #[macro_use]
 mod resources;
-mod colours;
-mod items;
+#[macro_use]
+mod utils;
 mod settings;
-mod traits;
+mod menu;
+mod colours;
+mod context;
+mod constants;
 
-use colours::BLACK;
-use battle::Battle;
-use menu::{Menu, MenuCallback};
-use resources::Resources;
+use context::Context;
 use settings::Settings;
+use menu::{Menu, MenuCallback};
+use battle::Battle;
 use battle::map::Map;
-use traits::Dimensions;
 
 const TITLE: &str = "War Against Machines";
 const WINDOW_WIDTH: u32 = 960;
@@ -52,66 +48,42 @@ enum Mode {
     Skirmish
 }
 
-pub struct WindowSize {
-    width: f64,
-    height: f64
-}
-
-impl WindowSize {
-    fn update(&mut self, window: &GlutinWindow) {
-        let size = window.draw_size();
-        self.width = size.width as f64;
-        self.height = size.height as f64;
-    }
-}
-
-impl Dimensions for WindowSize {
-    fn width(&self) -> f64 {self.width}
-    fn height(&self) -> f64 {self.height}
-}
-
 // A struct for holding the game state
 struct App {
-    resources: Resources,
+    ctx: Context,
     mode: Mode,
     menu: menu::Menu,
     skirmish: Battle,
-    window_size: WindowSize,
-    mouse: (f64, f64)
+    mouse: (f32, f32)
 }
 
 impl App {
     // Create a new state, starting on the menu
-    fn new(resources: Resources, settings: Settings) -> App {
+    fn new(ctx: Context, settings: Settings) -> App {
         App {
+            ctx,
             mode: Mode::Menu,
             menu: Menu::new(settings),
             skirmish: Battle::new(),
-            window_size: WindowSize {width: 0.0, height: 0.0},
-            resources,
             mouse: (0.0, 0.0)
         }
     }
 
     // Update the game
-    fn update(&mut self, dt: f64, window: &GlutinWindow) -> bool {
-        self.window_size.update(window);
-
+    fn update(&mut self, dt: f32) {
         if let Mode::Skirmish = self.mode {
-            if self.skirmish.update(&self.resources, dt).is_some() {
+            if self.skirmish.update(&self.ctx, dt).is_some() {
                 self.mode = Mode::Menu;
                 self.skirmish = Battle::new();
             }
         }
-
-        true
     }
 
     // Handle key presses
-    fn handle_key_press(&mut self, key: Key) -> bool {
+    fn handle_key_press(&mut self, key: VirtualKeyCode) -> bool {
         match self.mode {
             // If the mode is the menu, respond to callbacks
-            Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.resources) {
+            Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.ctx) {
                 match callback {
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
@@ -133,91 +105,89 @@ impl App {
     }
 
     // Handle key releases
-    fn handle_key_release(&mut self, key: Key) -> bool {
+    fn handle_key_release(&mut self, key: VirtualKeyCode) {
         if let Mode::Skirmish = self.mode {
-            return self.skirmish.handle_key(key, false);
+            self.skirmish.handle_key(key, false);
         }
-
-        true
     }
 
     // Handle mouse movement
-    fn handle_mouse_motion(&mut self, x: f64, y: f64) -> bool {
+    fn handle_mouse_motion(&mut self, x: i32, y: i32) {
+        let (x, y) = (x as f32 - self.ctx.width / 2.0, self.ctx.height / 2.0 - y as f32);
+
         self.mouse = (x, y);
 
         if let Mode::Skirmish = self.mode {
-            self.skirmish.move_cursor(x, y, &self.window_size);
+            self.skirmish.move_cursor(x, y);
         }
-
-        true
     }
 
     // Handle mouse button presses
-    fn handle_mouse_button(&mut self, button: MouseButton) -> bool {
+    fn handle_mouse_button(&mut self, button: MouseButton) {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.mouse_button(button, &self.window_size, self.mouse);
+            self.skirmish.mouse_button(button, self.mouse, &self.ctx);
         }
-
-        true
     }
 
     // Clear, draw and present the canvas
-    fn render(&mut self, ctx: &Context, gl: &mut GlGraphics) {
-        clear(BLACK, gl);
+    fn render(&mut self) {
+        self.ctx.clear();
 
         match self.mode {
-            Mode::Skirmish => self.skirmish.draw(ctx, gl, &mut self.resources),
-            Mode::Menu => self.menu.render(ctx, gl, &mut self.resources)
+            Mode::Skirmish => self.skirmish.draw(&mut self.ctx),
+            Mode::Menu => self.menu.render(&mut self.ctx),
         }
+
+        self.ctx.flush();
+    }
+
+    fn resize(&mut self, width: u32, height: u32) {
+        self.ctx.resize(width as f32, height as f32);
     }
 }
 
 // The main function
 fn main() {
-    // Set opengl version
-    let opengl = OpenGL::V3_2;
-
     // Load (or use the default) settings
     let settings = Settings::load();
 
-    let mut window: GlutinWindow = WindowSettings::new(TITLE, (WINDOW_WIDTH, WINDOW_HEIGHT))
-        .vsync(true)
-        .opengl(opengl)
-        .build()
-        .unwrap();
-
-    let mut gl = GlGraphics::new(opengl);
-    let mut events = Events::new(EventSettings::new().ups(60));
-
-    let mut resources = Resources::new(
-        bytes!("tileset.png"), 2.0,
+    let events_loop = glutin::EventsLoop::new();
+    let mut ctx = Context::new(
+        &events_loop,
+        TITLE.into(), WINDOW_WIDTH, WINDOW_HEIGHT,
+        bytes!("tileset.png"),
         [
             bytes!("audio/walk.ogg"),
             bytes!("audio/regular_shot.ogg"),
             bytes!("audio/plasma_shot.ogg")
-        ],
+        ]
     );
+    ctx.set(&settings);
 
-    resources.set(&settings);
+    let mut app = App::new(ctx, settings);
+    let mut running = true;
+    let mut start = Instant::now();
 
-    let mut app = App::new(resources, settings);
+    while running {
+        events_loop.poll_events(|Event::WindowEvent{event, ..}| {
+            match event {
+                WindowEvent::Closed => running = false,
+                WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(key), _) => running = app.handle_key_press(key),
+                WindowEvent::KeyboardInput(ElementState::Released, _, Some(key), _) => app.handle_key_release(key),
+                WindowEvent::MouseMoved(x, y) => app.handle_mouse_motion(x, y),
+                WindowEvent::MouseInput(ElementState::Pressed, button) => app.handle_mouse_button(button),
+                WindowEvent::Resized(width, height) => app.resize(width, height),
+                _ => {},
+            };
+        });
 
-    while let Some(event) = events.next(&mut window) {
-        let running = match event {
-            Input::Press(Button::Keyboard(key)) => app.handle_key_press(key),
-            Input::Press(Button::Mouse(button)) => app.handle_mouse_button(button),
-            Input::Release(Button::Keyboard(key)) => app.handle_key_release(key),
-            Input::Move(Motion::MouseCursor(x, y)) => app.handle_mouse_motion(x, y),
-            Input::Render(args) => {
-                gl.draw(args.viewport(), |ctx, gl| app.render(&ctx, gl));
-                true
-            },
-            Input::Update(args) => app.update(args.dt, &window),
-            _ => true
-        };
+        let now = Instant::now();
+        let ns = now.duration_since(start).subsec_nanos();
+        start = now;
 
-        if !running {
-            break;
-        }
+        // Update the game with the delta time in seconds
+        app.update(ns as f32 / 1_000_000_000.0);
+
+        app.render();
     }
 }

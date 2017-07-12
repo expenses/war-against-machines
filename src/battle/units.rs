@@ -10,7 +10,7 @@ use battle::tiles::Tiles;
 use items::{Item, ItemType};
 use weapons::{Weapon, WeaponType};
 use utils::{distance_under, chance_to_hit};
-use resources::SetImage;
+use resources::Image;
 
 // The sight range of units
 pub const UNIT_SIGHT: f32 = 7.5;
@@ -110,7 +110,7 @@ pub struct Unit {
     pub x: usize,
     pub y: usize,
     pub weapon: Weapon,
-    pub image: SetImage,
+    pub image: Image,
     pub name: String,
     pub moves: u16,
     pub max_moves: u16,
@@ -131,7 +131,7 @@ impl Unit {
 
                 Unit {
                     tag, side, x, y, moves, health, id,
-                    image: SetImage::Squaddie,
+                    image: Image::Squaddie,
                     weapon: Weapon::new(*rng.choose(&weapons).unwrap()),
                     name: generate_squaddie_name(),
                     max_moves: moves,
@@ -145,7 +145,7 @@ impl Unit {
 
                 Unit {
                     tag, side, x, y, moves, health, id,
-                    image: SetImage::Machine,
+                    image: Image::Machine,
                     weapon: Weapon::new(WeaponType::PlasmaRifle),
                     name: generate_machine_name(),
                     max_moves: moves,

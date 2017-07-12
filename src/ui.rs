@@ -1,11 +1,8 @@
 // A UI struct to display clickable buttons and text fields
 
-use graphics::{Context, Transformed};
-use traits::Dimensions;
-use opengl_graphics::GlGraphics;
-
-use resources::{Resources, SetImage};
-use WindowSize;
+use resources::{ImageSource, Image};
+use context::Context;
+use colours::WHITE;
 
 // The vertical alignment of an item
 pub enum VerticalAlignment {
@@ -21,30 +18,28 @@ pub enum HorizontalAlignment {
     Bottom
 }
 
-fn get_x(x: f64, width: f64, screen_width: f64, v_align: &VerticalAlignment) -> f64 {
+fn get_x(x: f32, width: f32, screen_width: f32, v_align: &VerticalAlignment) -> f32 {
     match *v_align {
-        VerticalAlignment::Left => x,
-        VerticalAlignment::Middle => (screen_width - width) / 2.0 + x,
-        VerticalAlignment::Right => (screen_width - width) + x
+        VerticalAlignment::Left => x - (screen_width - width) / 2.0,
+        VerticalAlignment::Middle => x,
+        VerticalAlignment::Right => x + (screen_width - width) / 2.0
     }
 }
 
-fn get_y(y: f64, height: f64, screen_height: f64, h_align: &HorizontalAlignment) -> f64 {
+fn get_y(y: f32, height: f32, screen_height: f32, h_align: &HorizontalAlignment) -> f32 {
     match *h_align {
-        HorizontalAlignment::Top => y,
-        HorizontalAlignment::Middle => (screen_height - height) / 2.0 + y,
-        HorizontalAlignment::Bottom => (screen_height - height) + y
+        HorizontalAlignment::Top => (screen_height - height) / 2.0 - y,
+        HorizontalAlignment::Middle => y,
+        HorizontalAlignment::Bottom => -(screen_height - height) / 2.0 - y
     }
 }
 
 // A button on the UI
 pub struct Button {
-    image: SetImage,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-    scale: f64,
+    image: Image,
+    x: f32,
+    y: f32,
+    scale: f32,
     active: bool,
     v_align: VerticalAlignment,
     h_align: HorizontalAlignment
@@ -52,39 +47,44 @@ pub struct Button {
 
 impl Button {
     // Add a new button
-    pub fn new(image: SetImage, x: f64, y: f64, scale: f64, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {     
-        let width = image.width() * scale;
-        let height = image.height() * scale;
-
+    pub fn new(image: Image, x: f32, y: f32, scale: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {     
         Button {
-            x, y, width, height, scale, v_align, h_align, image,
+            x, y, scale, v_align, h_align, image,
             active: true
         }
     }
 
-    // Draw the button at its location and scale
-    fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &Resources) {
-        let x = get_x(self.x, self.width, ctx.width(), &self.v_align);
-        let y = get_y(self.y, self.height, ctx.height(), &self.h_align);
+    fn width(&self) -> f32 {
+        self.image.width() * self.scale
+    }
 
-        resources.render(&self.image, ctx.transform.trans(x, y).scale(self.scale, self.scale), gl)
+    fn height(&self) -> f32 {
+        self.image.height() * self.scale
+    }
+
+    // Draw the button at its location and scale
+    fn draw(&self, ctx: &mut Context) {
+        let x = get_x(self.x, self.width(), ctx.width, &self.v_align);
+        let y = get_y(self.y, self.height(), ctx.height, &self.h_align);
+
+        ctx.render(&self.image, x, y, self.scale)
     }
 
     // Calculate if the button was pressed
-    pub fn clicked(&self, window_size: &WindowSize, x: f64, y: f64) -> bool {
-        let pos_x = get_x(self.x, self.width, window_size.width, &self.v_align);
-        let pos_y = get_y(self.y, self.height, window_size.height, &self.h_align);
+    pub fn clicked(&self, ctx: &Context, x: f32, y: f32) -> bool {
+        let pos_x = get_x(self.x, self.width(), ctx.width, &self.v_align);
+        let pos_y = get_y(self.y, self.height(), ctx.height, &self.h_align);
 
-        x >= pos_x && x <= pos_x + self.width &&
-        y >= pos_y && y <= pos_y + self.height
+        x >= pos_x - self.width() / 2.0 && x <= pos_x + self.width() / 2.0 &&
+        y >= pos_y - self.width() / 2.0 && y <= pos_y + self.height() / 2.0
     }
 }
 
 // A text display on the UI
 pub struct TextDisplay {
     pub text: String,
-    x: f64,
-    y: f64,
+    x: f32,
+    y: f32,
     v_align: VerticalAlignment,
     h_align: HorizontalAlignment,
     active: bool
@@ -92,7 +92,7 @@ pub struct TextDisplay {
 
 impl TextDisplay {
     // Create a new text display
-    pub fn new(x: f64, y: f64, v_align: VerticalAlignment, h_align: HorizontalAlignment, active: bool) -> TextDisplay {
+    pub fn new(x: f32, y: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment, active: bool) -> TextDisplay {
         TextDisplay {
             x, y, v_align, h_align, active,
             text: "".into()
@@ -104,16 +104,16 @@ impl TextDisplay {
     }
 
     // Draw the text display on the screen
-    fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
-        let height = resources.font_height() * self.text.lines().count() as f64;
-        let mut y = get_y(self.y, height, ctx.height(), &self.h_align);
+    fn draw(&self, ctx: &mut Context) {
+        let height = ctx.font_height() * self.text.lines().count() as f32;
+        let mut y = get_y(self.y, height, ctx.height, &self.h_align) + height / 2.0;
         
         for line in self.text.lines() {
-            let width = resources.font_width(line);
-            let x = get_x(self.x, width, ctx.width(), &self.v_align);
+            let width = ctx.font_width(line);
+            let x = get_x(self.x, width, ctx.width, &self.v_align);
 
-            resources.render_text(line, ctx.transform.trans(x, y), gl);
-            y += resources.font_height();
+            ctx.render_text(line, x, y, WHITE);
+            y -= ctx.font_height();
         }
     }
 }
@@ -143,25 +143,25 @@ impl UI {
     }
 
     // Draw all the active buttons and text displays
-    pub fn draw(&self, ctx: &Context, gl: &mut GlGraphics, resources: &mut Resources) {
+    pub fn draw(&self, ctx: &mut Context) {
         for button in &self.buttons {
             if button.active {
-                button.draw(ctx, gl, resources);
+                button.draw(ctx);
             }
         }
 
         for text_display in &self.text_displays {
             if text_display.active {
-                text_display.draw(ctx, gl, resources);
+                text_display.draw(ctx);
             }
         }
     }
 
     // Get the first active clicked button at a location
-    pub fn clicked(&self, window_size: &WindowSize, mouse: (f64, f64)) -> Option<usize> {
+    pub fn clicked(&self, ctx: &Context, mouse: (f32, f32)) -> Option<usize> {
         self.buttons.iter()
             .enumerate()
-            .find(|&(_, button)| button.active && button.clicked(window_size, mouse.0, mouse.1))
+            .find(|&(_, button)| button.active && button.clicked(ctx, mouse.0, mouse.1))
             .map(|(i, _)| i)
     }
 }

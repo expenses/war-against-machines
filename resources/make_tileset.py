@@ -11,7 +11,7 @@ import numpy as np
 TILE_SIZE = 48
 DIRECTORY = "tiles"
 FILES = [
-    ["base/1.png", "base/2.png", "base/fog.png", "pit/top.png", "pit/left.png", "pit/right.png", "pit/bottom.png", "pit/center.png"],
+    ["base/1.png", "base/2.png", "pit/top.png", "pit/left.png", "pit/right.png", "pit/bottom.png", "pit/center.png"],
     ["ruin/1.png", "ruin/2.png", "ruin/3.png", "pit/tl.png", "pit/tr.png", "pit/bl.png", "pit/br.png"],
     ["unit/squaddie.png", "unit/machine.png"],
     ["bullet/regular.png", "bullet/plasma.png"],

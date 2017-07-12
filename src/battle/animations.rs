@@ -6,16 +6,17 @@ use odds::vec::VecExt;
 
 use battle::map::Map;
 use battle::units::Unit;
-use resources::{Resources, SetImage, SoundEffect};
+use resources::{Image, SoundEffect};
 use weapons::WeaponType;
+use context::Context;
 
-const MARGIN: f64 = 5.0;
-const BULLET_SPEED: f64 = 30.0;
-const WALK_SPEED: f64 = 5.0;
+const MARGIN: f32 = 5.0;
+const BULLET_SPEED: f32 = 30.0;
+const WALK_SPEED: f32 = 5.0;
 
 // A pretty simple walk animation
 pub struct Walk {
-    status: f64,
+    status: f32,
     unit_id: u8,
     x: usize,
     y: usize,
@@ -33,7 +34,7 @@ impl Walk {
 
     // Move the animation a step, and return if its still going
     // If not, move the unit
-    fn step(&mut self, map: &mut Map, resources: &Resources, dt: f64) -> bool {
+    fn step(&mut self, map: &mut Map, ctx: &Context, dt: f32) -> bool {
         self.status += WALK_SPEED * dt;
         
         let still_going = self.status <= 1.0;
@@ -42,7 +43,7 @@ impl Walk {
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => {
                     unit.move_to(self.x, self.y, self.cost);
-                    resources.play_sound(SoundEffect::Walk);
+                    ctx.play_sound(SoundEffect::Walk);
                 }
                 _ => return true
             }
@@ -56,15 +57,15 @@ impl Walk {
 
 // A bullet animation for drawing on the screen
 pub struct Bullet {
-    pub x: f64,
-    pub y: f64,
-    pub direction: f64,
+    pub x: f32,
+    pub y: f32,
+    pub direction: f32,
     pub weapon_type: WeaponType,
     left: bool,
     above: bool,
     target_id: u8,
-    target_x: f64,
-    target_y: f64,
+    target_x: f32,
+    target_y: f32,
     will_hit: bool,
     lethal: bool,
     started: bool
@@ -73,10 +74,10 @@ pub struct Bullet {
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
     pub fn new(unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) -> Bullet {
-        let x = unit.x as f64;
-        let y = unit.y as f64;
-        let target_x = target.x as f64;
-        let target_y = target.y as f64;
+        let x = unit.x as f32;
+        let y = unit.y as f32;
+        let target_x = target.x as f32;
+        let target_y = target.y as f32;
         // Calculate the direction of the bullet
         let mut direction = (target_y - y).atan2(target_x - x);
 
@@ -100,15 +101,15 @@ impl Bullet {
     }
     
     // Get the image of the bullet
-    pub fn image(&self) -> SetImage {
+    pub fn image(&self) -> Image {
         self.weapon_type.bullet()
     }
 
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, map: &mut Map, resources: &Resources, dt: f64) -> bool {
+    fn step(&mut self, map: &mut Map, ctx: &Context, dt: f32) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if !self.started {
-            resources.play_sound(self.weapon_type.fire_sound());
+            ctx.play_sound(self.weapon_type.fire_sound());
             self.started = true;
         }
 
@@ -124,8 +125,8 @@ impl Bullet {
             self.above == (self.y < self.target_y)
         )) &&
         // And if the bullet is within a certain margin of the map
-        self.x >= -MARGIN && self.x <= map.tiles.cols as f64 + MARGIN &&
-        self.y >= -MARGIN && self.y <= map.tiles.rows as f64 + MARGIN;
+        self.x >= -MARGIN && self.x <= map.tiles.cols as f32 + MARGIN &&
+        self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN;
 
         // If the bullet is finished and is lethal, kill the target unit
         if !still_going && self.lethal {
@@ -147,15 +148,15 @@ pub type Animations = Vec<Animation>;
 
 // A trait for updating the animations
 pub trait UpdateAnimations {
-    fn update(&mut self, map: &mut Map, resources: &Resources, dt: f64);
+    fn update(&mut self, map: &mut Map, ctx: &Context, dt: f32);
 }
 
 impl UpdateAnimations for Animations {
     // Update all of the animations, keeping only those that are still going
-    fn update(&mut self, map: &mut Map, resources: &Resources, dt: f64) {
+    fn update(&mut self, map: &mut Map, ctx: &Context, dt: f32) {
         self.retain_mut(|mut animation| match *animation {
-            Animation::Walk(ref mut walk) => walk.step(map, resources, dt),
-            Animation::Bullet(ref mut bullet) => bullet.step(map, resources, dt)
+            Animation::Walk(ref mut walk) => walk.step(map, ctx, dt),
+            Animation::Bullet(ref mut bullet) => bullet.step(map, ctx, dt)
         });
     }
 }

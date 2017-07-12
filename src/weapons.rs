@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use resources::{SetImage, SoundEffect};
+use resources::{Image, SoundEffect};
 
 // The type of weapon
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -14,10 +14,10 @@ pub enum WeaponType {
 
 impl WeaponType {
     // Get the corresponding bullet image
-    pub fn bullet(&self) -> SetImage {
+    pub fn bullet(&self) -> Image {
         match *self {
-            WeaponType::PlasmaRifle => SetImage::PlasmaBullet,
-            _ => SetImage::RegularBullet
+            WeaponType::PlasmaRifle => Image::PlasmaBullet,
+            _ => Image::RegularBullet
         }
     }
 
