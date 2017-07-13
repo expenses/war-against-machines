@@ -1,9 +1,9 @@
 // A drawer struct for drawing the map and battle items
 
-use battle::Battle;
-use battle::units::UnitSide;
-use battle::tiles::Visibility;
-use battle::animations::Animation;
+use super::Battle;
+use super::units::UnitSide;
+use super::tiles::Visibility;
+use super::animations::Animation;
 use resources::Image;
 use utils::{clamp_float, convert_rotation};
 use context::Context;
@@ -54,7 +54,7 @@ impl Drawer {
         if self.camera.zoom < ZOOM_MIN { self.camera.zoom = ZOOM_MIN; }
     }
 
-    fn draw_location(&self, ctx: &Context, x: f32, y: f32) -> Option<(f32, f32)> {
+    fn draw_location(&self, ctx: &Context, x: f32, y: f32) -> Option<[f32; 2]> {
         let (max_x, max_y) = (ctx.width / 2.0, ctx.height / 2.0);
         let (tile_width, tile_height) = (TILE_WIDTH / 2.0 * self.camera.zoom, TILE_HEIGHT / 2.0 * self.camera.zoom);
 
@@ -67,15 +67,15 @@ impl Drawer {
             y > -max_y - tile_height &&
             x < max_x + tile_width &&
             y < max_y + tile_height * 2.0 {
-            Some((x, y))
+            Some([x, y])
         } else {
             None
         }
     }
 
     fn draw_if_visible(&self, image: &Image, x: usize, y: usize, ctx: &mut Context) {
-        if let Some((x, y)) = self.draw_location(ctx, x as f32, y as f32) {
-            ctx.render(image, x, y, self.camera.zoom);
+        if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
+            ctx.render(image, dest, self.camera.zoom);
         }
     }
 
@@ -89,20 +89,20 @@ impl Drawer {
         }
 
         // If the tile is on the screen, draw it
-        if let Some((screen_x, screen_y)) = self.draw_location(ctx, x as f32, y as f32) {
+        if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
             // Draw the tile base
             if tile.player_visibility != Visibility::Foggy {
-                ctx.render(&tile.base, screen_x, screen_y, self.camera.zoom);
+                ctx.render(&tile.base, dest, self.camera.zoom);
             } else {
-                ctx.render_with_overlay(&tile.base, screen_x, screen_y, self.camera.zoom, colours::FOGGY);
+                ctx.render_with_overlay(&tile.base, dest, self.camera.zoom, colours::FOGGY);
             }
 
             // Draw the tile decoration
             if let Some(ref obstacle) = tile.obstacle {
                 if tile.player_visibility != Visibility::Foggy {
-                    ctx.render(obstacle, screen_x, screen_y, self.camera.zoom);
+                    ctx.render(obstacle, dest, self.camera.zoom);
                 } else {
-                    ctx.render_with_overlay(obstacle, screen_x, screen_y, self.camera.zoom, colours::FOGGY);
+                    ctx.render_with_overlay(obstacle, dest, self.camera.zoom, colours::FOGGY);
                 }
             }
 
@@ -119,14 +119,14 @@ impl Drawer {
                             Image::Cursor
                         };
 
-                        ctx.render(&image, screen_x, screen_y, self.camera.zoom);
+                        ctx.render(&image, dest, self.camera.zoom);
                     }
                 }
             }
 
             if tile.player_visibility != Visibility::Foggy {
                 for item in &tile.items {
-                    ctx.render(&item.image, screen_x, screen_y, self.camera.zoom);
+                    ctx.render(&item.image, dest, self.camera.zoom);
                 }
 
                 // Draw a unit at the position
@@ -134,11 +134,11 @@ impl Drawer {
                     // Draw the cursor to show that the unit is selected
                     if let Some(selected) = battle.selected {
                         if selected == unit.id {
-                            ctx.render(&Image::CursorUnit, screen_x, screen_y, self.camera.zoom);
+                            ctx.render(&Image::CursorUnit, dest, self.camera.zoom);
                         }
                     }
 
-                    ctx.render(&unit.image, screen_x, screen_y, self.camera.zoom);
+                    ctx.render(&unit.image, dest, self.camera.zoom);
                 }
             }
         }
@@ -177,7 +177,7 @@ impl Drawer {
                 for point in points {
                     total_cost += point.cost;
 
-                    if let Some((x, y)) = self.draw_location(ctx, point.x as f32, point.y as f32) {
+                    if let Some(dest) = self.draw_location(ctx, point.x as f32, point.y as f32) {
                         // Render the path tile
 
                         let image = if total_cost > unit.moves {
@@ -188,7 +188,7 @@ impl Drawer {
                             Image::Path
                         };
 
-                        ctx.render(&image, x, y, self.camera.zoom);
+                        ctx.render(&image, dest, self.camera.zoom);
                     }
                 }
 
@@ -197,9 +197,9 @@ impl Drawer {
                 for point in points {
                     total_cost += point.cost;
 
-                    if let Some((x, y)) = self.draw_location(ctx, point.x as f32, point.y as f32) {
+                    if let Some(dest) = self.draw_location(ctx, point.x as f32, point.y as f32) {
                         // Render the path cost
-                        ctx.render_text(&format!("{}", total_cost), x, y, colours::WHITE);
+                        ctx.render_text(&format!("{}", total_cost), dest[0], dest[1], colours::WHITE);
                     }
                 }
             }
@@ -208,9 +208,9 @@ impl Drawer {
         // Draw the firing crosshair if the cursor is on an ai unit and a unit is selected
         if battle.cursor_on_ai_unit() && battle.selected.is_some() {
             if let Some((x, y)) = battle.cursor.position {
-                if let Some((screen_x, screen_y)) = self.draw_location(ctx, x as f32, y as f32) {
+                if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
                     // Draw the crosshair
-                    ctx.render(&Image::CursorCrosshair, screen_x, screen_y, self.camera.zoom);
+                    ctx.render(&Image::CursorCrosshair, dest, self.camera.zoom);
 
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
                     if let Some((firing, target)) = battle.selected.and_then(|firing|
@@ -227,7 +227,7 @@ impl Drawer {
                             // Render it!
                             ctx.render_text(
                                 &format!("{:0.3}%", hit_chance * 100.0),
-                                screen_x, screen_y + TILE_HEIGHT * self.camera.zoom, colours::WHITE
+                                dest[0], dest[1] + TILE_HEIGHT * self.camera.zoom, colours::WHITE
                             );                            
                         }
                     }
@@ -248,10 +248,9 @@ impl Drawer {
 
             // If the bullet is visable and on screen, draw it with the right rotation
             if visible {
-                if let Some((x, y)) = self.draw_location(ctx, bullet.x, bullet.y) {
+                if let Some(dest) = self.draw_location(ctx, bullet.x, bullet.y) {
                     ctx.render_with_rotation(
-                        &bullet.image(),
-                        x, y, self.camera.zoom, convert_rotation(bullet.direction)
+                        &bullet.image(), dest, self.camera.zoom, convert_rotation(bullet.direction)
                     );
                 }
             }

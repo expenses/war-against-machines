@@ -3,7 +3,7 @@
 use rand;
 use rand::Rng;
 
-use battle::units::{UnitSide, Units};
+use super::units::{UnitSide, Units};
 use items::{Item, ItemType};
 use resources::Image;
 

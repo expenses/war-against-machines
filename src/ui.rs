@@ -1,36 +1,40 @@
 // A UI struct to display clickable buttons and text fields
 
-use resources::{ImageSource, Image};
+use glutin::VirtualKeyCode;
+
+use resources::{ImageSource, Image, ToChar};
 use context::Context;
 use colours::WHITE;
 
 // The vertical alignment of an item
-pub enum VerticalAlignment {
+#[derive(Clone, Copy)]
+pub enum Vertical {
     Left,
     Middle,
     Right
 }
 
 // The horizontal alignment of an item
-pub enum HorizontalAlignment {
+#[derive(Clone, Copy)]
+pub enum Horizontal {
     Top,
     Middle,
     Bottom
 }
 
-fn get_x(x: f32, width: f32, screen_width: f32, v_align: &VerticalAlignment) -> f32 {
+fn get_x(x: f32, width: f32, screen_width: f32, v_align: &Vertical) -> f32 {
     match *v_align {
-        VerticalAlignment::Left => x - (screen_width - width) / 2.0,
-        VerticalAlignment::Middle => x,
-        VerticalAlignment::Right => x + (screen_width - width) / 2.0
+        Vertical::Left => x - (screen_width - width) / 2.0,
+        Vertical::Middle => x,
+        Vertical::Right => x + (screen_width - width) / 2.0
     }
 }
 
-fn get_y(y: f32, height: f32, screen_height: f32, h_align: &HorizontalAlignment) -> f32 {
+fn get_y(y: f32, height: f32, screen_height: f32, h_align: &Horizontal) -> f32 {
     match *h_align {
-        HorizontalAlignment::Top => (screen_height - height) / 2.0 - y,
-        HorizontalAlignment::Middle => y,
-        HorizontalAlignment::Bottom => -(screen_height - height) / 2.0 - y
+        Horizontal::Top => (screen_height - height) / 2.0 - y,
+        Horizontal::Middle => y,
+        Horizontal::Bottom => -(screen_height - height) / 2.0 - y
     }
 }
 
@@ -41,13 +45,13 @@ pub struct Button {
     y: f32,
     scale: f32,
     active: bool,
-    v_align: VerticalAlignment,
-    h_align: HorizontalAlignment
+    v_align: Vertical,
+    h_align: Horizontal
 }
 
 impl Button {
     // Add a new button
-    pub fn new(image: Image, x: f32, y: f32, scale: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment) -> Button {     
+    pub fn new(image: Image, x: f32, y: f32, scale: f32, v_align: Vertical, h_align: Horizontal) -> Button {     
         Button {
             x, y, scale, v_align, h_align, image,
             active: true
@@ -69,7 +73,7 @@ impl Button {
         let x = get_x(self.x, self.width(), ctx.width, &self.v_align);
         let y = get_y(self.y, self.height(), ctx.height, &self.h_align);
 
-        ctx.render(&self.image, x, y, self.scale)
+        ctx.render(&self.image, [x, y], self.scale)
     }
 
     // Calculate if the button was pressed
@@ -87,14 +91,14 @@ pub struct TextDisplay {
     pub text: String,
     x: f32,
     y: f32,
-    v_align: VerticalAlignment,
-    h_align: HorizontalAlignment,
+    v_align: Vertical,
+    h_align: Horizontal,
     active: bool
 }
 
 impl TextDisplay {
     // Create a new text display
-    pub fn new(x: f32, y: f32, v_align: VerticalAlignment, h_align: HorizontalAlignment, active: bool) -> TextDisplay {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool) -> TextDisplay {
         TextDisplay {
             x, y, v_align, h_align, active,
             text: "".into()
@@ -119,30 +123,78 @@ impl TextDisplay {
             y -= ctx.font_height();
         }
     }
+
+    pub fn toggle(&mut self) {
+        self.active = !self.active;
+    }
+}
+
+pub struct TextInput {
+    title: TextDisplay,
+    input: TextDisplay,
+    pub active: bool
+}
+
+impl TextInput {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, ctx: &Context, display: &str) -> TextInput {
+        let mut title = TextDisplay::new(x, y, v_align, h_align, active);
+        title.text = display.into();
+
+        TextInput {
+            title, active,
+            input: TextDisplay::new(x, y - ctx.font_height(), v_align, h_align, active)
+        }
+    }
+
+    fn draw(&self, ctx: &mut Context) {
+        self.title.draw(ctx);
+        self.input.draw(ctx);
+    }
+
+    pub fn toggle(&mut self) {
+        self.active = !self.active;
+        self.title.active = self.active;
+        self.input.active = self.active;
+    }
+
+    pub fn handle_key(&mut self, key: VirtualKeyCode) {
+        if key == VirtualKeyCode::Back {
+            self.input.text.pop();
+        } else {
+            self.input.text.push(match key.to_char() {
+                '�' => return,
+                character => character
+            });
+        }
+    }
+
+    pub fn text(&self) -> &str {
+        &self.input.text
+    }
 }
 
 // The UI struct
 pub struct UI {
     buttons: Vec<Button>,
-    text_displays: Vec<TextDisplay>
+    text_displays: Vec<TextDisplay>,
+    text_inputs: Vec<TextInput>
 }
 
 impl UI {
     // Create a new UI with vecs of buttons and text displays
-    pub fn new(buttons: Vec<Button>, text_displays: Vec<TextDisplay>) -> UI {
+    pub fn new(buttons: Vec<Button>, text_displays: Vec<TextDisplay>, text_inputs: Vec<TextInput>) -> UI {
         UI {
-            buttons, text_displays
+            buttons, text_displays, text_inputs
         }
     }
 
-    // Toggle if a text display is active or not
-    pub fn toggle_text_display(&mut self, display: usize) {
-        self.text_displays[display].active = !self.text_displays[display].active;
+    // Get a mutable reference to a text display
+    pub fn text_display(&mut self, display: usize) -> &mut TextDisplay {
+        &mut self.text_displays[display]
     }
 
-    // Get a mutable reference to a text display
-    pub fn ref_mut(&mut self, display: usize) -> &mut TextDisplay {
-        &mut self.text_displays[display]
+    pub fn text_input(&mut self, input: usize) -> &mut TextInput {
+        &mut self.text_inputs[input]
     }
 
     // Draw all the active buttons and text displays
@@ -156,6 +208,12 @@ impl UI {
         for text_display in &self.text_displays {
             if text_display.active {
                 text_display.draw(ctx);
+            }
+        }
+
+        for text_input in &self.text_inputs {
+            if text_input.active {
+                text_input.draw(ctx);
             }
         }
     }

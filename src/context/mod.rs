@@ -9,12 +9,11 @@ mod renderer;
 
 use colours;
 use settings::Settings;
-use resources::{ImageSource, Image, SoundEffect};
+use resources::{ImageSource, Image, SoundEffect, FONT_HEIGHT};
 use self::renderer::{Renderer, Properties}; 
 
 // The size of a tile
 const CHARACTER_GAP: f32 = 1.0;
-use constants::FONT_HEIGHT;
 
 // Use reference-counting to avoid cloning the source each time
 type Audio = Rc<Vec<u8>>;
@@ -29,7 +28,7 @@ pub struct Context {
     audio: [Audio; 3],
     pub width: f32,
     pub height: f32,
-    pub font_size: f32,
+    pub ui_scale: f32,
 }
 
 impl Context {
@@ -41,7 +40,7 @@ impl Context {
             renderer,
             width: width as f32,
             height: height as f32,
-            font_size: 2.0,
+            ui_scale: 2.0,
             volume: 100,
             audio: [load_audio(audio[0]), load_audio(audio[1]), load_audio(audio[2])]
         }
@@ -61,7 +60,7 @@ impl Context {
         x -= self.font_width(string) / 2.0;
 
         // get the scale to render the text at
-        let scale = self.font_size;
+        let scale = self.ui_scale;
 
         // Render each character
         for character in string.chars() {
@@ -71,9 +70,10 @@ impl Context {
             // Render the character
             self.renderer.render(Properties {
                 src: character.source(),
-                dest: [x, y, character.width() * scale, character.height() * scale],
+                dest: [x, y],
                 rotation: 0.0,
-                overlay_colour: colour
+                overlay_colour: colour,
+                scale: scale
             });
 
             // Move to the start of the next character
@@ -82,43 +82,41 @@ impl Context {
     }
 
     // Render an image
-    pub fn render(&mut self, image: &Image, x: f32, y: f32, scale: f32) {
+    pub fn render(&mut self, image: &Image, dest: [f32; 2], scale: f32) {
         self.renderer.render(Properties {
             src: image.source(),
-            dest: [x, y, image.width() * scale, image.height() * scale],
+            dest, scale,
             rotation: 0.0,
-            overlay_colour: colours::ALPHA
+            overlay_colour: colours::ALPHA,
         });
     }
 
     // Render an image with a colour overlay
-    pub fn render_with_overlay(&mut self, image: &Image, x: f32, y: f32, scale: f32, colour: [f32; 4]) {
+    pub fn render_with_overlay(&mut self, image: &Image, dest: [f32; 2], scale: f32, overlay_colour: [f32; 4]) {
         self.renderer.render(Properties {
             src: image.source(),
-            dest: [x, y, image.width() * scale, image.height() * scale],
+            dest, scale, overlay_colour,
             rotation: 0.0,
-            overlay_colour: colour
         });
     }
 
     // Render an image with a particular rotation
-    pub fn render_with_rotation(&mut self, image: &Image, x: f32, y: f32, scale: f32, rotation: f32) {
+    pub fn render_with_rotation(&mut self, image: &Image, dest: [f32; 2], scale: f32, rotation: f32) {
         self.renderer.render(Properties {
             src: image.source(),
-            dest: [x, y, image.width() * scale, image.height() * scale],
-            rotation: rotation,
-            overlay_colour: colours::ALPHA
+            dest, scale, rotation,
+            overlay_colour: colours::ALPHA,
         });
     }
 
     // Get the width that a string would be rendered at
     pub fn font_width(&self, string: &str) -> f32 {
-        string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.font_size)
+        string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.ui_scale)
     }
 
     // Get the height of rendered text
     pub fn font_height(&self) -> f32 {
-        FONT_HEIGHT * self.font_size
+        FONT_HEIGHT * self.ui_scale
     }
 
     // Flush the renderer

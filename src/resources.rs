@@ -1,7 +1,10 @@
-use constants::FONT_HEIGHT;
+// Image and text resources
+
+use glutin::VirtualKeyCode;
 
 const TILE: f32 = 48.0;
 const FONT_Y: f32 = TILE * 9.5;
+pub const FONT_HEIGHT: f32 = 8.0;
 
 // include_bytes! but prepends the resources directory
 macro_rules! bytes {
@@ -75,6 +78,7 @@ pub enum Image {
     EndTurnButton,
     InventoryButton,
     ChangeFireModeButton,
+    SaveGameButton,
 
     LeftEdge,
     RightEdge,
@@ -132,6 +136,7 @@ impl ImageSource for Image {
             Image::EndTurnButton => tiles!(0, 9, 1, 0.5),
             Image::InventoryButton => tiles!(1, 9, 1, 0.5),
             Image::ChangeFireModeButton => tiles!(2, 9, 1, 0.5),
+            Image::SaveGameButton => tiles!(3, 9, 1, 0.5),
         }
     }
 
@@ -240,4 +245,55 @@ pub enum SoundEffect {
     Walk,
     RegularShot,
     PlasmaShot,
+}
+
+pub trait ToChar {
+    fn to_char(&self) -> char;
+}
+
+impl ToChar for VirtualKeyCode {
+    fn to_char(&self) -> char {
+        match *self {
+            VirtualKeyCode::A => 'a',
+            VirtualKeyCode::B => 'b',
+            VirtualKeyCode::C => 'c',
+            VirtualKeyCode::D => 'd',
+            VirtualKeyCode::E => 'e',
+            VirtualKeyCode::F => 'f',
+            VirtualKeyCode::G => 'g',
+            VirtualKeyCode::H => 'h',
+            VirtualKeyCode::I => 'i',
+            VirtualKeyCode::J => 'j',
+            VirtualKeyCode::K => 'k',
+            VirtualKeyCode::L => 'l',
+            VirtualKeyCode::M => 'm',
+            VirtualKeyCode::N => 'n',
+            VirtualKeyCode::O => 'o',
+            VirtualKeyCode::P => 'p',
+            VirtualKeyCode::Q => 'q',
+            VirtualKeyCode::R => 'r',
+            VirtualKeyCode::S => 's',
+            VirtualKeyCode::T => 't',
+            VirtualKeyCode::U => 'u',
+            VirtualKeyCode::V => 'v',
+            VirtualKeyCode::W => 'w',
+            VirtualKeyCode::X => 'x',
+            VirtualKeyCode::Y => 'y',
+            VirtualKeyCode::Z => 'z',
+            VirtualKeyCode::Key1 => '1',
+            VirtualKeyCode::Key2 => '2',
+            VirtualKeyCode::Key3 => '3',
+            VirtualKeyCode::Key4 => '4',
+            VirtualKeyCode::Key5 => '5',
+            VirtualKeyCode::Key6 => '6',
+            VirtualKeyCode::Key7 => '7',
+            VirtualKeyCode::Key8 => '8',
+            VirtualKeyCode::Key9 => '9',
+            VirtualKeyCode::Key0 => '0',            
+            VirtualKeyCode::Minus => '-',
+            VirtualKeyCode::Period => '.',
+            VirtualKeyCode::Space => ' ',
+            _ => '�'
+        }
+    }
 }

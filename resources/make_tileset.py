@@ -20,7 +20,7 @@ FILES = [
     ["path/default.png", "path/no_weapon.png", "path/unreachable.png"],
     ["edge/left.png", "edge/right.png"],
     ["title.png"],
-    ["button/end_turn.png", "button/inventory.png", "button/change_fire_mode.png"],
+    ["button/end_turn.png", "button/inventory.png", "button/change_fire_mode.png", "button/save_game.png"],
     ["font.png"]
 ]
 

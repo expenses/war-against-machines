@@ -30,7 +30,6 @@ mod settings;
 mod menu;
 mod colours;
 mod context;
-mod constants;
 
 use context::Context;
 use settings::Settings;
@@ -61,11 +60,11 @@ impl App {
     // Create a new state, starting on the menu
     fn new(ctx: Context, settings: Settings) -> App {
         App {
-            ctx,
             mode: Mode::Menu,
             menu: Menu::new(settings),
-            skirmish: Battle::new(),
-            mouse: (0.0, 0.0)
+            skirmish: Battle::new(&ctx),
+            mouse: (0.0, 0.0),
+            ctx
         }
     }
 
@@ -74,7 +73,7 @@ impl App {
         if let Mode::Skirmish = self.mode {
             if self.skirmish.update(&self.ctx, dt).is_some() {
                 self.mode = Mode::Menu;
-                self.skirmish = Battle::new();
+                self.skirmish = Battle::new(&self.ctx);
             }
         }
     }
@@ -185,7 +184,7 @@ fn main() {
         let ns = now.duration_since(start).subsec_nanos();
         start = now;
 
-        // Update the game with the delta time in seconds
+        // Update the game with the delta time in seconds (divided by 1 billion)
         app.update(ns as f32 / 1_000_000_000.0);
 
         app.render();

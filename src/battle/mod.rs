@@ -13,15 +13,15 @@ use glutin::{VirtualKeyCode, MouseButton};
 
 use std::fmt;
 
-use battle::drawer::Drawer;
-use battle::paths::{pathfind, PathPoint};
-use battle::animations::{Animations, UpdateAnimations};
-use battle::commands::{CommandQueue, Command, UpdateCommands, FireCommand, WalkCommand};
-use battle::units::{Unit, UnitSide};
-use battle::map::Map;
+use self::drawer::Drawer;
+use self::paths::{pathfind, PathPoint};
+use self::animations::{Animations, UpdateAnimations};
+use self::commands::{CommandQueue, Command, UpdateCommands, FireCommand, WalkCommand};
+use self::units::{Unit, UnitSide};
+use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
-use ui::{UI, Button, TextDisplay, VerticalAlignment, HorizontalAlignment};
+use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal};
 use settings::SkirmishSettings;
 
 const CAMERA_SPEED: f32 = 10.0;
@@ -69,9 +69,8 @@ pub struct Battle {
 
 impl Battle {
     // Create a new Battle
-    pub fn new() -> Battle {
-        let scale = 2.0;
-        let width_offset = Image::EndTurnButton.width() * -scale;
+    pub fn new(ctx: &Context) -> Battle {
+        let width_offset = - Image::EndTurnButton.width() * ctx.ui_scale;
 
         // Create the UI and add the buttons and text display
 
@@ -79,33 +78,32 @@ impl Battle {
             vec![
                 Button::new(
                     Image::EndTurnButton,
-                    0.0,
-                    0.0,
-                    scale,
-                    VerticalAlignment::Right,
-                    HorizontalAlignment::Bottom
+                    0.0, 0.0, ctx.ui_scale,
+                    Vertical::Right, Horizontal::Bottom
                 ),
                 Button::new(
                     Image::InventoryButton,
-                    width_offset,
-                    0.0,
-                    scale,
-                    VerticalAlignment::Right,
-                    HorizontalAlignment::Bottom
+                    width_offset, 0.0, ctx.ui_scale,
+                    Vertical::Right, Horizontal::Bottom
                 ),
                 Button::new(
                     Image::ChangeFireModeButton,
-                    width_offset * 2.0,
-                    0.0,
-                    scale,
-                    VerticalAlignment::Right,
-                    HorizontalAlignment::Bottom
+                    width_offset * 2.0, 0.0, ctx.ui_scale,
+                    Vertical::Right, Horizontal::Bottom
+                ),
+                Button::new(
+                    Image::SaveGameButton,
+                    width_offset * 3.0, 0.0, ctx.ui_scale,
+                    Vertical::Right, Horizontal::Bottom
                 )
             ],
             vec![
-                TextDisplay::new(0.0, 10.0, VerticalAlignment::Middle, HorizontalAlignment::Top, true),
-                TextDisplay::new(0.0, 0.0, VerticalAlignment::Middle, HorizontalAlignment::Middle, false),
-                TextDisplay::new(10.0, -10.0, VerticalAlignment::Left, HorizontalAlignment::Bottom, true)
+                TextDisplay::new(0.0, 10.0, Vertical::Middle, Horizontal::Top, true),
+                TextDisplay::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false),
+                TextDisplay::new(10.0, -10.0, Vertical::Left, Horizontal::Bottom, true)
+            ],
+            vec![
+                TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, ctx, "Save game to:")
             ]
         );
 
@@ -141,21 +139,31 @@ impl Battle {
 
     // Handle keypresses
     pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
-        match key {
-            VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys[0] = pressed,
-            VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys[1] = pressed,
-            VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys[2] = pressed,
-            VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
-            VirtualKeyCode::O => self.keys[4] = pressed,
-            VirtualKeyCode::P => self.keys[5] = pressed,
-            VirtualKeyCode::Escape => {
-                if pressed {
-                    self.map.save_skrimish("autosave.sav");
-                    return false;
-                }
+        if key == VirtualKeyCode::Escape && pressed {
+            self.map.save_skrimish(None);
+            return false;
+        }
+
+        let input = self.ui.text_input(0);
+
+        if input.active && pressed {
+            if key == VirtualKeyCode::Return {
+                self.map.save_skrimish(Some(input.text()));
+                input.toggle();
+            } else {
+                input.handle_key(key);
             }
-            _ => {}
-        };
+        } else {
+            match key {
+                VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys[0] = pressed,
+                VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys[1] = pressed,
+                VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys[2] = pressed,
+                VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
+                VirtualKeyCode::O => self.keys[4] = pressed,
+                VirtualKeyCode::P => self.keys[5] = pressed,
+                _ => {}
+            };
+        }
 
         true
     }
@@ -177,7 +185,7 @@ impl Battle {
             
             self.controller = Controller::Player;
             self.map.turn += 1;
-            self.ui.ref_mut(2).append(&format!("Turn {} started", self.map.turn));
+            self.ui.text_display(2).append(&format!("Turn {} started", self.map.turn));
 
             if !self.map.units.any_alive(UnitSide::Player) {
                 return Some(BattleCallback::Lost);
@@ -188,7 +196,7 @@ impl Battle {
         
         // Update the command queue if there are no animations in progress
         if self.animations.is_empty() {
-            self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.ref_mut(2));
+            self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.text_display(2));
         }
         // Update the animations
         self.animations.update(&mut self.map, ctx, dt);
@@ -214,7 +222,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.ref_mut(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
+        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
 
         // Create the inventory string
         let inventory_string = match self.selected_unit() {
@@ -250,7 +258,7 @@ impl Battle {
             _ => "No unit selected".into()
         };
         
-        self.ui.ref_mut(1).text = inventory_string;
+        self.ui.text_display(1).text = inventory_string;
 
         // Draw the UI
         self.ui.draw(ctx);
@@ -278,11 +286,12 @@ impl Battle {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
-                Some(1) => self.ui.toggle_text_display(1),
+                Some(1) => self.ui.text_display(1).toggle(),
                 // Change the selected units fire mode
                 Some(2) => if let Some(unit) = self.selected.and_then(|selected| self.map.units.get_mut(selected)) {
                     unit.weapon.change_mode();
                 },
+                Some(3) => self.ui.text_input(0).toggle(),
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor.position {
                     self.path = None;

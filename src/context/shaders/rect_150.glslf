@@ -7,9 +7,10 @@ out vec4 target;
 
 layout (std140) uniform Properties {
     vec4 prop_src;
-    vec4 prop_dest;
     vec4 prop_overlay_colour;
+    vec2 prop_dest;
     float prop_rotation;
+    float prop_scale;
 };
 
 void main() {

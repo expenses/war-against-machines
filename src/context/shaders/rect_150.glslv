@@ -7,9 +7,10 @@ out vec2 out_uv;
 
 layout (std140) uniform Properties {
     vec4 prop_src;
-    vec4 prop_dest;
     vec4 prop_overlay_colour;
+    vec2 prop_dest;
     float prop_rotation;
+    float prop_scale;
 };
 
 layout (std140) uniform Global {
@@ -28,7 +29,7 @@ void main() {
     mat2 rotation = mat2(cos(prop_rotation), -sin(prop_rotation), sin(prop_rotation), cos(prop_rotation));
 
     // Get the output position
-    vec2 pos = (in_pos * rotation * prop_dest.zw + prop_dest.xy * 2) / global_resolution;
+    vec2 pos = (in_pos * rotation * prop_src.zw * prop_scale + prop_dest * 2) / global_resolution;
 
     // Set the position
     gl_Position = vec4(pos, 0.0, 1.0);

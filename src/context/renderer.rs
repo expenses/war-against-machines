@@ -63,9 +63,10 @@ gfx_defines! {
     // Settings for the current image
     constant Properties {
         src: [f32; 4] = "prop_src",
-        dest: [f32; 4] = "prop_dest",
         overlay_colour: [f32; 4] = "prop_overlay_colour",
+        dest: [f32; 2] = "prop_dest",
         rotation: f32 = "prop_rotation",
+        scale: f32 = "prop_scale",
     }
     
     // The pipeline

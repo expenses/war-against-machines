@@ -1,7 +1,7 @@
 // A Map struct that combines Tiles and Units for convenience
 
-use battle::units::{UnitSide, Units};
-use battle::tiles::{Visibility, Tiles};
+use super::units::{UnitSide, Units};
+use super::tiles::{Visibility, Tiles};
 
 use std::fs::{File, create_dir_all};
 use std::path::Path;
@@ -9,6 +9,8 @@ use std::path::Path;
 use bincode;
 
 const SIZE_LIMIT: bincode::Infinite = bincode::Infinite;
+const SAVES: &str = "savegames/skirmishes";
+const AUTOSAVE: &str = "autosave.sav";
 
 // The Map struct
 #[derive(Serialize, Deserialize)]
@@ -45,15 +47,16 @@ impl Map {
 
     // Load a skirmish if possible
     pub fn load_skirmish(filename: &str) -> Option<Map> {
-        let path = Path::new("savegames/skirmishes").join(filename);
+        let path = Path::new(SAVES).join(filename);
 
         File::open(path).ok()
             .and_then(|mut file| bincode::deserialize_from(&mut file, SIZE_LIMIT).ok())
     }
 
     // Save the skirmish
-    pub fn save_skrimish(&self, filename: &str) -> Option<()> {
-        let directory = Path::new("savegames/skirmishes");
+    pub fn save_skrimish(&self, filename: Option<&str>) -> Option<()> {
+        let filename = filename.unwrap_or(AUTOSAVE);
+        let directory = Path::new(SAVES);
 
         if !directory.exists() && create_dir_all(&directory).is_err() {
             return None;

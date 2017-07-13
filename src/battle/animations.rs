@@ -4,8 +4,8 @@ use rand;
 use rand::distributions::{IndependentSample, Range};
 use odds::vec::VecExt;
 
-use battle::map::Map;
-use battle::units::Unit;
+use super::map::Map;
+use super::units::Unit;
 use resources::{Image, SoundEffect};
 use weapons::WeaponType;
 use context::Context;
@@ -116,8 +116,6 @@ impl Bullet {
         // Move the bullet
         self.x += self.direction.cos() * BULLET_SPEED * dt;
         self.y += self.direction.sin() * BULLET_SPEED * dt;
-
-        // Work out if the bullet is currently traveling or has reached the destination
 
         // If the bullet won't hit the target or hasn't hit the target
         let still_going = (!self.will_hit || (

@@ -6,7 +6,7 @@ use rand::Rng;
 use std::fmt;
 use std::slice::{Iter, IterMut};
 
-use battle::tiles::Tiles;
+use super::tiles::Tiles;
 use items::{Item, ItemType};
 use weapons::{Weapon, WeaponType};
 use utils::{distance_under, chance_to_hit};

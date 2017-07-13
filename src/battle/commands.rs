@@ -2,10 +2,10 @@
 
 use rand;
 
-use battle::map::Map;
-use battle::units::{Unit, UnitSide};
-use battle::paths::PathPoint;
-use battle::animations::{Walk, Bullet, Animation, Animations};
+use super::map::Map;
+use super::units::{Unit, UnitSide};
+use super::paths::PathPoint;
+use super::animations::{Walk, Bullet, Animation, Animations};
 use ui::TextDisplay;
 
 // Finish a units moves for a turn by setting them to 0

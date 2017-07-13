@@ -4,8 +4,8 @@ use pathfinding;
 
 use std::cmp::{min, max};
 
-use battle::map::Map;
-use battle::units::Unit;
+use super::map::Map;
+use super::units::Unit;
 
 // The cost for a unit to walk laterally
 pub const WALK_LATERAL_COST: u16 = 2;
