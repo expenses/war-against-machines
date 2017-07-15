@@ -4,11 +4,12 @@ use super::units::{UnitSide, Units};
 use super::tiles::{Visibility, Tiles};
 
 use std::fs::{File, create_dir_all};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use bincode;
 
 const SIZE_LIMIT: bincode::Infinite = bincode::Infinite;
+const EXTENSION: &str = ".sav";
 const SAVES: &str = "savegames/skirmishes";
 const AUTOSAVE: &str = "autosave.sav";
 
@@ -46,7 +47,7 @@ impl Map {
     }
 
     // Load a skirmish if possible
-    pub fn load_skirmish(filename: &str) -> Option<Map> {
+    pub fn load(filename: &str) -> Option<Map> {
         let path = Path::new(SAVES).join(filename);
 
         File::open(path).ok()
@@ -54,15 +55,28 @@ impl Map {
     }
 
     // Save the skirmish
-    pub fn save_skrimish(&self, filename: Option<&str>) -> Option<()> {
-        let filename = filename.unwrap_or(AUTOSAVE);
+    pub fn save(&self, filename: Option<String>) -> Option<PathBuf> {
+        let filename = filename
+            .map(|mut filename| {
+                filename.push_str(EXTENSION);
+                filename
+            })
+            .unwrap_or(AUTOSAVE.into());
+        
+        if filename.starts_with('.') {
+            return None;
+        }
+
         let directory = Path::new(SAVES);
 
         if !directory.exists() && create_dir_all(&directory).is_err() {
             return None;
         }
 
-        File::create(directory.join(filename)).ok()
+        let save = directory.join(filename);
+
+        File::create(&save).ok()
             .and_then(|mut file| bincode::serialize_into(&mut file, self, SIZE_LIMIT).ok())
+            .map(|_| save)
     }
 }

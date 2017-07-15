@@ -168,8 +168,8 @@ impl TextInput {
         }
     }
 
-    pub fn text(&self) -> &str {
-        &self.input.text
+    pub fn text(&self) -> String {
+        self.input.text.clone()
     }
 }
 

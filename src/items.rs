@@ -11,7 +11,6 @@ pub enum ItemType {
     Weapon,
     SquaddieCorpse,
     MachineCorpse,
-    Skeleton
 }
 
 // An item with a weight value and image
@@ -29,7 +28,6 @@ impl fmt::Display for Item {
             ItemType::Weapon =>         "Weapon",
             ItemType::SquaddieCorpse => "Squaddie Corpse",
             ItemType::MachineCorpse =>  "Machine Corpse",
-            ItemType::Skeleton =>       "Skeleton"
         }, self.weight)
     }
 }
@@ -42,7 +40,6 @@ impl Item {
             ItemType::Weapon =>         (4, Image::Weapon),
             ItemType::SquaddieCorpse => (6, Image::SquaddieCorpse),
             ItemType::MachineCorpse =>  (8, Image::MachineCorpse),
-            ItemType::Skeleton =>       (4, Image::Skeleton)
         };
 
         Item {

@@ -90,20 +90,23 @@ impl Drawer {
 
         // If the tile is on the screen, draw it
         if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
-            // Draw the tile base
-            if tile.player_visibility != Visibility::Foggy {
-                ctx.render(&tile.base, dest, self.camera.zoom);
+            let overlay = if tile.player_visibility == Visibility::Foggy {
+                colours::FOGGY
             } else {
-                ctx.render_with_overlay(&tile.base, dest, self.camera.zoom, colours::FOGGY);
-            }
+                colours::ALPHA
+            };
+
+            // Draw the tile base
+            ctx.render_with_overlay(&tile.base, dest, self.camera.zoom, overlay);
 
             // Draw the tile decoration
+            if let Some(ref decoration) = tile.decoration {
+                ctx.render_with_overlay(decoration, dest, self.camera.zoom, overlay);
+            }
+
+            // Draw the tile obstacle
             if let Some(ref obstacle) = tile.obstacle {
-                if tile.player_visibility != Visibility::Foggy {
-                    ctx.render(obstacle, dest, self.camera.zoom);
-                } else {
-                    ctx.render_with_overlay(obstacle, dest, self.camera.zoom, colours::FOGGY);
-                }
+                ctx.render_with_overlay(obstacle, dest, self.camera.zoom, overlay);
             }
 
             // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
@@ -199,7 +202,7 @@ impl Drawer {
 
                     if let Some(dest) = self.draw_location(ctx, point.x as f32, point.y as f32) {
                         // Render the path cost
-                        ctx.render_text(&format!("{}", total_cost), dest[0], dest[1], colours::WHITE);
+                        ctx.render_text(&total_cost.to_string(), dest[0], dest[1], colours::WHITE);
                     }
                 }
             }

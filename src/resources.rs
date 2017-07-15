@@ -43,6 +43,7 @@ pub enum Image {
     Ruin1,
     Ruin2,
     Ruin3,
+    Ruin4,
 
     Squaddie,
     Machine,
@@ -62,7 +63,6 @@ pub enum Image {
 
     SquaddieCorpse,
     MachineCorpse,
-    Skeleton,
     Scrap,
     Weapon,
 
@@ -82,6 +82,8 @@ pub enum Image {
 
     LeftEdge,
     RightEdge,
+    Skeleton,
+    Rubble,
 
     Title
 }
@@ -93,18 +95,19 @@ impl ImageSource for Image {
             Image::Base1 => tiles!(0, 0, 1, 1),
             Image::Base2 => tiles!(1, 0, 1, 1),
             
-            Image::Ruin1 => tiles!(0, 1, 1, 1),
-            Image::Ruin2 => tiles!(1, 1, 1, 1),
-            Image::Ruin3 => tiles!(2, 1, 1, 1),
+            Image::Ruin1 => tiles!(2, 0, 1, 1),
+            Image::Ruin2 => tiles!(0, 1, 1, 1),
+            Image::Ruin3 => tiles!(1, 1, 1, 1),
+            Image::Ruin4 => tiles!(2, 1, 1, 1),
 
             Image::Squaddie => tiles!(0, 2, 1, 1),
             Image::Machine => tiles!(1, 2, 1, 1),
 
-            Image::PitTop => tiles!(2, 0, 1, 1),
-            Image::PitLeft => tiles!(3, 0, 1, 1),
-            Image::PitRight => tiles!(4, 0, 1, 1),
-            Image::PitBottom => tiles!(5, 0, 1, 1),
-            Image::PitCenter => tiles!(6, 0, 1, 1),
+            Image::PitTop => tiles!(3, 0, 1, 1),
+            Image::PitLeft => tiles!(4, 0, 1, 1),
+            Image::PitRight => tiles!(5, 0, 1, 1),
+            Image::PitBottom => tiles!(6, 0, 1, 1),
+            Image::PitCenter => tiles!(7, 0, 1, 1),
             Image::PitTL => tiles!(3, 1, 1, 1),
             Image::PitTR => tiles!(4, 1, 1, 1),
             Image::PitBL => tiles!(5, 1, 1, 1),
@@ -115,9 +118,8 @@ impl ImageSource for Image {
 
             Image::SquaddieCorpse => tiles!(0, 4, 1, 1),
             Image::MachineCorpse => tiles!(1, 4, 1, 1),
-            Image::Skeleton => tiles!(2, 4, 1, 1),
-            Image::Scrap => tiles!(3, 4, 1, 1),
-            Image::Weapon => tiles!(4, 4, 1, 1),
+            Image::Scrap => tiles!(2, 4, 1, 1),
+            Image::Weapon => tiles!(3, 4, 1, 1),
 
             Image::Cursor => tiles!(0, 5, 1, 1),
             Image::CursorUnit => tiles!(1, 5, 1, 1),
@@ -130,6 +132,8 @@ impl ImageSource for Image {
 
             Image::LeftEdge => tiles!(0, 7, 1, 1),
             Image::RightEdge => tiles!(1, 7, 1, 1),
+            Image::Skeleton => tiles!(2, 7, 1, 1),
+            Image::Rubble => tiles!(3, 7, 1, 1),
 
             Image::Title => tiles!(0, 8, 10, 1),
             
@@ -224,8 +228,10 @@ impl ImageSource for char {
             '.' => char_loc!(310, 1),
             '%' => char_loc!(312, 3),
             '!' => char_loc!(316, 1),
-            ' ' => char_loc!(318, 4),
-            _ => char_loc!(323, 4),
+            '/' => char_loc!(318, 3),
+            '\'' => char_loc!(322, 1),
+            ' ' => char_loc!(324, 4),
+            _ => char_loc!(329, 4),
         }
     }
     

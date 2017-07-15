@@ -68,7 +68,7 @@ fn generate_squaddie_name() -> String {
 
 // Generate a new random machine name
 fn generate_machine_name() -> String {
-    let mut serial = format!("{}", rand::thread_rng().gen_range(0, 100_000));
+    let mut serial = rand::thread_rng().gen_range(0, 100_000).to_string();
 
     while serial.len() < 5 {
         serial.insert(0, '0');

@@ -4,7 +4,7 @@ use rand;
 use rand::Rng;
 
 use super::units::{UnitSide, Units};
-use items::{Item, ItemType};
+use items::Item;
 use resources::Image;
 
 // The visibility of the tile
@@ -20,6 +20,7 @@ pub enum Visibility {
 pub struct Tile {
     pub base: Image,
     pub obstacle: Option<Image>,
+    pub decoration: Option<Image>,
     pub player_visibility: Visibility,
     pub ai_visibility: Visibility,
     pub items: Vec<Item>
@@ -31,13 +32,14 @@ impl Tile {
         Tile {
             base,
             obstacle: None,
+            decoration: None,
             player_visibility: Visibility::Invisible,
             ai_visibility: Visibility::Invisible,
             items: Vec::new()
         }
     }
 
-    // Set the obstacle of the tile and remove the units
+    // Set the obstacle of the tile and remove the items
     fn set_obstacle(&mut self, decoration: Image) {
         self.obstacle = Some(decoration);
         self.items = Vec::new();
@@ -78,7 +80,7 @@ impl Tiles {
         self.rows = rows;
 
         let mut rng = rand::thread_rng();
-        let ruins = &[Image::Ruin1, Image::Ruin2, Image::Ruin3];
+        let ruins = &[Image::Ruin1, Image::Ruin2, Image::Ruin3, Image::Ruin4];
         let bases = &[Image::Base1, Image::Base2];
 
         for x in 0 .. cols {
@@ -86,9 +88,13 @@ impl Tiles {
                 // Choose a random base image
                 let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
-                // Randomly drop items
-                if rand::random::<f32>() < 0.025 {
-                    tile.items.push(Item::new(ItemType::Skeleton));
+                // Add in decorations
+                if rand::random::<f32>() < 0.05 {
+                    tile.decoration = Some(if rand::random::<bool>() {
+                        Image::Skeleton
+                    } else {
+                        Image::Rubble
+                    });
                 }
 
                 // Add in ruins

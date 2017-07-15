@@ -152,7 +152,7 @@ impl Menu {
         let settings = &mut self.submenus[SETTINGS];
 
         self.settings.clamp();
-        settings.set_item(1, format!("Volume: {:.2}", self.settings.volume));
+        settings.set_item(1, format!("Volume: {}", self.settings.volume));
     }
 
     // refresh the saves submenu

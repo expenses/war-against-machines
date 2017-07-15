@@ -89,7 +89,7 @@ impl App {
                         self.skirmish.start(&self.menu.skirmish_settings);
                     },
                     MenuCallback::LoadSkirmish(filename) => {
-                        if let Some(map) = Map::load_skirmish(&filename) {
+                        if let Some(map) = Map::load(&filename) {
                             self.skirmish.map = map;
                             self.mode = Mode::Skirmish;
                         }

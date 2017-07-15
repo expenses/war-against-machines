@@ -140,18 +140,21 @@ impl Battle {
     // Handle keypresses
     pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
         if key == VirtualKeyCode::Escape && pressed {
-            self.map.save_skrimish(None);
+            self.map.save(None);
             return false;
         }
 
-        let input = self.ui.text_input(0);
-
-        if input.active && pressed {
+        if self.ui.text_input(0).active && pressed {
             if key == VirtualKeyCode::Return {
-                self.map.save_skrimish(Some(input.text()));
-                input.toggle();
+                if let Some(save) = self.map.save(Some(self.ui.text_input(0).text())) {
+                    self.ui.text_display(2).append(&format!("Saved to '{}'", save.display()));
+                } else {
+                    self.ui.text_display(2).append("Failed to save game");
+                }
+
+                self.ui.text_input(0).toggle();
             } else {
-                input.handle_key(key);
+                self.ui.text_input(0).handle_key(key);
             }
         } else {
             match key {
