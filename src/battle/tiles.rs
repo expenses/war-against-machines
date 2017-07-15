@@ -39,10 +39,10 @@ impl Tile {
         }
     }
 
-    // Set the obstacle of the tile and remove the items
-    fn set_obstacle(&mut self, decoration: Image) {
-        self.obstacle = Some(decoration);
-        self.items = Vec::new();
+    // Set the tile to be one of the pit images and remove the decoration
+    fn set_pit(&mut self, pit_image: Image) {
+        self.obstacle = Some(pit_image);
+        self.decoration = None;
     }
 
     // return if the tile is visible to the player
@@ -99,7 +99,7 @@ impl Tiles {
 
                 // Add in ruins
                 if units.at(x, y).is_none() && rand::random::<f32>() < 0.1 {
-                    tile.set_obstacle(*rng.choose(ruins).unwrap());
+                    tile.obstacle = Some(*rng.choose(ruins).unwrap());
                 } 
 
                 // Push the tile
@@ -121,24 +121,24 @@ impl Tiles {
         let pit_y = rng.gen_range(1, self.rows - height - 1);
 
         // Add pit corners
-        self.at_mut(pit_x,             pit_y             ).set_obstacle(Image::PitTop);
-        self.at_mut(pit_x,             pit_y + height - 1).set_obstacle(Image::PitLeft);
-        self.at_mut(pit_x + width - 1, pit_y             ).set_obstacle(Image::PitRight);
-        self.at_mut(pit_x + width - 1, pit_y + height - 1).set_obstacle(Image::PitBottom);
+        self.at_mut(pit_x,             pit_y             ).set_pit(Image::PitTop);
+        self.at_mut(pit_x,             pit_y + height - 1).set_pit(Image::PitLeft);
+        self.at_mut(pit_x + width - 1, pit_y             ).set_pit(Image::PitRight);
+        self.at_mut(pit_x + width - 1, pit_y + height - 1).set_pit(Image::PitBottom);
 
         // Add pit edges and center
         for x in pit_x + 1 .. pit_x + width - 1 {
-            self.at_mut(x, pit_y             ).set_obstacle(Image::PitTR);
-            self.at_mut(x, pit_y + height - 1).set_obstacle(Image::PitBL);
+            self.at_mut(x, pit_y             ).set_pit(Image::PitTR);
+            self.at_mut(x, pit_y + height - 1).set_pit(Image::PitBL);
 
             for y in pit_y + 1 .. pit_y + height - 1 {
-                self.at_mut(x, y).set_obstacle(Image::PitCenter);
+                self.at_mut(x, y).set_pit(Image::PitCenter);
             }
         }
 
         for y in pit_y + 1 .. pit_y + height - 1 {
-            self.at_mut(pit_x,             y).set_obstacle(Image::PitTL);
-            self.at_mut(pit_x + width - 1, y).set_obstacle(Image::PitBR);
+            self.at_mut(pit_x,             y).set_pit(Image::PitTL);
+            self.at_mut(pit_x + width - 1, y).set_pit(Image::PitBR);
         }
     }
 
