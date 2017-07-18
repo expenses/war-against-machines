@@ -16,7 +16,7 @@ extern crate rodio;
 
 use std::time::Instant;
 
-use glutin::{Event, WindowEvent, ElementState, VirtualKeyCode, MouseButton};
+use glutin::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode, MouseButton};
 
 mod battle;
 mod weapons;
@@ -111,8 +111,8 @@ impl App {
     }
 
     // Handle mouse movement
-    fn handle_mouse_motion(&mut self, x: i32, y: i32) {
-        let (x, y) = (x as f32 - self.ctx.width / 2.0, self.ctx.height / 2.0 - y as f32);
+    fn handle_mouse_motion(&mut self, x: f32, y: f32) {
+        let (x, y) = (x - self.ctx.width / 2.0, self.ctx.height / 2.0 - y);
 
         self.mouse = (x, y);
 
@@ -141,7 +141,7 @@ impl App {
     }
 
     fn resize(&mut self, width: u32, height: u32) {
-        self.ctx.resize(width as f32, height as f32);
+        self.ctx.resize(width, height);
     }
 }
 
@@ -150,7 +150,7 @@ fn main() {
     // Load (or use the default) settings
     let settings = Settings::load();
 
-    let events_loop = glutin::EventsLoop::new();
+    let mut events_loop = glutin::EventsLoop::new();
     let mut ctx = Context::new(
         &events_loop,
         TITLE.into(), WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -168,13 +168,17 @@ fn main() {
     let mut start = Instant::now();
 
     while running {
-        events_loop.poll_events(|Event::WindowEvent{event, ..}| {
+        events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
             match event {
                 WindowEvent::Closed => running = false,
-                WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(key), _) => running = app.handle_key_press(key),
-                WindowEvent::KeyboardInput(ElementState::Released, _, Some(key), _) => app.handle_key_release(key),
-                WindowEvent::MouseMoved(x, y) => app.handle_mouse_motion(x, y),
-                WindowEvent::MouseInput(ElementState::Pressed, button) => app.handle_mouse_button(button),
+                WindowEvent::KeyboardInput {
+                    input: KeyboardInput {state: ElementState::Pressed, virtual_keycode: Some(key), ..}, ..
+                } => running = app.handle_key_press(key),
+                WindowEvent::KeyboardInput {
+                    input: KeyboardInput {state: ElementState::Released, virtual_keycode: Some(key), ..}, ..
+                } => app.handle_key_release(key),
+                WindowEvent::MouseMoved {position: (x, y), ..} => app.handle_mouse_motion(x as f32, y as f32),
+                WindowEvent::MouseInput {state: ElementState::Pressed, button, ..} => app.handle_mouse_button(button),
                 WindowEvent::Resized(width, height) => app.resize(width, height),
                 _ => {},
             };

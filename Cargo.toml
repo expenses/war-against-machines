@@ -31,8 +31,8 @@ rodio = "*"
 
 # Engine
 ## Gfx backend over OpenGL
-gfx = "*"
-gfx_device_gl = "*"
-## Windowing and connecting with Gfx
-glutin = "0.8.1"
-gfx_window_glutin = "*"
+gfx = {git = "https://github.com/gfx-rs/gfx"}
+gfx_device_gl = {git = "https://github.com/gfx-rs/gfx"}
+gfx_window_glutin = {git = "https://github.com/gfx-rs/gfx"}
+## Windowing
+glutin = "*"

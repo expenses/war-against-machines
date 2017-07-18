@@ -9,7 +9,7 @@ use gfx::texture::{SamplerInfo, FilterMethod, WrapMode, Kind, AaMode};
 use gfx_window_glutin;
 use gfx_device_gl;
 use glutin;
-use glutin::EventsLoop;
+use glutin::{GlContext, EventsLoop};
 use image;
 
 // A square of vertices
@@ -85,28 +85,26 @@ pub struct Renderer {
     data: pipe::Data<Resources>,
     pso: PipelineState<Resources, pipe::Meta>,
     slice: gfx::Slice<Resources>,
-    window: glutin::Window,
+    window: glutin::GlWindow,
     device: Device,
     depth: DepthStencilView<Resources, DepthStencil>,
 }
 
 impl Renderer {
     pub fn new(event_loop: &EventsLoop, tileset: &[u8], title: String, width: u32, height: u32) -> Renderer {
-        // Set the GL version and profile (this helps speed things up)
-        let gl = glutin::GlRequest::Specific(glutin::Api::OpenGl, (3, 2));
-        let gl_profile = glutin::GlProfile::Core;
-
         // Build the window
         let builder = glutin::WindowBuilder::new()
             .with_title(title)
-            .with_dimensions(width, height)
-            .with_gl(gl)
-            .with_gl_profile(gl_profile)
-            .with_vsync();
+            .with_dimensions(width, height);
+
+        // Create the GL context
+        let context = glutin::ContextBuilder::new()
+            .with_gl(glutin::GL_CORE)
+            .with_vsync(true);
 
         // Initialise the gfx-glutin connection
         let (window, device, mut factory, colour, depth) =
-            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, event_loop);
+            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, event_loop);
 
         // Create a encoder to abstract the command buffer
         let encoder = factory.create_command_buffer().into();
@@ -157,9 +155,11 @@ impl Renderer {
     }
 
     // Resize the renderer window
-    pub fn resize(&mut self, width: f32, height: f32) {
+    pub fn resize(&mut self, width: u32, height: u32) {
         // Update the global buffer
-        self.encoder.update_constant_buffer(&self.data.global, &Global {resolution: [width, height]});
+        self.encoder.update_constant_buffer(&self.data.global, &Global {resolution: [width as f32, height as f32]});
+        // Resize the gl context
+        self.window.resize(width, height);
         // Update the view
         gfx_window_glutin::update_views(&self.window, &mut self.data.out, &mut self.depth);
     }
