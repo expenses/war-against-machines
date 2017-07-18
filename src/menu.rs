@@ -4,10 +4,10 @@ use glutin::VirtualKeyCode;
 
 use std::fs::read_dir;
 
-use colours::WHITE;
 use context::Context;
 use resources::Image;
 use settings::{Settings, SkirmishSettings};
+use ui::{Menu, Vertical, Horizontal};
 
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
@@ -21,86 +21,33 @@ pub enum MenuCallback {
     Quit
 }
 
-// A submenu inside the main menu
-struct Submenu {
-    selection: usize,
-    list: Vec<String>,
-}
-
-impl Submenu {
-    // Create a new submenu
-    fn new(list: Vec<String>) -> Submenu {
-        Submenu {
-            selection: 0,
-            list,
-        }
-    }
-
-    // Draw the items in the submenu
-    fn render(&self, ctx: &mut Context) {
-        for (i, item) in self.list.iter().enumerate() {
-            let mut string = item.clone();
-
-            // If the index is the same as the selection index, push a '>' to indicate that the option is selected
-            if i == self.selection { string.insert_str(0, "> "); }
-
-            // Render the string
-            let y = ctx.height / 2.0 - TOP_ITEM_OFFSET - i as f32 * 20.0;
-            ctx.render_text(&string, 0.0, y, WHITE);
-        }
-    }
-
-    // Get the selected item
-    fn selected(&self) -> String {
-        self.list[self.selection].clone()
-    }
-
-    // Change an item in the list
-    fn set_item(&mut self, i: usize, string: String) {
-        self.list[i] = string;
-    }
-
-    // Rotate the selection up
-    fn rotate_up(&mut self) {
-        self.selection = match self.selection {
-            0 => self.list.len() - 1,
-            _ => self.selection - 1
-        }
-    }
-
-    // Rotate the selection down
-    fn rotate_down(&mut self) {
-        self.selection = (self.selection + 1) % self.list.len();
-    }
-}
-
 const MAIN: usize = 0;
 const SKIRMISH: usize = 1;
 const SETTINGS: usize = 2;
 const SKIRMISH_SAVES: usize = 3;
 
 // The main menu struct
-pub struct Menu {
+pub struct MainMenu {
     pub skirmish_settings: SkirmishSettings,
     pub settings: Settings,
     submenu: usize,
-    submenus: [Submenu; 4]
+    submenus: [Menu; 4]
 }
 
-impl Menu {
+impl MainMenu {
     // Create a new Menu
-    pub fn new(settings: Settings) -> Menu {
+    pub fn new(settings: Settings) -> MainMenu {
         let skirmish_settings = SkirmishSettings::default();
 
-        Menu {
+        MainMenu {
             submenu: MAIN,
             submenus: [
-                Submenu::new(vec![
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, vec![
                     "Skirmish".into(),
                     "Settings".into(),
                     "Quit".into(),
                 ]),
-                Submenu::new(vec![
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, vec![
                     "Back".into(),
                     "New Skirmish".into(),
                     "Load Skirmish".into(),
@@ -112,13 +59,13 @@ impl Menu {
                     format!("Player unit type: {}", skirmish_settings.player_unit_type),
                     format!("AI unit type: {}", skirmish_settings.ai_unit_type),
                 ]),
-                Submenu::new(vec![
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, vec![
                     "Back".into(),
                     format!("Volume: {:.2}", settings.volume),
                     "Reset".into(),
                     "Save".into()
                 ]),
-                Submenu::new(Vec::new())
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, Vec::new())
             ],
             skirmish_settings, settings
         }
@@ -229,11 +176,10 @@ impl Menu {
                     self.refresh_skirmish();
                 }
                 SETTINGS => {
-                    match self.submenus[SETTINGS].selection {
-                        1 => if self.settings.volume > 0 {
+                    if let 1 = self.submenus[SETTINGS].selection {
+                        if self.settings.volume > 0 {
                             self.settings.volume -= VOLUME_CHANGE;
-                        },
-                        _ => {}
+                        }
                     }
                     self.refresh_settings();
                 }
@@ -254,9 +200,8 @@ impl Menu {
                     self.refresh_skirmish();
                 },
                 SETTINGS => {
-                    match self.submenus[SETTINGS].selection {
-                        1 => self.settings.volume += VOLUME_CHANGE,
-                        _ => {}
+                    if let 1 = self.submenus[SETTINGS].selection {
+                        self.settings.volume += VOLUME_CHANGE
                     }
                     self.refresh_settings();
                 }

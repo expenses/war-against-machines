@@ -176,6 +176,8 @@ impl Unit {
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize)]
 pub struct Units {
+    pub max_player_units: u8,
+    pub max_ai_units: u8,
     index: u8,
     units: Vec<Unit>
 }
@@ -185,11 +187,18 @@ impl Units {
     pub fn new() -> Units {
         Units {
             index: 0,
+            max_player_units: 0,
+            max_ai_units: 0,
             units: Vec::new()
         }
     }
 
     pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize) {
+        match side {
+            UnitSide::Player => self.max_player_units += 1,
+            UnitSide::AI => self.max_ai_units += 1
+        };
+
         self.units.push(Unit::new(tag, side, x, y, self.index));
         self.index += 1;
     }
@@ -223,9 +232,9 @@ impl Units {
         self.iter().find(|unit| unit.x == x && unit.y == y)
     }
 
-    // Check if any units on a particular side are alive
-    pub fn any_alive(&self, side: UnitSide) -> bool {
-        self.iter().any(|unit| unit.side == side)
+    // Count the number of units on a particular side
+    pub fn count(&self, side: UnitSide) -> u8 {
+        self.iter().filter(|unit| unit.side == side).count() as u8
     }
 
     // Calculate if (x, y) is visible to any units on a particular side

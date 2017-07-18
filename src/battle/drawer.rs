@@ -26,42 +26,37 @@ pub fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
     (y + x, y - x)
 }
 
-// A simple camera for what the user is looking at
-pub struct Camera {
+// The drawing struct that contains the camera position
+pub struct Drawer {
     pub x: f32,
     pub y: f32,
     zoom: f32
-}
-
-// The drawer struct
-pub struct Drawer {
-    pub camera: Camera,
 }
 
 impl Drawer {
     // Create a new Drawer
     pub fn new() -> Drawer {
         Drawer {
-            camera: Camera { x: 0.0, y: 0.0, zoom: DEFAULT_ZOOM }
+            x: 0.0, y: 0.0, zoom: DEFAULT_ZOOM
         }
     }
 
     // Zoom in the camera by a particular amount, checking if it's zoomed in/out too far
     pub fn zoom(&mut self, amount: f32) {
-        self.camera.zoom += amount * self.camera.zoom;
+        self.zoom += amount * self.zoom;
 
-        if self.camera.zoom > ZOOM_MAX { self.camera.zoom = ZOOM_MAX; }
-        if self.camera.zoom < ZOOM_MIN { self.camera.zoom = ZOOM_MIN; }
+        if self.zoom > ZOOM_MAX { self.zoom = ZOOM_MAX; }
+        if self.zoom < ZOOM_MIN { self.zoom = ZOOM_MIN; }
     }
 
     fn draw_location(&self, ctx: &Context, x: f32, y: f32) -> Option<[f32; 2]> {
         let (max_x, max_y) = (ctx.width / 2.0, ctx.height / 2.0);
-        let (tile_width, tile_height) = (TILE_WIDTH / 2.0 * self.camera.zoom, TILE_HEIGHT / 2.0 * self.camera.zoom);
+        let (tile_width, tile_height) = (TILE_WIDTH / 2.0 * self.zoom, TILE_HEIGHT / 2.0 * self.zoom);
 
         let (x, y) = from_map_coords(x, y);
 
-        let x = (x - self.camera.x) * tile_width;
-        let y = (y - self.camera.y) * tile_height;
+        let x = (x - self.x) * tile_width;
+        let y = (y - self.y) * tile_height;
 
         if  x > -max_x - tile_width &&
             y > -max_y - tile_height &&
@@ -75,7 +70,7 @@ impl Drawer {
 
     fn draw_if_visible(&self, image: &Image, x: usize, y: usize, ctx: &mut Context) {
         if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
-            ctx.render(image, dest, self.camera.zoom);
+            ctx.render(image, dest, self.zoom);
         }
     }
 
@@ -97,16 +92,16 @@ impl Drawer {
             };
 
             // Draw the tile base
-            ctx.render_with_overlay(&tile.base, dest, self.camera.zoom, overlay);
+            ctx.render_with_overlay(&tile.base, dest, self.zoom, overlay);
 
             // Draw the tile decoration
             if let Some(ref decoration) = tile.decoration {
-                ctx.render_with_overlay(decoration, dest, self.camera.zoom, overlay);
+                ctx.render_with_overlay(decoration, dest, self.zoom, overlay);
             }
 
             // Draw the tile obstacle
             if let Some(ref obstacle) = tile.obstacle {
-                ctx.render_with_overlay(obstacle, dest, self.camera.zoom, overlay);
+                ctx.render_with_overlay(obstacle, dest, self.zoom, overlay);
             }
 
             // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
@@ -122,14 +117,14 @@ impl Drawer {
                             Image::Cursor
                         };
 
-                        ctx.render(&image, dest, self.camera.zoom);
+                        ctx.render(&image, dest, self.zoom);
                     }
                 }
             }
 
             if tile.player_visibility != Visibility::Foggy {
                 for item in &tile.items {
-                    ctx.render(&item.image, dest, self.camera.zoom);
+                    ctx.render(&item.image, dest, self.zoom);
                 }
 
                 // Draw a unit at the position
@@ -137,11 +132,11 @@ impl Drawer {
                     // Draw the cursor to show that the unit is selected
                     if let Some(selected) = battle.selected {
                         if selected == unit.id {
-                            ctx.render(&Image::CursorUnit, dest, self.camera.zoom);
+                            ctx.render(&Image::CursorUnit, dest, self.zoom);
                         }
                     }
 
-                    ctx.render(&unit.image, dest, self.camera.zoom);
+                    ctx.render(&unit.image, dest, self.zoom);
                 }
             }
         }
@@ -191,7 +186,7 @@ impl Drawer {
                             Image::Path
                         };
 
-                        ctx.render(&image, dest, self.camera.zoom);
+                        ctx.render(&image, dest, self.zoom);
                     }
                 }
 
@@ -213,7 +208,7 @@ impl Drawer {
             if let Some((x, y)) = battle.cursor.position {
                 if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
                     // Draw the crosshair
-                    ctx.render(&Image::CursorCrosshair, dest, self.camera.zoom);
+                    ctx.render(&Image::CursorCrosshair, dest, self.zoom);
 
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
                     if let Some((firing, target)) = battle.selected.and_then(|firing|
@@ -230,7 +225,7 @@ impl Drawer {
                             // Render it!
                             ctx.render_text(
                                 &format!("{:0.3}%", hit_chance * 100.0),
-                                dest[0], dest[1] + TILE_HEIGHT * self.camera.zoom, colours::WHITE
+                                dest[0], dest[1] + TILE_HEIGHT * self.zoom, colours::WHITE
                             );                            
                         }
                     }
@@ -253,7 +248,7 @@ impl Drawer {
             if visible {
                 if let Some(dest) = self.draw_location(ctx, bullet.x, bullet.y) {
                     ctx.render_with_rotation(
-                        &bullet.image(), dest, self.camera.zoom, convert_rotation(bullet.direction)
+                        &bullet.image(), dest, self.zoom, convert_rotation(bullet.direction)
                     );
                 }
             }
@@ -263,8 +258,8 @@ impl Drawer {
     // Work out which tile is under the cursor
     pub fn tile_under_cursor(&self, x: f32, y: f32) -> (usize, usize) {
         // Work out the position of the mouse on the screen relative to the camera
-        let x = x  / TILE_WIDTH  / self.camera.zoom + self.camera.x / 2.0;
-        let y = -y / TILE_HEIGHT / self.camera.zoom - self.camera.y / 2.0;
+        let x = x  / TILE_WIDTH  / self.zoom + self.x / 2.0;
+        let y = -y / TILE_HEIGHT / self.zoom - self.y / 2.0;
 
         // Account for the images being square
         let y = y - 0.5;

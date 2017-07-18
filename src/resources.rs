@@ -177,7 +177,7 @@ impl ImageSource for char {
             'R' => char_loc!(81, 4),
             'S' => char_loc!(86, 4),
             'T' => char_loc!(91, 3),
-            'U' => char_loc!(95, 3),
+            'U' => char_loc!(95, 4),
             'V' => char_loc!(100, 4),
             'W' => char_loc!(105, 5),
             'X' => char_loc!(111, 4),

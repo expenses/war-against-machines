@@ -33,8 +33,8 @@ mod context;
 
 use context::Context;
 use settings::Settings;
-use menu::{Menu, MenuCallback};
-use battle::Battle;
+use menu::{MainMenu, MenuCallback};
+use battle::{Battle, BattleCallback};
 use battle::map::Map;
 
 const TITLE: &str = "War Against Machines";
@@ -51,8 +51,8 @@ enum Mode {
 struct App {
     ctx: Context,
     mode: Mode,
-    menu: menu::Menu,
-    skirmish: Battle,
+    menu: MainMenu,
+    skirmish: Option<Battle>,
     mouse: (f32, f32)
 }
 
@@ -61,8 +61,8 @@ impl App {
     fn new(ctx: Context, settings: Settings) -> App {
         App {
             mode: Mode::Menu,
-            menu: Menu::new(settings),
-            skirmish: Battle::new(&ctx),
+            menu: MainMenu::new(settings),
+            skirmish: None,
             mouse: (0.0, 0.0),
             ctx
         }
@@ -71,9 +71,8 @@ impl App {
     // Update the game
     fn update(&mut self, dt: f32) {
         if let Mode::Skirmish = self.mode {
-            if self.skirmish.update(&self.ctx, dt).is_some() {
-                self.mode = Mode::Menu;
-                self.skirmish = Battle::new(&self.ctx);
+            if let Some(ref mut skirmish) = self.skirmish {
+                skirmish.update(&self.ctx, dt);
             }
         }
     }
@@ -86,18 +85,24 @@ impl App {
                 match callback {
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish.start(&self.menu.skirmish_settings);
+                        self.skirmish = Some(Battle::new(&self.ctx, &self.menu.skirmish_settings, None));
                     },
-                    MenuCallback::LoadSkirmish(filename) => {
-                        if let Some(map) = Map::load(&filename) {
-                            self.skirmish.map = map;
-                            self.mode = Mode::Skirmish;
-                        }
+                    MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename) {
+                        self.skirmish = Some(Battle::new(&self.ctx, &self.menu.skirmish_settings, Some(map)));
+                        self.mode = Mode::Skirmish;
                     },
                     MenuCallback::Quit => return false
                 }  
             },
-            Mode::Skirmish => return self.skirmish.handle_key(key, true)
+            Mode::Skirmish => if let Some(callback) = self.skirmish.as_mut().and_then(|mut skirmish| skirmish.handle_key(key, true)) {
+                match callback {
+                    BattleCallback::Quit => return false,
+                    BattleCallback::Ended => {
+                        self.mode = Mode::Menu;
+                        self.skirmish = None;
+                    }
+                }
+            }
         }
 
         true
@@ -106,7 +111,9 @@ impl App {
     // Handle key releases
     fn handle_key_release(&mut self, key: VirtualKeyCode) {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.handle_key(key, false);
+            if let Some(ref mut skirmish) = self.skirmish {
+                skirmish.handle_key(key, false);
+            }
         }
     }
 
@@ -117,14 +124,18 @@ impl App {
         self.mouse = (x, y);
 
         if let Mode::Skirmish = self.mode {
-            self.skirmish.move_cursor(x, y);
+            if let Some(ref mut skirmish) = self.skirmish {
+                skirmish.move_cursor(x, y);
+            }
         }
     }
 
     // Handle mouse button presses
     fn handle_mouse_button(&mut self, button: MouseButton) {
         if let Mode::Skirmish = self.mode {
-            self.skirmish.mouse_button(button, self.mouse, &self.ctx);
+            if let Some(ref mut skirmish) = self.skirmish {
+                skirmish.mouse_button(button, self.mouse, &self.ctx);
+            }
         }
     }
 
@@ -133,7 +144,9 @@ impl App {
         self.ctx.clear();
 
         match self.mode {
-            Mode::Skirmish => self.skirmish.draw(&mut self.ctx),
+            Mode::Skirmish => if let Some(ref mut skirmish) = self.skirmish {
+                skirmish.draw(&mut self.ctx);
+            },
             Mode::Menu => self.menu.render(&mut self.ctx),
         }
 

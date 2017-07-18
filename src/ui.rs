@@ -22,6 +22,7 @@ pub enum Horizontal {
     Bottom
 }
 
+// Get the x position on the screen for an item of a certain width and alignment
 fn get_x(x: f32, width: f32, screen_width: f32, v_align: &Vertical) -> f32 {
     match *v_align {
         Vertical::Left => x - (screen_width - width) / 2.0,
@@ -30,6 +31,7 @@ fn get_x(x: f32, width: f32, screen_width: f32, v_align: &Vertical) -> f32 {
     }
 }
 
+// Get the y position on the screen for an item of a certain height and alignment
 fn get_y(y: f32, height: f32, screen_height: f32, h_align: &Horizontal) -> f32 {
     match *h_align {
         Horizontal::Top => (screen_height - height) / 2.0 - y,
@@ -116,19 +118,19 @@ impl TextDisplay {
         let mut y = get_y(self.y, height, ctx.height, &self.h_align) + height / 2.0;
         
         for line in self.text.lines() {
-            let width = ctx.font_width(line);
-            let x = get_x(self.x, width, ctx.width, &self.v_align);
-
+            let x = get_x(self.x, ctx.font_width(line), ctx.width, &self.v_align);
             ctx.render_text(line, x, y, WHITE);
             y -= ctx.font_height();
         }
     }
 
+    // Toggle whether the text display is active or not
     pub fn toggle(&mut self) {
         self.active = !self.active;
     }
 }
 
+// A text input on the UI
 pub struct TextInput {
     title: TextDisplay,
     input: TextDisplay,
@@ -136,6 +138,7 @@ pub struct TextInput {
 }
 
 impl TextInput {
+    // Create a new text input
     pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, ctx: &Context, display: &str) -> TextInput {
         let mut title = TextDisplay::new(x, y, v_align, h_align, active);
         title.text = display.into();
@@ -146,17 +149,20 @@ impl TextInput {
         }
     }
 
+    // Draw the text input
     fn draw(&self, ctx: &mut Context) {
         self.title.draw(ctx);
         self.input.draw(ctx);
     }
 
+    // Toggle if the text input is active or not
     pub fn toggle(&mut self) {
         self.active = !self.active;
         self.title.active = self.active;
         self.input.active = self.active;
     }
 
+    // Handle key presses
     pub fn handle_key(&mut self, key: VirtualKeyCode) {
         if key == VirtualKeyCode::Back {
             self.input.text.pop();
@@ -168,6 +174,7 @@ impl TextInput {
         }
     }
 
+    // Get a copy of the text
     pub fn text(&self) -> String {
         self.input.text.clone()
     }
@@ -193,11 +200,12 @@ impl UI {
         &mut self.text_displays[display]
     }
 
+    // Get a mutable reference to a text input
     pub fn text_input(&mut self, input: usize) -> &mut TextInput {
         &mut self.text_inputs[input]
     }
 
-    // Draw all the active buttons and text displays
+    // Draw all the active buttons, text displays and text inputs
     pub fn draw(&self, ctx: &mut Context) {
         for button in &self.buttons {
             if button.active {
@@ -224,5 +232,70 @@ impl UI {
             .enumerate()
             .find(|&(_, button)| button.active && button.clicked(ctx, mouse.0, mouse.1))
             .map(|(i, _)| i)
+    }
+}
+
+// A menu for displaying
+pub struct Menu {
+    pub selection: usize,
+    pub list: Vec<String>,
+    x: f32,
+    y: f32,
+    v_align: Vertical,
+    h_align: Horizontal
+}
+
+impl Menu {
+    // Create a new menu
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, list: Vec<String>) -> Menu {
+        Menu {
+            x, y, v_align, h_align, list,
+            selection: 0
+        }
+    }
+
+    // Draw the items in the menu
+    pub fn render(&self, ctx: &mut Context) {
+        // Get the height of the rendered text
+        let height = ctx.font_height() * self.list.len() as f32;
+        // Get a starting y value
+        let mut y = get_y(self.y, height, ctx.height, &self.h_align) + height / 2.0;
+
+        // Enumerate through the items
+        for (i, item) in self.list.iter().enumerate() {
+            let mut string = item.clone();
+
+            // If the index is the same as the selection index, push a '>' to indicate that the option is selected
+            if i == self.selection { string.insert_str(0, "> "); }
+
+            // Render the string
+            let x = get_x(self.x, ctx.font_width(&string), ctx.width, &self.v_align);
+            ctx.render_text(&string, x, y, WHITE);
+            // Decrease the y value
+            y -= ctx.font_height();
+        }
+    }
+
+    // Get the selected item
+    pub fn selected(&self) -> String {
+        self.list[self.selection].clone()
+    }
+
+    // Change an item in the list
+    pub fn set_item(&mut self, i: usize, string: String) {
+        self.list[i] = string;
+    }
+
+    // Rotate the selection up
+    pub fn rotate_up(&mut self) {
+        self.selection = match self.selection {
+            0 => self.list.len() - 1,
+            _ => self.selection - 1
+        }
+    }
+
+    // Rotate the selection down
+    pub fn rotate_down(&mut self) {
+        self.selection = (self.selection + 1) % self.list.len();
     }
 }

@@ -56,12 +56,10 @@ impl Map {
 
     // Save the skirmish
     pub fn save(&self, filename: Option<String>) -> Option<PathBuf> {
-        let filename = filename
-            .map(|mut filename| {
-                filename.push_str(EXTENSION);
-                filename
-            })
-            .unwrap_or(AUTOSAVE.into());
+        let filename = filename.map(|mut filename| {
+            filename.push_str(EXTENSION);
+            filename
+        }).unwrap_or_else(|| AUTOSAVE.into());
         
         if filename.starts_with('.') {
             return None;

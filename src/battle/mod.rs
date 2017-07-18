@@ -21,7 +21,7 @@ use self::units::{Unit, UnitSide};
 use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
-use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal};
+use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
 use settings::SkirmishSettings;
 
 const CAMERA_SPEED: f32 = 10.0;
@@ -49,8 +49,8 @@ impl fmt::Display for Controller {
 }
 
 pub enum BattleCallback {
-    Won,
-    Lost
+    Ended,
+    Quit
 }
 
 // The main Battle struct the handles actions
@@ -61,6 +61,7 @@ pub struct Battle {
     pub path: Option<Vec<PathPoint>>,
     pub animations: Animations,
     pub command_queue: CommandQueue,
+    score_screen: Option<Menu>,
     drawer: Drawer,
     keys: [bool; 6],
     ui: UI,
@@ -69,7 +70,7 @@ pub struct Battle {
 
 impl Battle {
     // Create a new Battle
-    pub fn new(ctx: &Context) -> Battle {
+    pub fn new(ctx: &Context, settings: &SkirmishSettings, map: Option<Map>) -> Battle {
         let width_offset = - Image::EndTurnButton.width() * ctx.ui_scale;
 
         // Create the UI and add the buttons and text display
@@ -107,13 +108,35 @@ impl Battle {
             ]
         );
 
+        // Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
+        let map = map.unwrap_or_else(|| {
+            let mut map = Map::new();
+
+            // Add player units
+            for x in 0 .. settings.player_units {
+                map.units.add(settings.player_unit_type, UnitSide::Player, x, 0);
+            }
+
+            // Add ai units
+            for y in settings.cols - settings.ai_units .. settings.cols {
+                map.units.add(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1);
+            }
+            
+            // Generate tiles
+            map.tiles.generate(settings.cols, settings.rows, &map.units);
+
+            map
+        });
+
+        // Create the battle
         Battle {
-            map: Map::new(),
+            map: map,
             drawer: Drawer::new(),
             cursor: Cursor { position: None },
             keys: [false; 6],
             selected: None,
             path: None,
+            score_screen: None,
             ui: ui,
             animations: Animations::new(),
             command_queue: CommandQueue::new(),
@@ -121,29 +144,34 @@ impl Battle {
         }
     }
 
-    // Start up the map
-    pub fn start(&mut self, settings: &SkirmishSettings) {
-        // Add player units
-        for x in 0 .. settings.player_units {
-            self.map.units.add(settings.player_unit_type, UnitSide::Player, x, 0);
-        }
-
-        // Add ai units
-        for y in settings.cols - settings.ai_units .. settings.cols {
-            self.map.units.add(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1);
-        }
-        
-        // Generate tiles
-        self.map.tiles.generate(settings.cols, settings.rows, &self.map.units);
-    }
-
     // Handle keypresses
-    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> Option<BattleCallback> {
+        // Respond to key presses on the score screen
+        if let Some(ref mut score_screen) = self.score_screen {
+            if pressed {
+                match key {
+                    VirtualKeyCode::Return => match score_screen.selection {
+                        3 => return Some(BattleCallback::Ended),
+                        4 => return Some(BattleCallback::Quit),
+                        _ => {}
+                    },
+                    VirtualKeyCode::Up => score_screen.rotate_up(),
+                    VirtualKeyCode::Down => score_screen.rotate_down(),
+                    VirtualKeyCode::Escape => return Some(BattleCallback::Quit),
+                    _ => {}
+                };
+            }
+
+            return None;
+        }
+
+        // Creating an autosave and quit the gme
         if key == VirtualKeyCode::Escape && pressed {
             self.map.save(None);
-            return false;
+            return Some(BattleCallback::Quit);
         }
 
+        // Respond to key presses when the text input is open
         if self.ui.text_input(0).active && pressed {
             if key == VirtualKeyCode::Return {
                 if let Some(save) = self.map.save(Some(self.ui.text_input(0).text())) {
@@ -156,44 +184,60 @@ impl Battle {
             } else {
                 self.ui.text_input(0).handle_key(key);
             }
-        } else {
-            match key {
-                VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys[0] = pressed,
-                VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys[1] = pressed,
-                VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys[2] = pressed,
-                VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
-                VirtualKeyCode::O => self.keys[4] = pressed,
-                VirtualKeyCode::P => self.keys[5] = pressed,
-                _ => {}
-            };
+
+            return None;
+        }
+    
+        // Respond to keys normally!
+        match key {
+            VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys[0] = pressed,
+            VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys[1] = pressed,
+            VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys[2] = pressed,
+            VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
+            VirtualKeyCode::O => self.keys[4] = pressed,
+            VirtualKeyCode::P => self.keys[5] = pressed,
+            _ => {}
         }
 
-        true
+        None
     }
 
     // Update the battle
-    pub fn update(&mut self, ctx: &Context, dt: f32) -> Option<BattleCallback> {
+    pub fn update(&mut self, ctx: &Context, dt: f32) {
         // Change camera variables if a key is being pressed
-        if self.keys[0] { self.drawer.camera.y += CAMERA_SPEED * dt; }
-        if self.keys[1] { self.drawer.camera.y -= CAMERA_SPEED * dt; }
-        if self.keys[2] { self.drawer.camera.x -= CAMERA_SPEED * dt; }
-        if self.keys[3] { self.drawer.camera.x += CAMERA_SPEED * dt; }
+        if self.keys[0] { self.drawer.y += CAMERA_SPEED * dt; }
+        if self.keys[1] { self.drawer.y -= CAMERA_SPEED * dt; }
+        if self.keys[2] { self.drawer.x -= CAMERA_SPEED * dt; }
+        if self.keys[3] { self.drawer.x += CAMERA_SPEED * dt; }
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt); }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt); }
 
+        // If the controller is the AI and the command queue and animations are empty, make a ai move
+        // If that returns false, switch control back to the player
         if self.controller == Controller::AI &&
            self.command_queue.is_empty() &&
            self.animations.is_empty() &&
            !ai::make_move(&self.map, &mut self.command_queue) {
             
             self.controller = Controller::Player;
+            // Update the turn
             self.map.turn += 1;
+            // Log to the text display
             self.ui.text_display(2).append(&format!("Turn {} started", self.map.turn));
 
-            if !self.map.units.any_alive(UnitSide::Player) {
-                return Some(BattleCallback::Lost);
-            } else if !self.map.units.any_alive(UnitSide::AI) {
-                return Some(BattleCallback::Won);
+            // Get the number of alive units on both sides
+            let player_count = self.map.units.count(UnitSide::Player);
+            let ai_count = self.map.units.count(UnitSide::AI);
+
+            // If one side has lost all their units, Create the score screen menu
+            if player_count == 0 || ai_count == 0 {
+                self.score_screen = Some(Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, vec![
+                    "Skirmish Ended".into(),
+                    format!("Units lost: {}", self.map.units.max_player_units - player_count),
+                    format!("Units killed: {}", self.map.units.max_ai_units - ai_count),
+                    "Close".into(),
+                    "Quit".into()
+                ]));
             }
         }
         
@@ -203,14 +247,16 @@ impl Battle {
         }
         // Update the animations
         self.animations.update(&mut self.map, ctx, dt);
-
-        None
     }
 
     // Draw both the map and the UI
     pub fn draw(&mut self, ctx: &mut Context) {
-        self.drawer.draw_battle(ctx, self);
-        self.draw_ui(ctx);
+        if let Some(ref score_screen) = self.score_screen {
+            score_screen.render(ctx);
+        } else {
+            self.drawer.draw_battle(ctx, self);
+            self.draw_ui(ctx);
+        }
     }
 
     // Draw the UI
