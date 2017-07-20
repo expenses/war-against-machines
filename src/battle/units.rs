@@ -248,21 +248,21 @@ impl Units {
 
     // Kill a unit and drop a corpse
     pub fn kill(&mut self, tiles: &mut Tiles, id: u8) {
-        let (x, y) = match self.get(id) {
-            Some(unit) => (unit.x, unit.y),
-            _ => return
-        };
+        if let Some(unit) = self.get_mut(id) {
+            let corpse = match unit.tag {
+                UnitType::Squaddie => Item::SquaddieCorpse,
+                UnitType::Machine => Item::MachineCorpse,
+            };
 
-        let corpse = match self.get(id).map(|unit| unit.tag) {
-            Some(UnitType::Squaddie) => Item::SquaddieCorpse,
-            Some(UnitType::Machine) => Item::MachineCorpse,
-            _ => return
-        };
-
-        // Drop the units items
-        tiles.drop_all(x, y, &mut self.get_mut(id).unwrap().inventory);
-        // Drop the corpse
-        tiles.drop(x, y, corpse);
+            // Drop the unit's items
+            tiles.drop_all(unit.x, unit.y, &mut unit.inventory);
+            // Drop the unit's weapon
+            tiles.drop(unit.x, unit.y, unit.weapon.to_item());
+            // Drop the unit's corpse
+            tiles.drop(unit.x, unit.y, corpse);
+        } else {
+            return;
+        }
         // Remove the unit
         let to_remove = self.id_to_index(id).unwrap();
         self.units.remove(to_remove);

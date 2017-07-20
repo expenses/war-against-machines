@@ -3,6 +3,7 @@
 use std::fmt;
 
 use resources::{Image, SoundEffect};
+use items::Item;
 
 // The type of weapon
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -136,6 +137,14 @@ impl Weapon {
                 cost: self.cost(2.5),
                 bullets: self.base_bullets * 6
             }
+        }
+    }
+
+    pub fn to_item(&self) -> Item {
+        match self.tag {
+            WeaponType::Rifle => Item::Rifle,
+            WeaponType::MachineGun => Item::MachineGun,
+            WeaponType::PlasmaRifle => Item::PlasmaRifle
         }
     }
 }
