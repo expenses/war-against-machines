@@ -219,14 +219,6 @@ impl Menu {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.list.clear();
-    }
-
-    pub fn push(&mut self, item: String) {
-        self.list.push(item);
-    }
-
     pub fn len(&self) -> usize {
         self.list.len()
     }

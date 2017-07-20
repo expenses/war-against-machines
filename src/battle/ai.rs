@@ -213,7 +213,7 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<&'a Unit> {
     map.units.iter()
         // Filter to visible player units
         .filter(|target| target.side == UnitSide::Player &&
-                               map.tiles.at(target.x, target.y).ai_visibility == Visibility::Visible)
+                         map.tiles.at(target.x, target.y).ai_visibility == Visibility::Visible)
         // Minimize distance
         .ord_subset_min_by_key(|target| distance(unit.x, unit.y, target.x, target.y))
 }

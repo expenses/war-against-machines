@@ -341,36 +341,32 @@ impl Battle {
         self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
 
         if self.inventory.active {
-            // Create an Option with the unit's values cloned so we're not referencing it and can modify the inventory
-            let selected = self.selected().map(|unit| (unit.x, unit.y, unit.inventory.clone(), unit.name.clone()));
+            // Get the name of the selected unit, it's items and the items on the ground
+            let info = self.selected().map(|unit| {
+                let items: Vec<String> = unit.inventory.iter()
+                    .map(|item| format!("{}", item))
+                    .collect();
+                let ground: Vec<String> = self.map.tiles.at(unit.x, unit.y).items.iter()
+                    .map(|item| format!("{}", item))
+                    .collect();
+                (unit.name.clone(), items, ground)
+            });
 
             // Set the text on the inventory UI
-            if let Some((x, y, unit_inventory, name)) = selected {
-                self.inventory.menu(0).clear();
-                self.inventory.menu(1).clear();
+            if let Some((name, items, ground)) = info {
                 self.inventory.text_display(0).text = name;
                 self.inventory.text_display(1).text = "Ground".into();
 
-                // Add the unit's items
-                for item in &unit_inventory {
-                    self.inventory.menu(0).push(format!("{}", item));
-                }
-
-                // If the unit has no items, add that instead
-                if unit_inventory.is_empty() {
-                    self.inventory.menu(0).push("No items".into());
-                }
-                
-                // Add tile items
-                let tile = self.map.tiles.at(x, y);
-
-                for item in &tile.items {
-                    self.inventory.menu(1).push(format!("{}", item));
-                }
-
-                if tile.items.is_empty() {
-                    self.inventory.menu(1).push("No items".into());
-                }
+                self.inventory.menu(0).list = if !items.is_empty() {
+                    items
+                } else {
+                    vec!["No items".into()]
+                };
+                self.inventory.menu(1).list = if !ground.is_empty() {
+                    ground
+                } else {
+                    vec!["No items".into()]
+                };
             }
         }
         
