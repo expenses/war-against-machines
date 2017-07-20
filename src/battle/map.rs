@@ -46,6 +46,26 @@ impl Map {
             .count()
     }
 
+    pub fn drop_item(&mut self, unit: u8, index: usize) {
+        if let Some(unit) = self.units.get_mut(unit) {
+            if let Some(item) = unit.inventory.get(index).cloned() {
+                self.tiles.drop(unit.x, unit.y, item);
+                unit.inventory.remove(index);
+            }
+        }
+    }
+
+    pub fn pick_up_item(&mut self, unit: u8, index: usize) {
+        if let Some(unit) = self.units.get_mut(unit) {
+            let tile = self.tiles.at_mut(unit.x, unit.y);
+        
+            if let Some(item) = tile.items.get(index).cloned() {
+                unit.inventory.push(item);
+                tile.items.remove(index);
+            }
+        }
+    }
+
     // Load a skirmish if possible
     pub fn load(filename: &str) -> Option<Map> {
         let path = Path::new(SAVES).join(filename);

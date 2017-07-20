@@ -7,7 +7,7 @@ use std::fmt;
 use std::slice::{Iter, IterMut};
 
 use super::tiles::Tiles;
-use items::{Item, ItemType};
+use items::Item;
 use weapons::{Weapon, WeaponType};
 use utils::{distance_under, chance_to_hit};
 use resources::Image;
@@ -163,11 +163,6 @@ impl Unit {
         self.moves -= cost;
     }
 
-    // Pick up an item
-    pub fn _pick_up(&mut self, item: Item) {
-        self.inventory.push(item)
-    }
-
     pub fn chance_to_hit(&self, target_x: usize, target_y: usize) -> f32 {
         chance_to_hit(self.x, self.y, target_x, target_y)
     }
@@ -258,11 +253,11 @@ impl Units {
             _ => return
         };
 
-        let corpse = Item::new(match self.get(id).map(|unit| unit.tag) {
-            Some(UnitType::Squaddie) => ItemType::SquaddieCorpse,
-            Some(UnitType::Machine) => ItemType::MachineCorpse,
+        let corpse = match self.get(id).map(|unit| unit.tag) {
+            Some(UnitType::Squaddie) => Item::SquaddieCorpse,
+            Some(UnitType::Machine) => Item::MachineCorpse,
             _ => return
-        });
+        };
 
         // Drop the units items
         tiles.drop_all(x, y, &mut self.get_mut(id).unwrap().inventory);

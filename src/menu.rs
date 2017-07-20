@@ -14,6 +14,12 @@ const TITLE_TOP_OFFSET: f32 = 50.0;
 const TOP_ITEM_OFFSET: f32 = 150.0;
 const VOLUME_CHANGE: u8 = 5;
 
+macro_rules! menu {
+    ($($item: expr),*) => (
+        Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, true, vec![$($item,)*])
+    )
+}
+
 // Callbacks that can be returned from key presses
 pub enum MenuCallback {
     NewSkirmish,
@@ -42,12 +48,12 @@ impl MainMenu {
         MainMenu {
             submenu: MAIN,
             submenus: [
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, vec![
+                menu!(
                     "Skirmish".into(),
                     "Settings".into(),
-                    "Quit".into(),
-                ]),
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, vec![
+                    "Quit".into()
+                ),
+                menu!(
                     "Back".into(),
                     "New Skirmish".into(),
                     "Load Skirmish".into(),
@@ -57,15 +63,15 @@ impl MainMenu {
                     format!("Player units: {}", skirmish_settings.player_units),
                     format!("AI units: {}", skirmish_settings.ai_units),
                     format!("Player unit type: {}", skirmish_settings.player_unit_type),
-                    format!("AI unit type: {}", skirmish_settings.ai_unit_type),
-                ]),
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, vec![
+                    format!("AI unit type: {}", skirmish_settings.ai_unit_type)
+                ),
+                menu!(
                     "Back".into(),
                     format!("Volume: {:.2}", settings.volume),
                     "Reset".into(),
                     "Save".into()
-                ]),
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, Vec::new())
+                ),
+                menu!()
             ],
             skirmish_settings, settings
         }

@@ -124,7 +124,7 @@ impl Drawer {
 
             if tile.player_visibility != Visibility::Foggy {
                 for item in &tile.items {
-                    ctx.render(&item.image, dest, self.zoom);
+                    ctx.render(&item.image(), dest, self.zoom);
                 }
 
                 // Draw a unit at the position

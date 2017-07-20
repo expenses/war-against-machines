@@ -178,6 +178,8 @@ impl TextInput {
 // A menu for displaying
 pub struct Menu {
     pub selection: usize,
+    // In a situation where there might be multiple menus, is this menu selected?
+    pub selected: bool,
     pub list: Vec<String>,
     pub active: bool,
     x: f32,
@@ -188,10 +190,10 @@ pub struct Menu {
 
 impl Menu {
     // Create a new menu
-    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, list: Vec<String>) -> Menu {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, selected: bool, list: Vec<String>) -> Menu {
         Menu {
-            x, y, v_align, h_align, list, active,
-            selection: 0
+            x, y, v_align, h_align, list, active, selected,
+            selection: 0,
         }
     }
 
@@ -207,7 +209,7 @@ impl Menu {
             let mut string = item.clone();
 
             // If the index is the same as the selection index, push a '>' to indicate that the option is selected
-            if i == self.selection { string.insert_str(0, "> "); }
+            if self.selected && i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
             let x = get_x(self.x, ctx.font_width(&string), ctx.width, &self.v_align);
@@ -223,6 +225,10 @@ impl Menu {
 
     pub fn push(&mut self, item: String) {
         self.list.push(item);
+    }
+
+    pub fn len(&self) -> usize {
+        self.list.len()
     }
 
     // Get the selected item
@@ -268,10 +274,6 @@ impl UI {
             text_inputs: Vec::new(),
             menus: Vec::new()
         }
-    }
-
-    pub fn toggle(&mut self) {
-        self.active = !self.active;
     }
 
     pub fn add_buttons(&mut self, mut buttons: Vec<Button>) {

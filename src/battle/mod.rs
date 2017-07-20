@@ -110,19 +110,19 @@ impl Battle {
         ]);
 
         ui.add_menus(vec![
-            Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, Vec::new())
+            Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, true, Vec::new())
         ]);
 
         let mut inventory = UI::new(false);
         
         inventory.add_text_displays(vec![
-            TextDisplay::new(-100.0, 100.0, Vertical::Middle, Horizontal::Top, true),
-            TextDisplay::new(100.0, 100.0, Vertical::Middle, Horizontal::Top, true)
+            TextDisplay::new(-150.0, 100.0, Vertical::Middle, Horizontal::Top, true),
+            TextDisplay::new(150.0, 100.0, Vertical::Middle, Horizontal::Top, true)
         ]);
 
         inventory.add_menus(vec![
-            Menu::new(-100.0, 150.0, Vertical::Middle, Horizontal::Top, true, Vec::new()),
-            Menu::new(100.0, 150.0, Vertical::Middle, Horizontal::Top, true, Vec::new())
+            Menu::new(-150.0, 125.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new()),
+            Menu::new(150.0, 125.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new())
         ]);
 
 
@@ -201,6 +201,50 @@ impl Battle {
                 self.ui.text_input(0).toggle();
             } else {
                 self.ui.text_input(0).handle_key(key);
+            }
+
+            return None;
+        }
+
+        // Do stuff with the inventory
+        if self.inventory.active {
+            if pressed {
+                let (active, inactive) = if self.inventory.menu(0).selected {
+                    (0, 1)
+                } else {
+                    (1, 0)
+                };
+                
+                match key {
+                    VirtualKeyCode::Up    | VirtualKeyCode::W => self.inventory.menu(active).rotate_up(),
+                    VirtualKeyCode::Down  | VirtualKeyCode::S => self.inventory.menu(active).rotate_down(),
+                    VirtualKeyCode::Left  | VirtualKeyCode::Right |
+                    VirtualKeyCode::A     | VirtualKeyCode::D => {
+                        self.inventory.menu(active).selected = false;
+                        self.inventory.menu(inactive).selected = true;
+                    },
+                    VirtualKeyCode::Return => {
+                        let index = self.inventory.menu(active).selection;
+
+                        if let Some(selected) = self.selected {
+                            if active == 0 {
+                                self.map.drop_item(selected, index)
+                            } else {
+                                self.map.pick_up_item(selected, index)
+                            };
+                        }
+
+                        let new_len = self.inventory.menu(active).len() - 1;
+
+                        if index >= new_len {
+                            self.inventory.menu(active).selection = match new_len {
+                                0 => 0,
+                                _ => new_len - 1
+                            }
+                        }
+                    }
+                    _ => {}
+                }
             }
 
             return None;
@@ -285,7 +329,7 @@ impl Battle {
     // Draw the UI
     fn draw_ui(&mut self, ctx: &mut Context) {
         // Get a string of info about the selected unit
-        let selected = match self.selected_unit() {
+        let selected = match self.selected() {
             Some(unit) => format!(
                 "Name: {}, Moves: {}, Health: {}\nWeapon: {}",
                 unit.name, unit.moves, unit.health, unit.weapon
@@ -298,7 +342,7 @@ impl Battle {
 
         if self.inventory.active {
             // Create an Option with the unit's values cloned so we're not referencing it and can modify the inventory
-            let selected = self.selected_unit().map(|unit| (unit.x, unit.y, unit.inventory.clone(), unit.name.clone()));
+            let selected = self.selected().map(|unit| (unit.x, unit.y, unit.inventory.clone(), unit.name.clone()));
 
             // Set the text on the inventory UI
             if let Some((x, y, unit_inventory, name)) = selected {
@@ -357,11 +401,12 @@ impl Battle {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
-                Some(1) => self.inventory.toggle(),
+                Some(1) => self.inventory.active = !self.inventory.active,
                 // Change the selected units fire mode
-                Some(2) => if let Some(unit) = self.selected.and_then(|selected| self.map.units.get_mut(selected)) {
+                Some(2) => if let Some(unit) = self.selected_mut() {
                     unit.weapon.change_mode();
                 },
+                // Toggle the save game input
                 Some(3) => self.ui.text_input(0).toggle(),
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor.position {
@@ -432,8 +477,12 @@ impl Battle {
     }
 
     // Get a reference to the unit that is selected
-    fn selected_unit(&self) -> Option<&Unit> {
-        self.selected.and_then(|selected| self.map.units.get(selected))
+    fn selected(&self) -> Option<&Unit> {
+        self.selected.and_then(move |selected| self.map.units.get(selected))
+    }
+
+    fn selected_mut(&mut self) -> Option<&mut Unit> {
+        self.selected.and_then(move |selected| self.map.units.get_mut(selected))
     }
 
     // Work out if the cursor is on an ai unit
