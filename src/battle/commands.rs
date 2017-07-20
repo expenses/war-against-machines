@@ -68,7 +68,7 @@ impl FireCommand {
 
                     unit.moves -= info.cost;
                     
-                    self.status = Some((chance_to_hit, unit.weapon.damage, info.bullets));
+                    self.status = Some((chance_to_hit, unit.weapon.damage(), info.bullets));
                 }
                 _ => return true
             };
