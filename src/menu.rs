@@ -42,12 +42,12 @@ impl MainMenu {
         MainMenu {
             submenu: MAIN,
             submenus: [
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, vec![
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, vec![
                     "Skirmish".into(),
                     "Settings".into(),
                     "Quit".into(),
                 ]),
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, vec![
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, vec![
                     "Back".into(),
                     "New Skirmish".into(),
                     "Load Skirmish".into(),
@@ -59,13 +59,13 @@ impl MainMenu {
                     format!("Player unit type: {}", skirmish_settings.player_unit_type),
                     format!("AI unit type: {}", skirmish_settings.ai_unit_type),
                 ]),
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, vec![
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, vec![
                     "Back".into(),
                     format!("Volume: {:.2}", settings.volume),
                     "Reset".into(),
                     "Save".into()
                 ]),
-                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, Vec::new())
+                Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, Vec::new())
             ],
             skirmish_settings, settings
         }

@@ -180,65 +180,11 @@ impl TextInput {
     }
 }
 
-// The UI struct
-pub struct UI {
-    buttons: Vec<Button>,
-    text_displays: Vec<TextDisplay>,
-    text_inputs: Vec<TextInput>
-}
-
-impl UI {
-    // Create a new UI with vecs of buttons and text displays
-    pub fn new(buttons: Vec<Button>, text_displays: Vec<TextDisplay>, text_inputs: Vec<TextInput>) -> UI {
-        UI {
-            buttons, text_displays, text_inputs
-        }
-    }
-
-    // Get a mutable reference to a text display
-    pub fn text_display(&mut self, display: usize) -> &mut TextDisplay {
-        &mut self.text_displays[display]
-    }
-
-    // Get a mutable reference to a text input
-    pub fn text_input(&mut self, input: usize) -> &mut TextInput {
-        &mut self.text_inputs[input]
-    }
-
-    // Draw all the active buttons, text displays and text inputs
-    pub fn draw(&self, ctx: &mut Context) {
-        for button in &self.buttons {
-            if button.active {
-                button.draw(ctx);
-            }
-        }
-
-        for text_display in &self.text_displays {
-            if text_display.active {
-                text_display.draw(ctx);
-            }
-        }
-
-        for text_input in &self.text_inputs {
-            if text_input.active {
-                text_input.draw(ctx);
-            }
-        }
-    }
-
-    // Get the first active clicked button at a location
-    pub fn clicked(&self, ctx: &Context, mouse: (f32, f32)) -> Option<usize> {
-        self.buttons.iter()
-            .enumerate()
-            .find(|&(_, button)| button.active && button.clicked(ctx, mouse.0, mouse.1))
-            .map(|(i, _)| i)
-    }
-}
-
 // A menu for displaying
 pub struct Menu {
     pub selection: usize,
     pub list: Vec<String>,
+    pub active: bool,
     x: f32,
     y: f32,
     v_align: Vertical,
@@ -247,9 +193,9 @@ pub struct Menu {
 
 impl Menu {
     // Create a new menu
-    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, list: Vec<String>) -> Menu {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, list: Vec<String>) -> Menu {
         Menu {
-            x, y, v_align, h_align, list,
+            x, y, v_align, h_align, list, active,
             selection: 0
         }
     }
@@ -297,5 +243,85 @@ impl Menu {
     // Rotate the selection down
     pub fn rotate_down(&mut self) {
         self.selection = (self.selection + 1) % self.list.len();
+    }
+}
+
+// The UI struct
+pub struct UI {
+    buttons: Vec<Button>,
+    text_displays: Vec<TextDisplay>,
+    text_inputs: Vec<TextInput>,
+    menus: Vec<Menu>
+}
+
+impl UI {
+    // Create a new UI with vecs of buttons and text displays
+    pub fn new() -> UI {
+        UI {
+            buttons: Vec::new(),
+            text_displays: Vec::new(),
+            text_inputs: Vec::new(),
+            menus: Vec::new()
+        }
+    }
+
+    pub fn add_buttons(&mut self, mut buttons: Vec<Button>) {
+        self.buttons.append(&mut buttons);
+    }
+
+    pub fn add_text_displays(&mut self, mut text_displays: Vec<TextDisplay>) {
+        self.text_displays.append(&mut text_displays);
+    }
+
+    pub fn add_text_inputs(&mut self, mut text_inputs: Vec<TextInput>) {
+        self.text_inputs.append(&mut text_inputs);
+    }
+
+    pub fn add_menus(&mut self, mut menus: Vec<Menu>) {
+        self.menus.append(&mut menus);
+    }
+
+    // Get a mutable reference to a text display
+    pub fn text_display(&mut self, index: usize) -> &mut TextDisplay {
+        &mut self.text_displays[index]
+    }
+
+    // Get a mutable reference to a text input
+    pub fn text_input(&mut self, index: usize) -> &mut TextInput {
+        &mut self.text_inputs[index]
+    }
+
+    // Get a mutable reference to a menu
+    pub fn menu(&mut self, index: usize) -> &mut Menu {
+        &mut self.menus[index]
+    }
+
+    // Draw all the active buttons, text displays and text inputs
+    pub fn draw(&self, ctx: &mut Context) {
+        for button in &self.buttons {
+            if button.active {
+                button.draw(ctx);
+            }
+        }
+
+        for text_display in &self.text_displays {
+            if text_display.active {
+                text_display.draw(ctx);
+            }
+        }
+
+        for text_input in &self.text_inputs {
+            if text_input.active {
+                text_input.draw(ctx);
+            }
+        }
+    }
+
+    // Get the first active clicked button at a location
+    pub fn clicked(&self, ctx: &Context, mouse: (f32, f32)) -> Option<usize> {
+        self.buttons.iter()
+            .enumerate()
+            .find(|&(_, button)| button.active && button.clicked(ctx, mouse.0, mouse.1))
+            .map(|(i, _)| i)
     }
 }

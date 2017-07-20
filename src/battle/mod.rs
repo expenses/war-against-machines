@@ -61,7 +61,6 @@ pub struct Battle {
     pub path: Option<Vec<PathPoint>>,
     pub animations: Animations,
     pub command_queue: CommandQueue,
-    score_screen: Option<Menu>,
     drawer: Drawer,
     keys: [bool; 6],
     ui: UI,
@@ -75,38 +74,44 @@ impl Battle {
 
         // Create the UI and add the buttons and text display
 
-        let ui = UI::new(
-            vec![
-                Button::new(
-                    Image::EndTurnButton,
-                    0.0, 0.0, ctx.ui_scale,
-                    Vertical::Right, Horizontal::Bottom
-                ),
-                Button::new(
-                    Image::InventoryButton,
-                    width_offset, 0.0, ctx.ui_scale,
-                    Vertical::Right, Horizontal::Bottom
-                ),
-                Button::new(
-                    Image::ChangeFireModeButton,
-                    width_offset * 2.0, 0.0, ctx.ui_scale,
-                    Vertical::Right, Horizontal::Bottom
-                ),
-                Button::new(
-                    Image::SaveGameButton,
-                    width_offset * 3.0, 0.0, ctx.ui_scale,
-                    Vertical::Right, Horizontal::Bottom
-                )
-            ],
-            vec![
-                TextDisplay::new(0.0, 10.0, Vertical::Middle, Horizontal::Top, true),
-                TextDisplay::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false),
-                TextDisplay::new(10.0, -10.0, Vertical::Left, Horizontal::Bottom, true)
-            ],
-            vec![
-                TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, ctx, "Save game to:")
-            ]
-        );
+        let mut ui = UI::new();
+
+        ui.add_buttons(vec![
+            Button::new(
+                Image::EndTurnButton,
+                0.0, 0.0, ctx.ui_scale,
+                Vertical::Right, Horizontal::Bottom
+            ),
+            Button::new(
+                Image::InventoryButton,
+                width_offset, 0.0, ctx.ui_scale,
+                Vertical::Right, Horizontal::Bottom
+            ),
+            Button::new(
+                Image::ChangeFireModeButton,
+                width_offset * 2.0, 0.0, ctx.ui_scale,
+                Vertical::Right, Horizontal::Bottom
+            ),
+            Button::new(
+                Image::SaveGameButton,
+                width_offset * 3.0, 0.0, ctx.ui_scale,
+                Vertical::Right, Horizontal::Bottom
+            )
+        ]);
+
+        ui.add_text_displays(vec![
+            TextDisplay::new(0.0, 10.0, Vertical::Middle, Horizontal::Top, true),
+            TextDisplay::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false),
+            TextDisplay::new(10.0, -10.0, Vertical::Left, Horizontal::Bottom, true)
+        ]);
+
+        ui.add_text_inputs(vec![
+            TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, ctx, "Save game to:")
+        ]);
+
+        ui.add_menus(vec![
+            Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, Vec::new())
+        ]);
 
         // Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
         let map = map.unwrap_or_else(|| {
@@ -136,7 +141,6 @@ impl Battle {
             keys: [false; 6],
             selected: None,
             path: None,
-            score_screen: None,
             ui: ui,
             animations: Animations::new(),
             command_queue: CommandQueue::new(),
@@ -146,17 +150,17 @@ impl Battle {
 
     // Handle keypresses
     pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> Option<BattleCallback> {
-        // Respond to key presses on the score screen
-        if let Some(ref mut score_screen) = self.score_screen {
+        // Respond to key presses on the score screen            
+        if self.ui.menu(0).active {
             if pressed {
                 match key {
-                    VirtualKeyCode::Return => match score_screen.selection {
+                    VirtualKeyCode::Return => match self.ui.menu(0).selection {
                         3 => return Some(BattleCallback::Ended),
                         4 => return Some(BattleCallback::Quit),
                         _ => {}
                     },
-                    VirtualKeyCode::Up => score_screen.rotate_up(),
-                    VirtualKeyCode::Down => score_screen.rotate_down(),
+                    VirtualKeyCode::Up => self.ui.menu(0).rotate_up(),
+                    VirtualKeyCode::Down => self.ui.menu(0).rotate_down(),
                     VirtualKeyCode::Escape => return Some(BattleCallback::Quit),
                     _ => {}
                 };
@@ -229,15 +233,17 @@ impl Battle {
             let player_count = self.map.units.count(UnitSide::Player);
             let ai_count = self.map.units.count(UnitSide::AI);
 
-            // If one side has lost all their units, Create the score screen menu
+            // If one side has lost all their units, Set the score screen menu
             if player_count == 0 || ai_count == 0 {
-                self.score_screen = Some(Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, vec![
+                let score_screen = self.ui.menu(0);
+                score_screen.active = true;
+                score_screen.list = vec![
                     "Skirmish Ended".into(),
                     format!("Units lost: {}", self.map.units.max_player_units - player_count),
                     format!("Units killed: {}", self.map.units.max_ai_units - ai_count),
                     "Close".into(),
                     "Quit".into()
-                ]));
+                ];
             }
         }
         
@@ -251,8 +257,8 @@ impl Battle {
 
     // Draw both the map and the UI
     pub fn draw(&mut self, ctx: &mut Context) {
-        if let Some(ref score_screen) = self.score_screen {
-            score_screen.render(ctx);
+        if self.ui.menu(0).active {
+            self.ui.menu(0).render(ctx);
         } else {
             self.drawer.draw_battle(ctx, self);
             self.draw_ui(ctx);
