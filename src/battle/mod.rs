@@ -64,6 +64,7 @@ pub struct Battle {
     drawer: Drawer,
     keys: [bool; 6],
     ui: UI,
+    inventory: UI,
     controller: Controller,
 }
 
@@ -74,7 +75,7 @@ impl Battle {
 
         // Create the UI and add the buttons and text display
 
-        let mut ui = UI::new();
+        let mut ui = UI::new(true);
 
         ui.add_buttons(vec![
             Button::new(
@@ -101,7 +102,6 @@ impl Battle {
 
         ui.add_text_displays(vec![
             TextDisplay::new(0.0, 10.0, Vertical::Middle, Horizontal::Top, true),
-            TextDisplay::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false),
             TextDisplay::new(10.0, -10.0, Vertical::Left, Horizontal::Bottom, true)
         ]);
 
@@ -112,6 +112,19 @@ impl Battle {
         ui.add_menus(vec![
             Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, Vec::new())
         ]);
+
+        let mut inventory = UI::new(false);
+        
+        inventory.add_text_displays(vec![
+            TextDisplay::new(-100.0, 100.0, Vertical::Middle, Horizontal::Top, true),
+            TextDisplay::new(100.0, 100.0, Vertical::Middle, Horizontal::Top, true)
+        ]);
+
+        inventory.add_menus(vec![
+            Menu::new(-100.0, 150.0, Vertical::Middle, Horizontal::Top, true, Vec::new()),
+            Menu::new(100.0, 150.0, Vertical::Middle, Horizontal::Top, true, Vec::new())
+        ]);
+
 
         // Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
         let map = map.unwrap_or_else(|| {
@@ -142,6 +155,7 @@ impl Battle {
             selected: None,
             path: None,
             ui: ui,
+            inventory: inventory,
             animations: Animations::new(),
             command_queue: CommandQueue::new(),
             controller: Controller::Player,
@@ -179,9 +193,9 @@ impl Battle {
         if self.ui.text_input(0).active && pressed {
             if key == VirtualKeyCode::Return {
                 if let Some(save) = self.map.save(Some(self.ui.text_input(0).text())) {
-                    self.ui.text_display(2).append(&format!("Saved to '{}'", save.display()));
+                    self.ui.text_display(1).append(&format!("Saved to '{}'", save.display()));
                 } else {
-                    self.ui.text_display(2).append("Failed to save game");
+                    self.ui.text_display(1).append("Failed to save game");
                 }
 
                 self.ui.text_input(0).toggle();
@@ -216,6 +230,9 @@ impl Battle {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt); }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt); }
 
+        // Make sure the inventory is only active if a unit is selected
+        self.inventory.active = self.inventory.active && self.selected.is_some();
+
         // If the controller is the AI and the command queue and animations are empty, make a ai move
         // If that returns false, switch control back to the player
         if self.controller == Controller::AI &&
@@ -227,7 +244,7 @@ impl Battle {
             // Update the turn
             self.map.turn += 1;
             // Log to the text display
-            self.ui.text_display(2).append(&format!("Turn {} started", self.map.turn));
+            self.ui.text_display(1).append(&format!("Turn {} started", self.map.turn));
 
             // Get the number of alive units on both sides
             let player_count = self.map.units.count(UnitSide::Player);
@@ -249,7 +266,7 @@ impl Battle {
         
         // Update the command queue if there are no animations in progress
         if self.animations.is_empty() {
-            self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.text_display(2));
+            self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.text_display(1));
         }
         // Update the animations
         self.animations.update(&mut self.map, ctx, dt);
@@ -279,44 +296,43 @@ impl Battle {
         // Set the text of the UI text display
         self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
 
-        // Create the inventory string
-        let inventory_string = match self.selected_unit() {
-            Some(unit) => {
-                let mut string = String::new();
+        if self.inventory.active {
+            // Create an Option with the unit's values cloned so we're not referencing it and can modify the inventory
+            let selected = self.selected_unit().map(|unit| (unit.x, unit.y, unit.inventory.clone(), unit.name.clone()));
 
-                // Add unit items
-                if !unit.inventory.is_empty() {
-                    string.push_str(&format!("Inventory for {}:\n", unit.name));
+            // Set the text on the inventory UI
+            if let Some((x, y, unit_inventory, name)) = selected {
+                self.inventory.menu(0).clear();
+                self.inventory.menu(1).clear();
+                self.inventory.text_display(0).text = name;
+                self.inventory.text_display(1).text = "Ground".into();
 
-                    for item in &unit.inventory {
-                        string.push_str(&format!("{}\n", item));
-                    }
-                } else {
-                    string.push_str(&format!("{} has an empty inventory\n", unit.name));
+                // Add the unit's items
+                for item in &unit_inventory {
+                    self.inventory.menu(0).push(format!("{}", item));
+                }
+
+                // If the unit has no items, add that instead
+                if unit_inventory.is_empty() {
+                    self.inventory.menu(0).push("No items".into());
                 }
                 
                 // Add tile items
-                let tile = self.map.tiles.at(unit.x, unit.y);
+                let tile = self.map.tiles.at(x, y);
 
-                if !tile.items.is_empty() {
-                    string.push_str("Items on the ground:");
-
-                    for item in &tile.items {
-                        string.push_str(&format!("\n{}", item));
-                    }
-                } else {
-                    string.push_str("There are no items on the ground");
+                for item in &tile.items {
+                    self.inventory.menu(1).push(format!("{}", item));
                 }
 
-                string
+                if tile.items.is_empty() {
+                    self.inventory.menu(1).push("No items".into());
+                }
             }
-            _ => "No unit selected".into()
-        };
+        }
         
-        self.ui.text_display(1).text = inventory_string;
-
         // Draw the UI
         self.ui.draw(ctx);
+        self.inventory.draw(ctx);
     }
 
     // Move the cursor on the screen
@@ -341,7 +357,7 @@ impl Battle {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
-                Some(1) => self.ui.text_display(1).toggle(),
+                Some(1) => self.inventory.toggle(),
                 // Change the selected units fire mode
                 Some(2) => if let Some(unit) = self.selected.and_then(|selected| self.map.units.get_mut(selected)) {
                     unit.weapon.change_mode();

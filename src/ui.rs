@@ -123,11 +123,6 @@ impl TextDisplay {
             y -= ctx.font_height();
         }
     }
-
-    // Toggle whether the text display is active or not
-    pub fn toggle(&mut self) {
-        self.active = !self.active;
-    }
 }
 
 // A text input on the UI
@@ -222,6 +217,14 @@ impl Menu {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.list.clear();
+    }
+
+    pub fn push(&mut self, item: String) {
+        self.list.push(item);
+    }
+
     // Get the selected item
     pub fn selected(&self) -> String {
         self.list[self.selection].clone()
@@ -248,6 +251,7 @@ impl Menu {
 
 // The UI struct
 pub struct UI {
+    pub active: bool,
     buttons: Vec<Button>,
     text_displays: Vec<TextDisplay>,
     text_inputs: Vec<TextInput>,
@@ -256,13 +260,18 @@ pub struct UI {
 
 impl UI {
     // Create a new UI with vecs of buttons and text displays
-    pub fn new() -> UI {
+    pub fn new(active: bool) -> UI {
         UI {
+            active,
             buttons: Vec::new(),
             text_displays: Vec::new(),
             text_inputs: Vec::new(),
             menus: Vec::new()
         }
+    }
+
+    pub fn toggle(&mut self) {
+        self.active = !self.active;
     }
 
     pub fn add_buttons(&mut self, mut buttons: Vec<Button>) {
@@ -298,6 +307,10 @@ impl UI {
 
     // Draw all the active buttons, text displays and text inputs
     pub fn draw(&self, ctx: &mut Context) {
+        if !self.active {
+            return;
+        }
+
         for button in &self.buttons {
             if button.active {
                 button.draw(ctx);
@@ -313,6 +326,12 @@ impl UI {
         for text_input in &self.text_inputs {
             if text_input.active {
                 text_input.draw(ctx);
+            }
+        }
+
+        for menu in &self.menus {
+            if menu.active {
+                menu.render(ctx);
             }
         }
     }

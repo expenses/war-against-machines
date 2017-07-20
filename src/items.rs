@@ -14,7 +14,7 @@ pub enum ItemType {
 }
 
 // An item with a weight value and image
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Item {
     pub tag: ItemType,
     pub weight: u8,
