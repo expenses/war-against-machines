@@ -14,6 +14,17 @@ pub enum Vertical {
     Right
 }
 
+impl Vertical {
+    // Get the x position on the screen for an item of a certain width and alignment
+    fn get_x(&self, x: f32, width: f32, screen_width: f32) -> f32 {
+        match *self {
+            Vertical::Left => x - (screen_width - width) / 2.0,
+            Vertical::Middle => x,
+            Vertical::Right => x + (screen_width - width) / 2.0
+        }
+    }
+}
+
 // The horizontal alignment of an item
 #[derive(Clone, Copy)]
 pub enum Horizontal {
@@ -22,21 +33,14 @@ pub enum Horizontal {
     Bottom
 }
 
-// Get the x position on the screen for an item of a certain width and alignment
-fn get_x(x: f32, width: f32, screen_width: f32, v_align: &Vertical) -> f32 {
-    match *v_align {
-        Vertical::Left => x - (screen_width - width) / 2.0,
-        Vertical::Middle => x,
-        Vertical::Right => x + (screen_width - width) / 2.0
-    }
-}
-
-// Get the y position on the screen for an item of a certain height and alignment
-fn get_y(y: f32, height: f32, screen_height: f32, h_align: &Horizontal) -> f32 {
-    match *h_align {
-        Horizontal::Top => (screen_height - height) / 2.0 - y,
-        Horizontal::Middle => y,
-        Horizontal::Bottom => -(screen_height - height) / 2.0 - y
+impl Horizontal{
+    // Get the y position on the screen for an item of a certain height and alignment
+    fn get_y(&self, y: f32, height: f32, screen_height: f32) -> f32 {
+        match *self {
+            Horizontal::Top => (screen_height - height) / 2.0 - y,
+            Horizontal::Middle => y,
+            Horizontal::Bottom => -(screen_height - height) / 2.0 - y
+        }
     }
 }
 
@@ -72,16 +76,16 @@ impl Button {
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &mut Context) {
-        let x = get_x(self.x, self.width(), ctx.width, &self.v_align);
-        let y = get_y(self.y, self.height(), ctx.height, &self.h_align);
+        let x = self.v_align.get_x(self.x, self.width(), ctx.width);
+        let y = self.h_align.get_y(self.y, self.height(), ctx.height);
 
         ctx.render(&self.image, [x, y], self.scale)
     }
 
     // Calculate if the button was pressed
     pub fn clicked(&self, ctx: &Context, x: f32, y: f32) -> bool {
-        let pos_x = get_x(self.x, self.width(), ctx.width, &self.v_align);
-        let pos_y = get_y(self.y, self.height(), ctx.height, &self.h_align);
+        let pos_x = self.v_align.get_x(self.x, self.width(), ctx.width);
+        let pos_y = self.h_align.get_y(self.y, self.height(), ctx.height);
 
         x >= pos_x - self.width() / 2.0 && x <= pos_x + self.width() / 2.0 &&
         y >= pos_y - self.width() / 2.0 && y <= pos_y + self.height() / 2.0
@@ -115,10 +119,10 @@ impl TextDisplay {
     // Draw the text display on the screen
     fn draw(&self, ctx: &mut Context) {
         let height = ctx.font_height() * self.text.lines().count() as f32;
-        let mut y = get_y(self.y, height, ctx.height, &self.h_align) + height / 2.0;
+        let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
         
         for line in self.text.lines() {
-            let x = get_x(self.x, ctx.font_width(line), ctx.width, &self.v_align);
+            let x = self.v_align.get_x(self.x, ctx.font_width(line), ctx.width);
             ctx.render_text(line, x, y, WHITE);
             y -= ctx.font_height();
         }
@@ -202,7 +206,7 @@ impl Menu {
         // Get the height of the rendered text
         let height = ctx.font_height() * self.list.len() as f32;
         // Get a starting y value
-        let mut y = get_y(self.y, height, ctx.height, &self.h_align) + height / 2.0;
+        let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
 
         // Enumerate through the items
         for (i, item) in self.list.iter().enumerate() {
@@ -212,7 +216,7 @@ impl Menu {
             if self.selected && i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let x = get_x(self.x, ctx.font_width(&string), ctx.width, &self.v_align);
+            let x = self.v_align.get_x(self.x, ctx.font_width(&string), ctx.width);
             ctx.render_text(&string, x, y, WHITE);
             // Decrease the y value
             y -= ctx.font_height();

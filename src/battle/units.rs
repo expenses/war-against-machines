@@ -123,16 +123,18 @@ impl Unit {
     // Create a new unit based on unit type
     fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
         match tag {
-            UnitType::Squaddie => {                
+            UnitType::Squaddie => {   
                 let moves = 30;
                 let health = 100;
+
+                // Randomly choose a weapon
                 let mut rng = rand::thread_rng();
                 let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
+                let weapon = Weapon::new(*rng.choose(&weapons).unwrap());
 
                 Unit {
-                    tag, side, x, y, moves, health, id,
+                    tag, side, x, y, moves, health, id, weapon,
                     image: Image::Squaddie,
-                    weapon: Weapon::new(*rng.choose(&weapons).unwrap()),
                     name: generate_squaddie_name(),
                     max_moves: moves,
                     max_health: health,
@@ -163,6 +165,7 @@ impl Unit {
         self.moves -= cost;
     }
 
+    // Get the chance-to-hit of a tile from the unit
     pub fn chance_to_hit(&self, target_x: usize, target_y: usize) -> f32 {
         chance_to_hit(self.x, self.y, target_x, target_y)
     }
@@ -188,6 +191,7 @@ impl Units {
         }
     }
 
+    // Add a unit to the struct
     pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize) {
         match side {
             UnitSide::Player => self.max_player_units += 1,
@@ -208,7 +212,7 @@ impl Units {
         self.units.iter_mut()
     }
 
-    // Get a reference to a unit with a specific ID, if th unit exists
+    // Get a reference to a unit with a specific ID, if the unit exists
     pub fn get(&self, id: u8) -> Option<&Unit> {
         self.units
             .binary_search_by_key(&id, |unit| unit.id).ok()
@@ -239,6 +243,7 @@ impl Units {
             .any(|unit| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
     }
 
+    // Convert a unit ID to that unit's index in the vec
     fn id_to_index(&self, id: u8) -> Option<usize> {
         self.iter()
             .enumerate()

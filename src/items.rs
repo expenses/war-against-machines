@@ -29,6 +29,7 @@ impl fmt::Display for Item {
 }
 
 impl Item {
+    // Get the item's weight
     pub fn weight(&self) -> f32 {
         match *self {
             Item::Scrap          => 5.0,
@@ -40,6 +41,7 @@ impl Item {
         }
     }
 
+    // Get the item's image
     pub fn image(&self) -> Image {
         match *self {
             Item::Scrap => Image::Scrap,

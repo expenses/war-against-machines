@@ -18,6 +18,7 @@ const CHARACTER_GAP: f32 = 1.0;
 // Use reference-counting to avoid cloning the source each time
 type Audio = Rc<Vec<u8>>;
 
+// Load a piece of audio
 fn load_audio(bytes: &[u8]) -> Audio {
     Rc::new(bytes.to_vec())
 }
@@ -32,6 +33,7 @@ pub struct Context {
 }
 
 impl Context {
+    // Create a new context
     pub fn new(event_loop: &EventsLoop, title: String, width: u32, height: u32, tileset: &[u8], audio: [&[u8]; 3]) -> Context {
         let renderer = Renderer::new(event_loop, tileset, title, width, height);
 

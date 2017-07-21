@@ -42,12 +42,14 @@ impl Walk {
         if !still_going {
             match map.units.get_mut(self.unit_id) {
                 Some(unit) => {
+                    // Move the unit and play a walking sound
                     unit.move_to(self.x, self.y, self.cost);
                     ctx.play_sound(SoundEffect::Walk);
                 }
                 _ => return true
             }
 
+            // Update the visibility of the tiles
             map.tiles.update_visibility(&map.units);
         }
 
@@ -83,8 +85,7 @@ impl Bullet {
 
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
-            let mut rng = rand::thread_rng();
-            direction += Range::new(-0.2, 0.2).ind_sample(&mut rng);
+            direction += Range::new(-0.2, 0.2).ind_sample(&mut rand::thread_rng());
         }
 
         Bullet {

@@ -165,7 +165,8 @@ fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
             // If a path to the tile has been found and there is a closest target, check its damage score
             if let Some((path, cost)) = pathfind(unit, x, y, map) {
                 if let Some(target) = closest_target(unit, map) {
-                    ai_move.compare(unit, AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target)));
+                    let new = AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target));
+                    ai_move.compare(unit, new);
                 }
             }
         }
@@ -192,7 +193,8 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
             // If a path to the tile has been found and there is a closest target, check its chance to hit
             if let Some((path, cost)) = pathfind(unit, x, y, map) {
                 if let Some(target) = closest_target(unit, map) {
-                    ai_move.compare(unit, AIMove::new(x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y)));
+                    let new = AIMove::new(x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y));
+                    ai_move.compare(unit, new);
                 }
             }
         }

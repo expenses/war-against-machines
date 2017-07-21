@@ -126,7 +126,7 @@ impl Tiles {
         self.at_mut(pit_x + width - 1, pit_y             ).set_pit(Image::PitRight);
         self.at_mut(pit_x + width - 1, pit_y + height - 1).set_pit(Image::PitBottom);
 
-        // Add pit edges and center
+        // Add in the top/bottom pit edges and center
         for x in pit_x + 1 .. pit_x + width - 1 {
             self.at_mut(x, pit_y             ).set_pit(Image::PitTR);
             self.at_mut(x, pit_y + height - 1).set_pit(Image::PitBL);
@@ -136,6 +136,7 @@ impl Tiles {
             }
         }
 
+        // Add in the left/right pit edges
         for y in pit_y + 1 .. pit_y + height - 1 {
             self.at_mut(pit_x,             y).set_pit(Image::PitTL);
             self.at_mut(pit_x + width - 1, y).set_pit(Image::PitBR);
@@ -160,15 +161,17 @@ impl Tiles {
             for y in 0 .. self.rows {
                 let tile = self.at_mut(x, y);
                 
+                // If the tile is visible set the visibility to visible, or if it was visible make it foggy
+                
                 if units.visible(x, y, UnitSide::Player) {
                     tile.player_visibility = Visibility::Visible;
-                } else if tile.player_visibility != Visibility::Invisible {
+                } else if tile.player_visibility == Visibility::Visible {
                     tile.player_visibility = Visibility::Foggy;
                 }
                 
                 if units.visible(x, y, UnitSide::AI) {
                     tile.ai_visibility = Visibility::Visible;
-                } else if tile.ai_visibility != Visibility::Invisible {
+                } else if tile.ai_visibility == Visibility::Visible {
                     tile.ai_visibility = Visibility::Foggy;
                 }
             }
@@ -180,6 +183,7 @@ impl Tiles {
         self.at_mut(x, y).items.push(item);
     }
 
+    // Drop a vec of items onto the map
     pub fn drop_all(&mut self, x: usize, y: usize, items: &mut Vec<Item>) {
         self.at_mut(x, y).items.append(items);
     }

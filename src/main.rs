@@ -83,17 +83,21 @@ impl App {
             // If the mode is the menu, respond to callbacks
             Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.ctx) {
                 match callback {
+                    // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
                         self.skirmish = Some(Battle::new(&self.ctx, &self.menu.skirmish_settings, None));
                     },
+                    // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename) {
                         self.skirmish = Some(Battle::new(&self.ctx, &self.menu.skirmish_settings, Some(map)));
                         self.mode = Mode::Skirmish;
                     },
+                    // Quit
                     MenuCallback::Quit => return false
                 }  
             },
+            // If the skirmish returns a callback, match it
             Mode::Skirmish => if let Some(callback) = self.skirmish.as_mut().and_then(|mut skirmish| skirmish.handle_key(key, true)) {
                 match callback {
                     BattleCallback::Quit => return false,
@@ -119,6 +123,7 @@ impl App {
 
     // Handle mouse movement
     fn handle_mouse_motion(&mut self, x: f32, y: f32) {
+        // Convert the coordinates
         let (x, y) = (x - self.ctx.width / 2.0, self.ctx.height / 2.0 - y);
 
         self.mouse = (x, y);
@@ -139,7 +144,7 @@ impl App {
         }
     }
 
-    // Clear, draw and present the canvas
+    // Clear, draw and present the context
     fn render(&mut self) {
         self.ctx.clear();
 
@@ -153,6 +158,7 @@ impl App {
         self.ctx.flush();
     }
 
+    // Resize the context
     fn resize(&mut self, width: u32, height: u32) {
         self.ctx.resize(width, height);
     }
@@ -163,6 +169,7 @@ fn main() {
     // Load (or use the default) settings
     let settings = Settings::load();
 
+    // Generate the event loop and the context
     let mut events_loop = glutin::EventsLoop::new();
     let mut ctx = Context::new(
         &events_loop,
@@ -174,6 +181,7 @@ fn main() {
             bytes!("audio/plasma_shot.ogg")
         ]
     );
+    // Set the context based off the settings
     ctx.set(&settings);
 
     let mut app = App::new(ctx, settings);
@@ -181,6 +189,7 @@ fn main() {
     let mut start = Instant::now();
 
     while running {
+        // Poll the window events
         events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
             match event {
                 WindowEvent::Closed => running = false,
@@ -197,12 +206,15 @@ fn main() {
             };
         });
 
+        // Update the game with the delta time in seconds (divided by 1 billion)
+
         let now = Instant::now();
         let ns = now.duration_since(start).subsec_nanos();
         start = now;
 
-        // Update the game with the delta time in seconds (divided by 1 billion)
         app.update(ns as f32 / 1_000_000_000.0);
+
+        // Render the game
 
         app.render();
     }

@@ -164,6 +164,8 @@ impl WalkCommand {
                 // Otherwise, add a walk to the animation queue
                 animation_queue.push(Animation::Walk(Walk::new(self.unit_id, x, y, cost)));
             }
+        } else {
+            return true;
         }            
 
         // Remove the point from the path

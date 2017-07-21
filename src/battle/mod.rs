@@ -48,6 +48,7 @@ impl fmt::Display for Controller {
     }
 }
 
+// An optional callback that is returned by the key handler. It species if the game ended or was quit
 pub enum BattleCallback {
     Ended,
     Quit
@@ -73,7 +74,7 @@ impl Battle {
     pub fn new(ctx: &Context, settings: &SkirmishSettings, map: Option<Map>) -> Battle {
         let width_offset = - Image::EndTurnButton.width() * ctx.ui_scale;
 
-        // Create the UI and add the buttons and text display
+        // Create the base UI
 
         let mut ui = UI::new(true);
 
@@ -112,6 +113,8 @@ impl Battle {
         ui.add_menus(vec![
             Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, true, Vec::new())
         ]);
+
+        // Create the inventory UI
 
         let mut inventory = UI::new(false);
         
@@ -183,7 +186,7 @@ impl Battle {
             return None;
         }
 
-        // Creating an autosave and quit the gme
+        // If the escape key was pressed, create an autosave and quit the game
         if key == VirtualKeyCode::Escape && pressed {
             self.map.save(None);
             return Some(BattleCallback::Quit);
@@ -206,45 +209,42 @@ impl Battle {
             return None;
         }
 
-        // Do stuff with the inventory
-        if self.inventory.active {
-            if pressed {
-                let (active, inactive) = if self.inventory.menu(0).selected {
-                    (0, 1)
-                } else {
-                    (1, 0)
-                };
-                
-                match key {
-                    VirtualKeyCode::Up    | VirtualKeyCode::W => self.inventory.menu(active).rotate_up(),
-                    VirtualKeyCode::Down  | VirtualKeyCode::S => self.inventory.menu(active).rotate_down(),
-                    VirtualKeyCode::Left  | VirtualKeyCode::Right |
-                    VirtualKeyCode::A     | VirtualKeyCode::D => {
-                        self.inventory.menu(active).selected = false;
-                        self.inventory.menu(inactive).selected = true;
-                    },
-                    VirtualKeyCode::Return => {
-                        let index = self.inventory.menu(active).selection;
+        // Respond to key presses when the inventory is open
+        if self.inventory.active && pressed {
+            // Get the active/inactive menu
+            let (active, inactive) = if self.inventory.menu(0).selected {(0, 1)} else {(1, 0)};
+            
+            match key {
+                // Rotate the selection up
+                VirtualKeyCode::Up   | VirtualKeyCode::W => self.inventory.menu(active).rotate_up(),
+                // Rotate the selection down
+                VirtualKeyCode::Down | VirtualKeyCode::S => self.inventory.menu(active).rotate_down(),
+                // Switch which menu is selected
+                VirtualKeyCode::Left | VirtualKeyCode::Right |
+                VirtualKeyCode::A    | VirtualKeyCode::D => {
+                    self.inventory.menu(active).selected = false;
+                    self.inventory.menu(inactive).selected = true;
+                },
+                // Pick up / drop an item
+                VirtualKeyCode::Return => if let Some(selected) = self.selected {
+                    let index = self.inventory.menu(active).selection;
 
-                        if let Some(selected) = self.selected {
-                            if active == 0 {
-                                self.map.drop_item(selected, index)
-                            } else {
-                                self.map.pick_up_item(selected, index)
-                            };
-                        }
+                    if active == 0 {
+                        self.map.drop_item(selected, index)
+                    } else {
+                        self.map.pick_up_item(selected, index)
+                    };
 
-                        let new_len = self.inventory.menu(active).len() - 1;
+                    let new_len = self.inventory.menu(active).len() - 1;
 
-                        if index >= new_len {
-                            self.inventory.menu(active).selection = match new_len {
-                                0 => 0,
-                                _ => new_len - 1
-                            }
+                    if index >= new_len {
+                        self.inventory.menu(active).selection = match new_len {
+                            0 => 0,
+                            _ => new_len - 1
                         }
                     }
-                    _ => {}
-                }
+                },
+                _ => {}
             }
 
             return None;
@@ -296,9 +296,8 @@ impl Battle {
 
             // If one side has lost all their units, Set the score screen menu
             if player_count == 0 || ai_count == 0 {
-                let score_screen = self.ui.menu(0);
-                score_screen.active = true;
-                score_screen.list = vec![
+                self.ui.menu(0).active = true;
+                self.ui.menu(0).list = vec![
                     "Skirmish Ended".into(),
                     format!("Units lost: {}", self.map.units.max_player_units - player_count),
                     format!("Units killed: {}", self.map.units.max_ai_units - ai_count),
@@ -318,15 +317,17 @@ impl Battle {
 
     // Draw both the map and the UI
     pub fn draw(&mut self, ctx: &mut Context) {
+        // If the score screen menu is active, draw it
         if self.ui.menu(0).active {
             self.ui.menu(0).render(ctx);
+        // Otherwise draw the battle and UI
         } else {
             self.drawer.draw_battle(ctx, self);
             self.draw_ui(ctx);
         }
     }
 
-    // Draw the UI
+    // Set and draw the UI
     fn draw_ui(&mut self, ctx: &mut Context) {
         // Get a string of info about the selected unit
         let selected = match self.selected() {
@@ -340,19 +341,22 @@ impl Battle {
         // Set the text of the UI text display
         self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
 
+        // Set the inventory
         if self.inventory.active {
             // Get the name of the selected unit, it's items and the items on the ground
             let info = self.selected().map(|unit| {
+                // Collect the unit's items into a vec
                 let items: Vec<String> = unit.inventory.iter()
-                    .map(|item| format!("{}", item))
+                    .map(|item| item.to_string())
                     .collect();
+                // Collect the items on the ground into a vec
                 let ground: Vec<String> = self.map.tiles.at(unit.x, unit.y).items.iter()
-                    .map(|item| format!("{}", item))
+                    .map(|item| item.to_string())
                     .collect();
                 (unit.name.clone(), items, ground)
             });
 
-            // Set the text on the inventory UI
+            // Set the inventory UI
             if let Some((name, items, ground)) = info {
                 self.inventory.text_display(0).text = name;
                 self.inventory.text_display(1).text = "Ground".into();
@@ -406,7 +410,9 @@ impl Battle {
                 Some(3) => self.ui.text_input(0).toggle(),
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor.position {
+                    // Clear the path
                     self.path = None;
+                    // Set the selection
                     self.selected = match self.map.units.at(x, y) {
                         Some(unit) => if unit.side == UnitSide::Player {
                             Some(unit.id)
@@ -419,7 +425,7 @@ impl Battle {
             },
             // Check if the cursor has a position and a unit is selected
             MouseButton::Right => if let Some((x, y)) = self.cursor.position {
-                if let Some(player_unit_id) = self.selected {
+                if let Some(selected_id) = self.selected {
                     // Don't do anything if it's the AI's turn or if there is a command in progress
                     if self.controller == Controller::AI || !self.command_queue.is_empty() {
                         return;
@@ -430,12 +436,10 @@ impl Battle {
                         Some(ai_unit) => {
                             if ai_unit.side == UnitSide::AI {
                                 self.path = None;
-                                self.command_queue.push(Command::Fire(FireCommand::new(player_unit_id, ai_unit.id)));
+                                self.command_queue.push(Command::Fire(FireCommand::new(selected_id, ai_unit.id)));
                             }
                         }
-                        _ => {
-                            let unit = self.map.units.get(player_unit_id).unwrap();
-
+                        _ => if let Some(unit) = self.map.units.get(selected_id) {
                             // return if the target location is taken
                             if self.map.taken(x, y) {
                                 self.path = None;
@@ -459,7 +463,7 @@ impl Battle {
 
                             // If the paths are the same and the player unit can move to the destination, get rid of the path
                             self.path = if same_path {
-                                self.command_queue.push(Command::Walk(WalkCommand::new(player_unit_id, &self.map, points)));
+                                self.command_queue.push(Command::Walk(WalkCommand::new(selected_id, &self.map, points)));
                                 None
                             } else {
                                 Some(points)

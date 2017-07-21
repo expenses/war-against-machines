@@ -49,31 +49,38 @@ impl Drawer {
         if self.zoom < ZOOM_MIN { self.zoom = ZOOM_MIN; }
     }
 
+    // If a tile is visible, get it's location on the screen
     fn draw_location(&self, ctx: &Context, x: f32, y: f32) -> Option<[f32; 2]> {
+        // Get the maximum x and y values (given that (0, 0) is at the center)
         let (max_x, max_y) = (ctx.width / 2.0, ctx.height / 2.0);
-        let (tile_width, tile_height) = (TILE_WIDTH / 2.0 * self.zoom, TILE_HEIGHT / 2.0 * self.zoom);
+        // The x and y difference of a tile compared to another tile on the same row/col
+        let (x_size, y_size) = (TILE_WIDTH / 2.0 * self.zoom, TILE_HEIGHT / 2.0 * self.zoom);
 
+        // Convert the location from the map coords to the screen coords
         let (x, y) = from_map_coords(x, y);
 
-        let x = (x - self.x) * tile_width;
-        let y = (y - self.y) * tile_height;
+        // Get the correct position
+        let x = (x - self.x) * x_size;
+        let y = (y - self.y) * y_size;
 
-        if  x > -max_x - tile_width &&
-            y > -max_y - tile_height &&
-            x < max_x + tile_width &&
-            y < max_y + tile_height * 2.0 {
+        // Check if the tile is onscreen
+        if  x > -max_x - x_size && y > -max_y - y_size &&
+            x < max_x  + x_size && y < max_y  + y_size * 2.0 {
+            
             Some([x, y])
         } else {
             None
         }
     }
 
+    // If a tile is visible, draw an image
     fn draw_if_visible(&self, image: &Image, x: usize, y: usize, ctx: &mut Context) {
         if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
             ctx.render(image, dest, self.zoom);
         }
     }
 
+    // Draw all the elements of a particular map tile
     pub fn draw_tile(&self, x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         // Get the tile
         let tile = battle.map.tiles.at(x, y);
@@ -85,6 +92,7 @@ impl Drawer {
 
         // If the tile is on the screen, draw it
         if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
+            // Get the colour overlay
             let overlay = if tile.player_visibility == Visibility::Foggy {
                 colours::FOGGY
             } else {
@@ -108,7 +116,7 @@ impl Drawer {
             if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
                 if let Some((cursor_x, cursor_y)) = battle.cursor.position {
                     if cursor_x == x && cursor_y == y {
-                        // Determine the cursor colour
+                        // Determine the cursor type
                         let image = if !tile.walkable() {
                             Image::CursorUnwalkable
                         } else if battle.map.units.at(x, y).is_some() {
@@ -142,9 +150,10 @@ impl Drawer {
         }
     }
 
+    // Draw the whole battle
     pub fn draw_battle(&self, ctx: &mut Context, battle: &Battle) {
         let map = &battle.map;
-
+        
         // Draw all the tiles
         for x in 0 .. map.tiles.cols {
             for y in 0 .. map.tiles.rows {
@@ -166,9 +175,9 @@ impl Drawer {
             }
         }
 
-        // Draw the path
+        // Draw the path if there is one
         if let Some(ref points) = battle.path {
-            if let Some(unit) = map.units.get(battle.selected.unwrap()) {
+            if let Some(unit) = battle.selected() {
                 let mut total_cost = 0;
 
                 // Draw the path tiles
@@ -189,6 +198,8 @@ impl Drawer {
                         ctx.render(&image, dest, self.zoom);
                     }
                 }
+
+                // Draw the path costs
 
                 total_cost = 0;
 
@@ -211,11 +222,9 @@ impl Drawer {
                     ctx.render(&Image::CursorCrosshair, dest, self.zoom);
 
                     // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
-                    if let Some((firing, target)) = battle.selected.and_then(|firing|
-                        map.units.get(firing).and_then(|firing|
-                            map.units.at(x, y).map(|target|
-                                (firing, target)
-                            )
+                    if let Some((firing, target)) = battle.selected().and_then(|firing|
+                        map.units.at(x, y).map(|target|
+                            (firing, target)
                         )
                     ) {
                         if firing.side == UnitSide::Player && target.side == UnitSide::AI {

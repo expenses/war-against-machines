@@ -1,4 +1,5 @@
 // A Map struct that combines Tiles and Units for convenience
+// This struct contains all the stuff that is saved/loaded
 
 use super::units::{UnitSide, Units};
 use super::tiles::{Visibility, Tiles};
@@ -46,6 +47,7 @@ impl Map {
             .count()
     }
 
+    // Get a unit to drop an item
     pub fn drop_item(&mut self, unit: u8, index: usize) {
         if let Some(unit) = self.units.get_mut(unit) {
             if let Some(item) = unit.inventory.get(index).cloned() {
@@ -55,6 +57,7 @@ impl Map {
         }
     }
 
+    // Get a unit to pick up am item
     pub fn pick_up_item(&mut self, unit: u8, index: usize) {
         if let Some(unit) = self.units.get_mut(unit) {
             let tile = self.tiles.at_mut(unit.x, unit.y);
@@ -76,20 +79,26 @@ impl Map {
 
     // Save the skirmish
     pub fn save(&self, filename: Option<String>) -> Option<PathBuf> {
+        // Push the extension onto the filename if it is given or use the default filename
         let filename = filename.map(|mut filename| {
             filename.push_str(EXTENSION);
             filename
         }).unwrap_or_else(|| AUTOSAVE.into());
         
+        // Don't save invisible files
         if filename.starts_with('.') {
             return None;
         }
+
+        // Create the directory
 
         let directory = Path::new(SAVES);
 
         if !directory.exists() && create_dir_all(&directory).is_err() {
             return None;
         }
+
+        // Save the game and return the path
 
         let save = directory.join(filename);
 
