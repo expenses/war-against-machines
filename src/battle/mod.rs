@@ -352,7 +352,7 @@ impl Battle {
                     .map(|item| item.to_string())
                     .collect();
                 
-                (unit.name.clone(), unit.weapon.tag.to_string(), items, ground)
+                (unit.name.clone(), format!("{} ({})", unit.weapon.tag, unit.weapon.ammo), items, ground)
             });
 
             // Set the inventory UI

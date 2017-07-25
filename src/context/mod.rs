@@ -4,6 +4,7 @@ use rodio::{Decoder, Source};
 
 use std::rc::Rc;
 use std::io::Cursor;
+use std::f32::EPSILON;
 
 mod renderer;
 
@@ -61,8 +62,9 @@ impl Context {
         // Center the text on its width
         x = (x - self.font_width(string) / 2.0).floor();
         
-        // If the ui scale is odd, offset by 0.5 (this seems to sort out rendering issues)
-        if self.ui_scale % 2.0 == 1.0 {
+        // If the ui scale is odd (ui scale mod 2 is very close to 1.0),
+        // offset by 0.5 (this seems to sort out rendering issues)
+        if (self.ui_scale % 2.0 - 1.0).abs() < EPSILON {
             x += 0.5;
         }
 

@@ -132,13 +132,20 @@ impl Unit {
                 let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
                 let weapon = Weapon::new(*rng.choose(&weapons).unwrap());
 
+                // Set the inventory
+                let capacity = weapon.tag.capacity();
+                let inventory = if let WeaponType::Rifle = weapon.tag {
+                    vec![Item::RifleClip(capacity), Item::RifleClip(capacity)]
+                } else {
+                    vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity)]
+                };
+
                 Unit {
-                    tag, side, x, y, moves, health, id, weapon,
+                    tag, side, x, y, moves, health, id, weapon, inventory,
                     image: Image::Squaddie,
                     name: generate_squaddie_name(),
                     max_moves: moves,
                     max_health: health,
-                    inventory: Vec::new()
                 }
             },
             UnitType::Machine => {

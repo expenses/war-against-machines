@@ -65,6 +65,7 @@ pub enum Image {
     MachineCorpse,
     Scrap,
     Weapon,
+    AmmoClip,
 
     Cursor,
     CursorUnit,
@@ -121,6 +122,7 @@ impl ImageSource for Image {
             Image::MachineCorpse => tiles!(1, 4, 1, 1),
             Image::Scrap => tiles!(2, 4, 1, 1),
             Image::Weapon => tiles!(3, 4, 1, 1),
+            Image::AmmoClip => tiles!(4, 4, 1, 1),
 
             Image::Cursor => tiles!(0, 5, 1, 1),
             Image::CursorUnit => tiles!(1, 5, 1, 1),

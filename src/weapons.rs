@@ -57,6 +57,14 @@ impl WeaponType {
             WeaponType::PlasmaRifle => 60
         }
     }
+
+    pub fn capacity(&self) -> u8 {
+        match *self {
+            WeaponType::Rifle => 6,
+            WeaponType::MachineGun => 10,
+            WeaponType::PlasmaRifle => 8
+        }
+    }
 }
 
 impl fmt::Display for WeaponType {
@@ -99,6 +107,7 @@ pub struct FiringModeInfo {
 pub struct Weapon {
     pub tag: WeaponType,
     pub mode: usize,
+    pub ammo: u8
 }
 
 impl fmt::Display for Weapon {
@@ -117,7 +126,8 @@ impl Weapon {
     pub fn new(tag: WeaponType) -> Weapon {
         Weapon {
             tag,
-            mode: 0
+            mode: 0,
+            ammo: tag.capacity()
         }
     }
 
@@ -167,9 +177,9 @@ impl Weapon {
 
     pub fn to_item(&self) -> Item {
         match self.tag {
-            WeaponType::Rifle => Item::Rifle,
-            WeaponType::MachineGun => Item::MachineGun,
-            WeaponType::PlasmaRifle => Item::PlasmaRifle
+            WeaponType::Rifle => Item::Rifle(self.ammo),
+            WeaponType::MachineGun => Item::MachineGun(self.ammo),
+            WeaponType::PlasmaRifle => Item::PlasmaRifle(self.ammo)
         }
     }
 }
