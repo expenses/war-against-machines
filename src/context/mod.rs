@@ -59,7 +59,12 @@ impl Context {
     // Render text
     pub fn render_text(&mut self, string: &str, mut x: f32, y: f32, colour: [f32; 4]) {
         // Center the text on its width
-        x -= self.font_width(string) / 2.0;
+        x = (x - self.font_width(string) / 2.0).floor();
+        
+        // If the ui scale is odd, offset by 0.5 (this seems to sort out rendering issues)
+        if self.ui_scale % 2.0 == 1.0 {
+            x += 0.5;
+        }
 
         // get the scale to render the text at
         let scale = self.ui_scale;

@@ -120,7 +120,8 @@ impl Drawer {
                 }
             }
 
-            if tile.player_visibility != Visibility::Foggy {
+            // Draw items that should only be shown on visible tiles
+            if tile.player_visibility == Visibility::Visible {
                 // Draw the tile decoration
                 if let Some(ref decoration) = tile.decoration {
                     ctx.render_with_overlay(decoration, dest, self.zoom, overlay);
