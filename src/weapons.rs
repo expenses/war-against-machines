@@ -13,6 +13,10 @@ pub enum WeaponType {
     PlasmaRifle
 }
 
+const RIFLE_MODES: &[FiringMode] = &[FiringMode::SingleShot, FiringMode::AimedShot];
+const MACHINE_GUN_MODES: &[FiringMode] = &[FiringMode::SingleShot, FiringMode::SemiAuto, FiringMode::FullAuto];
+const PLASMA_RIFLE_MODES: &[FiringMode] = &[FiringMode::SingleShot, FiringMode::AimedShot, FiringMode::SemiAuto];
+
 impl WeaponType {
     // Get the corresponding bullet image
     pub fn bullet(&self) -> Image {
@@ -30,11 +34,11 @@ impl WeaponType {
         }
     }
 
-    pub fn modes(&self) -> Vec<FiringMode> {
+    pub fn modes(&self) -> &[FiringMode] {
         match *self {
-            WeaponType::Rifle => vec![FiringMode::SingleShot, FiringMode::AimedShot],
-            WeaponType::MachineGun => vec![FiringMode::SingleShot, FiringMode::SemiAuto, FiringMode::FullAuto],
-            WeaponType::PlasmaRifle => vec![FiringMode::SingleShot, FiringMode::AimedShot, FiringMode::SemiAuto]
+            WeaponType::Rifle => RIFLE_MODES,
+            WeaponType::MachineGun => MACHINE_GUN_MODES,
+            WeaponType::PlasmaRifle => PLASMA_RIFLE_MODES
         }
     }
 
@@ -55,12 +59,33 @@ impl WeaponType {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+impl fmt::Display for WeaponType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            WeaponType::Rifle => "Rifle",
+            WeaponType::MachineGun => "Machine Gun",
+            WeaponType::PlasmaRifle => "Plasma Rifle"
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum FiringMode {
     SingleShot,
     AimedShot,
     SemiAuto,
     FullAuto
+}
+
+impl fmt::Display for FiringMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            FiringMode::SingleShot => "Single Shot",
+            FiringMode::AimedShot => "Aimed Shot",
+            FiringMode::SemiAuto => "Semi Auto",
+            FiringMode::FullAuto => "Full Auto"
+        })
+    }
 }
 
 pub struct FiringModeInfo {
@@ -80,16 +105,10 @@ impl fmt::Display for Weapon {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let info = self.info();
 
-        write!(f, "{} - {} (Hit modifier: {}, Cost: {}, Bullets: {}", match self.tag {
-            WeaponType::Rifle => "Rifle",
-            WeaponType::MachineGun => "Machine Gun",
-            WeaponType::PlasmaRifle => "Plasma Rifle"
-        }, match self.tag.modes()[self.mode] {
-            FiringMode::SingleShot => "Single Shot",
-            FiringMode::AimedShot => "Aimed Shot",
-            FiringMode::SemiAuto => "Semi Auto",
-            FiringMode::FullAuto => "Full Auto"
-        }, info.hit_modifier, info.cost, info.bullets)
+        write!(
+            f, "{} - {} (Hit modifier: {}, Cost: {}, Bullets: {}",
+            self.tag, self.mode(), info.hit_modifier, info.cost, info.bullets
+        )
     }
 }
 
@@ -100,6 +119,10 @@ impl Weapon {
             tag,
             mode: 0
         }
+    }
+
+    fn mode(&self) -> FiringMode {
+        self.tag.modes()[self.mode]
     }
 
     // Change the fire mode
@@ -114,7 +137,7 @@ impl Weapon {
 
     // Get the hit modifier, the firing cost and the bullets fired
     pub fn info(&self) -> FiringModeInfo {
-        match self.tag.modes()[self.mode] {
+        match self.mode() {
             FiringMode::SingleShot => FiringModeInfo {
                 hit_modifier: 1.0, 
                 cost: self.cost(1.0),

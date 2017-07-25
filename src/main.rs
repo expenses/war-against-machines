@@ -18,7 +18,6 @@ use std::time::Instant;
 
 use glutin::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode, MouseButton};
 
-mod battle;
 mod weapons;
 mod items;
 mod ui;
@@ -30,6 +29,7 @@ mod settings;
 mod menu;
 mod colours;
 mod context;
+mod battle;
 
 use context::Context;
 use settings::Settings;

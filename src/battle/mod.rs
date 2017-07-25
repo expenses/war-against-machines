@@ -120,11 +120,12 @@ impl Battle {
         
         inventory.add_text_displays(vec![
             TextDisplay::new(-150.0, 100.0, Vertical::Middle, Horizontal::Top, true),
-            TextDisplay::new(150.0, 100.0, Vertical::Middle, Horizontal::Top, true)
+            TextDisplay::new(150.0, 100.0, Vertical::Middle, Horizontal::Top, true),
+            TextDisplay::new(-150.0, 120.0, Vertical::Middle, Horizontal::Top, true)
         ]);
 
         inventory.add_menus(vec![
-            Menu::new(-150.0, 125.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new()),
+            Menu::new(-150.0, 145.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new()),
             Menu::new(150.0, 125.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new())
         ]);
 
@@ -274,9 +275,6 @@ impl Battle {
         if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt); }
         if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt); }
 
-        // Make sure the inventory is only active if a unit is selected
-        self.inventory.active = self.inventory.active && self.selected.is_some();
-
         // If the controller is the AI and the command queue and animations are empty, make a ai move
         // If that returns false, switch control back to the player
         if self.controller == Controller::AI &&
@@ -353,24 +351,17 @@ impl Battle {
                 let ground: Vec<String> = self.map.tiles.at(unit.x, unit.y).items.iter()
                     .map(|item| item.to_string())
                     .collect();
-                (unit.name.clone(), items, ground)
+                
+                (unit.name.clone(), unit.weapon.tag.to_string(), items, ground)
             });
 
             // Set the inventory UI
-            if let Some((name, items, ground)) = info {
+            if let Some((name, weapon, items, ground)) = info {
                 self.inventory.text_display(0).text = name;
                 self.inventory.text_display(1).text = "Ground".into();
-
-                self.inventory.menu(0).list = if !items.is_empty() {
-                    items
-                } else {
-                    vec!["No items".into()]
-                };
-                self.inventory.menu(1).list = if !ground.is_empty() {
-                    ground
-                } else {
-                    vec!["No items".into()]
-                };
+                self.inventory.text_display(2).text = weapon;
+                self.inventory.menu(0).list = vec_or_default!(items, vec!["No items".into()]);
+                self.inventory.menu(1).list = vec_or_default!(ground, vec!["No items".into()]);
             }
         }
         
@@ -401,7 +392,9 @@ impl Battle {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
-                Some(1) => self.inventory.active = !self.inventory.active,
+                Some(1) => if self.selected.is_some() {
+                    self.inventory.active = !self.inventory.active;
+                },
                 // Change the selected units fire mode
                 Some(2) => if let Some(unit) = self.selected_mut() {
                     unit.weapon.change_mode();
@@ -420,7 +413,10 @@ impl Battle {
                             None
                         },
                         _ => None
-                    }
+                    };
+
+                    // Make sure the inventory is only active if a unit is selected
+                    self.inventory.active = self.inventory.active && self.selected.is_some();
                 }
             },
             // Check if the cursor has a position and a unit is selected

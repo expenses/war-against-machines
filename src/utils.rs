@@ -10,6 +10,17 @@ macro_rules! clamp {
     })
 }
 
+// Return a vec or a default if the vec is empty
+macro_rules! vec_or_default {
+    ($vec:expr, $default:expr) => (
+        if !$vec.is_empty() {
+            $vec
+        } else {
+            $default
+        };
+    )
+}
+
 // Ensure that a floating point value is between lower and upper value (as usize)
 pub fn clamp_float(value: f32, lower: usize, upper: usize) -> usize {
     let value = value.round();
