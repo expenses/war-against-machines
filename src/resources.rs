@@ -83,6 +83,7 @@ pub enum Image {
     LeftEdge,
     RightEdge,
     Skeleton,
+    SkeletonCracked,
     Rubble,
 
     Title
@@ -133,7 +134,8 @@ impl ImageSource for Image {
             Image::LeftEdge => tiles!(0, 7, 1, 1),
             Image::RightEdge => tiles!(1, 7, 1, 1),
             Image::Skeleton => tiles!(2, 7, 1, 1),
-            Image::Rubble => tiles!(3, 7, 1, 1),
+            Image::SkeletonCracked => tiles!(3, 7, 1, 1),
+            Image::Rubble => tiles!(4, 7, 1, 1),
 
             Image::Title => tiles!(0, 8, 10, 1),
             

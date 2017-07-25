@@ -9,3 +9,7 @@ tileset:
 	target/release/tileset resources/images resources/tileset.png
 	# Optimise the tileset with optipng
 	optipng resources/tileset.png
+
+# Optimise the resource images
+optimise:
+	optipng `find resources/images`

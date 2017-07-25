@@ -44,6 +44,7 @@ impl Walk {
                 Some(unit) => {
                     // Move the unit and play a walking sound
                     unit.move_to(self.x, self.y, self.cost);
+                    map.tiles.at_mut(self.x, self.y).walk_on();
                     ctx.play_sound(SoundEffect::Walk);
                 }
                 _ => return true

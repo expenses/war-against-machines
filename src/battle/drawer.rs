@@ -102,16 +102,6 @@ impl Drawer {
             // Draw the tile base
             ctx.render_with_overlay(&tile.base, dest, self.zoom, overlay);
 
-            // Draw the tile decoration
-            if let Some(ref decoration) = tile.decoration {
-                ctx.render_with_overlay(decoration, dest, self.zoom, overlay);
-            }
-
-            // Draw the tile obstacle
-            if let Some(ref obstacle) = tile.obstacle {
-                ctx.render_with_overlay(obstacle, dest, self.zoom, overlay);
-            }
-
             // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
             if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
                 if let Some((cursor_x, cursor_y)) = battle.cursor.position {
@@ -131,6 +121,11 @@ impl Drawer {
             }
 
             if tile.player_visibility != Visibility::Foggy {
+                // Draw the tile decoration
+                if let Some(ref decoration) = tile.decoration {
+                    ctx.render_with_overlay(decoration, dest, self.zoom, overlay);
+                }
+
                 for item in &tile.items {
                     ctx.render(&item.image(), dest, self.zoom);
                 }
@@ -146,6 +141,11 @@ impl Drawer {
 
                     ctx.render(&unit.image, dest, self.zoom);
                 }
+            }
+
+            // Draw the tile obstacle
+            if let Some(ref obstacle) = tile.obstacle {
+                ctx.render_with_overlay(obstacle, dest, self.zoom, overlay);
             }
         }
     }

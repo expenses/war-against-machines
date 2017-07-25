@@ -16,7 +16,7 @@ const FILES: &[&[&str]] = &[
     &["item/squaddie_corpse.png", "item/machine_corpse.png", "item/scrap.png", "item/weapon.png"],
     &["cursor/default.png", "cursor/unit.png", "cursor/unwalkable.png", "cursor/crosshair.png"],
     &["path/default.png", "path/no_weapon.png", "path/unreachable.png"],
-    &["decoration/left_edge.png", "decoration/right_edge.png", "decoration/skeleton.png", "decoration/rubble.png"],
+    &["decoration/left_edge.png", "decoration/right_edge.png", "decoration/skeleton.png", "decoration/skeleton_cracked.png", "decoration/rubble.png"],
     &["title.png"],
     &["button/end_turn.png", "button/inventory.png", "button/change_fire_mode.png", "button/save_game.png"],
     &["font.png"]

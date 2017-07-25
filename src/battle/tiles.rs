@@ -54,6 +54,14 @@ impl Tile {
     pub fn walkable(&self) -> bool {
         self.obstacle.is_none()
     }
+
+    // Actions that occur when the tile is walked on
+    pub fn walk_on(&mut self) {
+        // Crush the skeleton decoration
+        if let Some(Image::Skeleton) = self.decoration {
+            self.decoration = Some(Image::SkeletonCracked);
+        }
+    }
 }
 
 // A 2D array of tiles
@@ -88,17 +96,19 @@ impl Tiles {
                 // Choose a random base image
                 let mut tile = Tile::new(*rng.choose(bases).unwrap());
 
+                let unit = units.at(x, y).is_some();
+
                 // Add in decorations
                 if rand::random::<f32>() < 0.05 {
                     tile.decoration = Some(if rand::random::<bool>() {
-                        Image::Skeleton
+                        if unit { Image::SkeletonCracked } else { Image::Skeleton }
                     } else {
                         Image::Rubble
                     });
                 }
 
                 // Add in ruins
-                if units.at(x, y).is_none() && rand::random::<f32>() < 0.1 {
+                if !unit && rand::random::<f32>() < 0.1 {
                     tile.obstacle = Some(*rng.choose(ruins).unwrap());
                 } 
 
