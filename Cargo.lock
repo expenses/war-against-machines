@@ -1,6 +1,6 @@
 [root]
 name = "war-against-machines"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bincode 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.16.0 (git+https://github.com/gfx-rs/gfx?rev=eef868805f2036009fd668272fb39e5e6909dd9c)",

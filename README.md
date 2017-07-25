@@ -6,7 +6,7 @@
 
 A (very WIP) turn-based strategy game set in the not-so-distant future.
 
-![A screenshot of the game taken 29/06/17](readme/screenshot-29-06-17.png)
+![A screenshot of the game taken 25/07/17](readme/sceenshot-25-07-17.png)
 
 Written in [Rust](https://www.rust-lang.org).
 
@@ -34,7 +34,7 @@ This means that you will need to install the ALSA development libraries:
 
 ### Controls
 
-Menu:
+On a menu:
 * `up`/`w` to move the selection up
 * `down`/`s` to move the selection down
 * `enter` to activate the selected item
@@ -50,5 +50,5 @@ In a battle:
 * `o` to zoom out
 * `p` to zoom in
 * `escape` to quit
-* `left mouse button` to select the unit under the cursor
-* `right mouse button` to perfom commands such as moving and firing
+* `lmb` to select the unit under the cursor
+* `rmb` to perfom commands such as moving and firing
