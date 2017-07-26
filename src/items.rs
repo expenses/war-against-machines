@@ -3,6 +3,7 @@
 use std::fmt;
 
 use resources::Image;
+use weapons::WeaponType;
 
 // The type of an item
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -22,12 +23,12 @@ impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} - weight {}", match *self {
             Item::Scrap                => "Scrap".into(),
-            Item::Rifle(ammo)          => format!("Rifle ({})", ammo),
-            Item::MachineGun(ammo)     => format!("Machine Gun ({})", ammo),
-            Item::PlasmaRifle(ammo)    => format!("Plasma Rifle ({})", ammo),
-            Item::RifleClip(ammo)      => format!("Rifle Clip ({})", ammo),
-            Item::MachineGunClip(ammo) => format!("Machine Gun Clip ({})", ammo),
-            Item::PlasmaClip(ammo)     => format!("Plasma Clip ({})", ammo),
+            Item::Rifle(ammo)          => format!("Rifle ({}/{})", ammo, self.capacity()),
+            Item::MachineGun(ammo)     => format!("Machine Gun ({}/{})", ammo, self.capacity()),
+            Item::PlasmaRifle(ammo)    => format!("Plasma Rifle ({}/{})", ammo, self.capacity()),
+            Item::RifleClip(ammo)      => format!("Rifle Clip ({}/{})", ammo, self.capacity()),
+            Item::MachineGunClip(ammo) => format!("Machine Gun Clip ({}/{})", ammo, self.capacity()),
+            Item::PlasmaClip(ammo)     => format!("Plasma Clip ({}/{})", ammo, self.capacity()),
             Item::SquaddieCorpse       => "Squaddie Corpse".into(),
             Item::MachineCorpse        => "Machine Corpse".into(),
         }, self.weight())
@@ -56,6 +57,15 @@ impl Item {
             Item::MachineCorpse => Image::MachineCorpse,
             Item::RifleClip(_) | Item::MachineGunClip(_) | Item::PlasmaClip(_) => Image::AmmoClip,
             _ => Image::Weapon
+        }
+    }
+
+    fn capacity(&self) -> u8 {
+        match *self {
+            Item::Rifle(_) | Item::RifleClip(_) => WeaponType::Rifle.capacity(),
+            Item::MachineGun(_) | Item::MachineGunClip(_) => WeaponType::MachineGun.capacity(),
+            Item::PlasmaRifle(_) | Item::PlasmaClip(_) => WeaponType::PlasmaRifle.capacity(),
+            _ => 0
         }
     }
 }

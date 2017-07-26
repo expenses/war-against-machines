@@ -68,7 +68,7 @@ impl FireCommand {
 
                     unit.moves -= info.cost;
                     
-                    self.status = Some((chance_to_hit, unit.weapon.damage(), info.bullets));
+                    self.status = Some((chance_to_hit, unit.weapon.tag.damage(), info.bullets));
                 }
                 _ => return true
             };
@@ -90,6 +90,11 @@ impl FireCommand {
                 },
                 _ => return true
             };
+
+            // Fire the weapon
+            if let Some(unit) = map.units.get_mut(self.unit_id) {
+                unit.weapon.fire();
+            }
 
             // Push a bullet to the animation queue
             if let Some(unit) = map.units.get(self.unit_id) {

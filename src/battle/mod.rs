@@ -120,8 +120,7 @@ impl Battle {
         
         inventory.add_text_displays(vec![
             TextDisplay::new(-150.0, 100.0, Vertical::Middle, Horizontal::Top, true),
-            TextDisplay::new(150.0, 100.0, Vertical::Middle, Horizontal::Top, true),
-            TextDisplay::new(-150.0, 120.0, Vertical::Middle, Horizontal::Top, true)
+            TextDisplay::new(150.0, 100.0, Vertical::Middle, Horizontal::Top, true)
         ]);
 
         inventory.add_menus(vec![
@@ -352,14 +351,20 @@ impl Battle {
                     .map(|item| item.to_string())
                     .collect();
                 
-                (unit.name.clone(), format!("{} ({})", unit.weapon.tag, unit.weapon.ammo), items, ground)
+                (
+                    format!(
+                        "{}\n{} ({}/{})",
+                        unit.name, unit.weapon.tag, unit.weapon.ammo, unit.weapon.tag.capacity()
+                    ),
+                    items,
+                    ground
+                )
             });
 
             // Set the inventory UI
-            if let Some((name, weapon, items, ground)) = info {
-                self.inventory.text_display(0).text = name;
+            if let Some((unit_string, items, ground)) = info {
+                self.inventory.text_display(0).text = unit_string;
                 self.inventory.text_display(1).text = "Ground".into();
-                self.inventory.text_display(2).text = weapon;
                 self.inventory.menu(0).list = vec_or_default!(items, vec!["No items".into()]);
                 self.inventory.menu(1).list = vec_or_default!(ground, vec!["No items".into()]);
             }
@@ -432,7 +437,10 @@ impl Battle {
                         Some(ai_unit) => {
                             if ai_unit.side == UnitSide::AI {
                                 self.path = None;
-                                self.command_queue.push(Command::Fire(FireCommand::new(selected_id, ai_unit.id)));
+                                
+                                if let Some(true) = self.selected().map(|unit| unit.weapon.can_fire()) {
+                                    self.command_queue.push(Command::Fire(FireCommand::new(selected_id, ai_unit.id)));
+                                }
                             }
                         }
                         _ => if let Some(unit) = self.map.units.get(selected_id) {

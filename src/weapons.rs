@@ -131,6 +131,14 @@ impl Weapon {
         }
     }
 
+    pub fn fire(&mut self) {
+        self.ammo -= 1;
+    }
+
+    pub fn can_fire(&self) -> bool {
+        self.ammo >= self.info().bullets
+    }
+
     fn mode(&self) -> FiringMode {
         self.tag.modes()[self.mode]
     }
@@ -169,10 +177,6 @@ impl Weapon {
                 bullets: 6
             }
         }
-    }
-
-    pub fn damage(&self) -> i16 {
-        self.tag.damage()
     }
 
     pub fn to_item(&self) -> Item {

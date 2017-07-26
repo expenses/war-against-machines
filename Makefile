@@ -10,6 +10,15 @@ tileset:
 	# Optimise the tileset with optipng
 	optipng resources/tileset.png
 
+# Run the colour conversion script
+convert_colour:
+	rustc resources/convert_colour.rs -o target/release/convert_colour
+	target/release/convert_colour
+
 # Optimise the resource images
 optimise:
 	optipng `find resources/images`
+
+# Check the build on both stable and nightly (with clippy)
+check:
+	rustup run stable cargo check && cargo clippy

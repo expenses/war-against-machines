@@ -232,10 +232,16 @@ impl Drawer {
                             // Get the chance to hit
                             let hit_chance = firing.chance_to_hit(target.x, target.y) * firing.weapon.info().hit_modifier;
 
+                            let colour = if firing.weapon.can_fire() {
+                                colours::WHITE
+                            } else {
+                                colours::RED
+                            };
+
                             // Render it!
                             ctx.render_text(
                                 &format!("{:0.3}%", hit_chance * 100.0),
-                                dest[0], dest[1] + TILE_HEIGHT * self.zoom, colours::WHITE
+                                dest[0], dest[1] + TILE_HEIGHT * self.zoom, colour
                             );                            
                         }
                     }
