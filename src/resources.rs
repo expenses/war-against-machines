@@ -3,7 +3,7 @@
 use glutin::VirtualKeyCode;
 
 const TILE: f32 = 48.0;
-const FONT_Y: f32 = TILE * 9.5;
+const FONT_Y: f32 = TILE * 8.5;
 pub const FONT_HEIGHT: f32 = 8.0;
 
 // include_bytes! but prepends the resources directory
@@ -68,13 +68,8 @@ pub enum Image {
     AmmoClip,
 
     Cursor,
-    CursorUnit,
-    CursorUnwalkable,
     CursorCrosshair,
-
     Path,
-    PathCannotFire,
-    PathUnreachable,
 
     EndTurnButton,
     InventoryButton,
@@ -125,26 +120,21 @@ impl ImageSource for Image {
             Image::AmmoClip => tiles!(4, 4, 1, 1),
 
             Image::Cursor => tiles!(0, 5, 1, 1),
-            Image::CursorUnit => tiles!(1, 5, 1, 1),
-            Image::CursorUnwalkable => tiles!(2, 5, 1, 1),
-            Image::CursorCrosshair => tiles!(3, 5, 1, 1),
+            Image::CursorCrosshair => tiles!(1, 5, 1, 1),
+            Image::Path => tiles!(2, 5, 1, 1),
 
-            Image::Path => tiles!(0, 6, 1, 1),
-            Image::PathCannotFire => tiles!(1, 6, 1, 1),
-            Image::PathUnreachable => tiles!(2, 6, 1, 1),
+            Image::LeftEdge => tiles!(0, 6, 1, 1),
+            Image::RightEdge => tiles!(1, 6, 1, 1),
+            Image::Skeleton => tiles!(2, 6, 1, 1),
+            Image::SkeletonCracked => tiles!(3, 6, 1, 1),
+            Image::Rubble => tiles!(4, 6, 1, 1),
 
-            Image::LeftEdge => tiles!(0, 7, 1, 1),
-            Image::RightEdge => tiles!(1, 7, 1, 1),
-            Image::Skeleton => tiles!(2, 7, 1, 1),
-            Image::SkeletonCracked => tiles!(3, 7, 1, 1),
-            Image::Rubble => tiles!(4, 7, 1, 1),
-
-            Image::Title => tiles!(0, 8, 10, 1),
+            Image::Title => tiles!(0, 7, 10, 1),
             
-            Image::EndTurnButton => tiles!(0, 9, 1, 0.5),
-            Image::InventoryButton => tiles!(1, 9, 1, 0.5),
-            Image::ChangeFireModeButton => tiles!(2, 9, 1, 0.5),
-            Image::SaveGameButton => tiles!(3, 9, 1, 0.5),
+            Image::EndTurnButton => tiles!(0, 8, 1, 0.5),
+            Image::InventoryButton => tiles!(1, 8, 1, 0.5),
+            Image::ChangeFireModeButton => tiles!(2, 8, 1, 0.5),
+            Image::SaveGameButton => tiles!(3, 8, 1, 0.5),
         }
     }
 

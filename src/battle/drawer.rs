@@ -107,15 +107,15 @@ impl Drawer {
                 if let Some((cursor_x, cursor_y)) = battle.cursor.position {
                     if cursor_x == x && cursor_y == y {
                         // Determine the cursor type
-                        let image = if !tile.walkable() {
-                            Image::CursorUnwalkable
+                        let colour = if !tile.walkable() {
+                            colours::RED
                         } else if battle.map.units.at(x, y).is_some() {
-                            Image::CursorUnit
+                            colours::ORANGE
                         } else {
-                            Image::Cursor
+                            colours::YELLOW
                         };
 
-                        ctx.render(&image, dest, self.zoom);
+                        ctx.render_with_overlay(&Image::Cursor, dest, self.zoom, colour);
                     }
                 }
             }
@@ -136,7 +136,7 @@ impl Drawer {
                     // Draw the cursor to show that the unit is selected
                     if let Some(selected) = battle.selected {
                         if selected == unit.id {
-                            ctx.render(&Image::CursorUnit, dest, self.zoom);
+                            ctx.render_with_overlay(&Image::Cursor, dest, self.zoom, colours::ORANGE);
                         }
                     }
 
@@ -188,15 +188,15 @@ impl Drawer {
                     if let Some(dest) = self.draw_location(ctx, point.x as f32, point.y as f32) {
                         // Render the path tile
 
-                        let image = if total_cost > unit.moves {
-                            Image::PathUnreachable
+                        let colour = if total_cost > unit.moves {
+                            colours::RED
                         } else if total_cost + unit.weapon.info().cost > unit.moves {
-                            Image::PathCannotFire
+                            colours::ORANGE
                         } else {
-                            Image::Path
+                            colours::WHITE
                         };
 
-                        ctx.render(&image, dest, self.zoom);
+                        ctx.render_with_overlay(&Image::Path, dest, self.zoom, colour);
                     }
                 }
 
