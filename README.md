@@ -49,6 +49,7 @@ In a battle:
 * `right`/`d` to move the camera right
 * `o` to zoom out
 * `p` to zoom in
+* `e` to use items on the inventory screen
 * `escape` to quit
 * `lmb` to select the unit under the cursor
 * `rmb` to perfom commands such as moving and firing

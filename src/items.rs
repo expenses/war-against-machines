@@ -60,6 +60,7 @@ impl Item {
         }
     }
 
+    // The item's bullet capacity (if it has one)
     fn capacity(&self) -> u8 {
         match *self {
             Item::Rifle(_) | Item::RifleClip(_) => WeaponType::Rifle.capacity(),

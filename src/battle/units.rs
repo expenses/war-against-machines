@@ -130,7 +130,8 @@ impl Unit {
                 // Randomly choose a weapon
                 let mut rng = rand::thread_rng();
                 let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
-                let weapon = Weapon::new(*rng.choose(&weapons).unwrap());
+                let weapon_type = *rng.choose(&weapons).unwrap();
+                let weapon = Weapon::new(weapon_type, weapon_type.capacity());
 
                 // Set the inventory
                 let capacity = weapon.tag.capacity();
@@ -155,7 +156,7 @@ impl Unit {
                 Unit {
                     tag, side, x, y, moves, health, id,
                     image: Image::Machine,
-                    weapon: Weapon::new(WeaponType::PlasmaRifle),
+                    weapon: Weapon::new(WeaponType::PlasmaRifle, WeaponType::PlasmaRifle.capacity()),
                     name: generate_machine_name(),
                     max_moves: moves,
                     max_health: health,

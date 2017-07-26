@@ -124,8 +124,8 @@ impl Battle {
         ]);
 
         inventory.add_menus(vec![
-            Menu::new(-150.0, 145.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new()),
-            Menu::new(150.0, 125.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new())
+            Menu::new(-150.0, 145.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new()),
+            Menu::new(150.0, 125.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
         ]);
 
 
@@ -244,6 +244,23 @@ impl Battle {
                         }
                     }
                 },
+                // Use an item
+                VirtualKeyCode::E => if let Some(selected) = self.selected {
+                    if active == 0 {
+                        let index = self.inventory.menu(active).selection;
+
+                        if self.map.use_item(selected, index) {
+                            let new_len = self.inventory.menu(active).len() - 1;
+
+                            if index >= new_len {
+                                self.inventory.menu(active).selection = match new_len {
+                                    0 => 0,
+                                    _ => new_len - 1
+                                }
+                            }
+                        }
+                    }
+                }
                 _ => {}
             }
 

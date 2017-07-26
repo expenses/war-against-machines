@@ -115,30 +115,39 @@ impl fmt::Display for Weapon {
         let info = self.info();
 
         write!(
-            f, "{} - {} (Hit modifier: {}, Cost: {}, Bullets: {}",
-            self.tag, self.mode(), info.hit_modifier, info.cost, info.bullets
+            f, "{} ({}/{}) - {} (Hit modifier: {}, Cost: {}, Bullets: {}",
+            self.tag, self.ammo, self.tag.capacity(), self.mode(), info.hit_modifier, info.cost, info.bullets
         )
     }
 }
 
 impl Weapon {
     // Create a new weapon based of the weapon type
-    pub fn new(tag: WeaponType) -> Weapon {
+    pub fn new(tag: WeaponType, ammo: u8) -> Weapon {
         Weapon {
-            tag,
-            mode: 0,
-            ammo: tag.capacity()
+            tag, ammo,
+            mode: 0
         }
     }
 
+    // Use up a piece of ammo in the weapon
     pub fn fire(&mut self) {
-        self.ammo -= 1;
+        if self.ammo != 0 {
+            self.ammo -= 1;
+        }
     }
 
+    // Can the weapon be fired with the current firing mode
     pub fn can_fire(&self) -> bool {
         self.ammo >= self.info().bullets
     }
 
+    // Can the weapon be reloaded with a given amount of bullets
+    pub fn can_reload(&self, ammo: u8) -> bool {
+        ammo > 0 && (self.tag.capacity() - self.ammo) >= ammo
+    }
+
+    // The current firing mode of the weapon
     fn mode(&self) -> FiringMode {
         self.tag.modes()[self.mode]
     }
@@ -179,6 +188,7 @@ impl Weapon {
         }
     }
 
+    // The corresponding item to the weapon
     pub fn to_item(&self) -> Item {
         match self.tag {
             WeaponType::Rifle => Item::Rifle(self.ammo),
