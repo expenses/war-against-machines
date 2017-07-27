@@ -66,6 +66,7 @@ pub enum Image {
     Scrap,
     Weapon,
     AmmoClip,
+    Bandages,
 
     Cursor,
     CursorCrosshair,
@@ -118,6 +119,7 @@ impl ImageSource for Image {
             Image::Scrap => tiles!(2, 4, 1, 1),
             Image::Weapon => tiles!(3, 4, 1, 1),
             Image::AmmoClip => tiles!(4, 4, 1, 1),
+            Image::Bandages => tiles!(5, 4, 1, 1),
 
             Image::Cursor => tiles!(0, 5, 1, 1),
             Image::CursorCrosshair => tiles!(1, 5, 1, 1),

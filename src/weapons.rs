@@ -65,6 +65,14 @@ impl WeaponType {
             WeaponType::PlasmaRifle => 8
         }
     }
+
+    pub fn weight(&self) -> f32 {
+        match *self {
+            WeaponType::Rifle => Item::Rifle(0).weight(),
+            WeaponType::MachineGun => Item::MachineGun(0).weight(),
+            WeaponType::PlasmaRifle => Item::PlasmaRifle(0).weight()
+        }
+    }
 }
 
 impl fmt::Display for WeaponType {

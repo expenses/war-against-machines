@@ -140,7 +140,7 @@ impl Drawer {
                         }
                     }
 
-                    ctx.render(&unit.image, dest, self.zoom);
+                    ctx.render(&unit.tag.image(), dest, self.zoom);
                 }
             }
 

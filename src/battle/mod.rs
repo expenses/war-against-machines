@@ -124,7 +124,7 @@ impl Battle {
         ]);
 
         inventory.add_menus(vec![
-            Menu::new(-150.0, 145.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new()),
+            Menu::new(-150.0, 165.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new()),
             Menu::new(150.0, 125.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
         ]);
 
@@ -359,8 +359,11 @@ impl Battle {
         if self.inventory.active {
             // Get the name of the selected unit, it's items and the items on the ground
             let info = self.selected().map(|unit| {
+                let mut weight = unit.weapon.tag.weight();
+
                 // Collect the unit's items into a vec
                 let items: Vec<String> = unit.inventory.iter()
+                    .inspect(|item| weight += item.weight())
                     .map(|item| item.to_string())
                     .collect();
                 // Collect the items on the ground into a vec
@@ -370,8 +373,10 @@ impl Battle {
                 
                 (
                     format!(
-                        "{}\n{} ({}/{})",
-                        unit.name, unit.weapon.tag, unit.weapon.ammo, unit.weapon.tag.capacity()
+                        "{}\n{} ({}/{})\nCarry Capacity: {}/{} kg",
+                        unit.name,
+                        unit.weapon.tag, unit.weapon.ammo, unit.weapon.tag.capacity(),
+                        weight, unit.tag.capacity()
                     ),
                     items,
                     ground
@@ -518,7 +523,7 @@ impl Battle {
     fn end_turn(&mut self) {
         if self.controller == Controller::Player {
             for unit in self.map.units.iter_mut() {
-                unit.moves = unit.max_moves;
+                unit.moves = unit.tag.moves();
             }
 
             self.controller = Controller::AI;

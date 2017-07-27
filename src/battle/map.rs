@@ -1,9 +1,9 @@
 // A Map struct that combines Tiles and Units for convenience
 // This struct contains all the stuff that is saved/loaded
 
-use super::units::{UnitSide, Units};
+use super::units::{UnitSide, UnitType, Units};
 use super::tiles::{Visibility, Tiles};
-use items::Item;
+use items::{Item, BANDAGE_HEAL};
 use weapons::{Weapon, WeaponType};
 
 use std::fs::{File, create_dir_all};
@@ -65,8 +65,15 @@ impl Map {
             let tile = self.tiles.at_mut(unit.x, unit.y);
         
             if let Some(item) = tile.items.get(index).cloned() {
-                unit.inventory.push(item);
-                tile.items.remove(index);
+                let new_weight = unit.inventory.iter().fold(
+                    item.weight() + unit.weapon.tag.weight(),
+                    |total, item| total + item.weight()
+                );
+
+                if new_weight <= unit.tag.capacity() {                        
+                    unit.inventory.push(item);
+                    tile.items.remove(index);
+                } 
             }
         }
     }
@@ -108,6 +115,13 @@ impl Map {
                         unit.weapon = Weapon::new(WeaponType::PlasmaRifle, ammo);
                         item_consumed = true;
                     },
+                    // Use other items
+                    (Item::Bandages, _) => if let UnitType::Squaddie = unit.tag {
+                        if unit.tag.health() - unit.health >= BANDAGE_HEAL {
+                            unit.health += BANDAGE_HEAL;
+                            item_consumed = true;
+                        }
+                    }
                     _ => {}
                 }
             }

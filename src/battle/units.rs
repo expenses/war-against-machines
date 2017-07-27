@@ -84,6 +84,36 @@ pub enum UnitType {
     Machine
 }
 
+impl UnitType {
+    pub fn moves(&self) -> u16 {
+        match *self {
+            UnitType::Squaddie => 30,
+            UnitType::Machine => 25
+        }
+    }
+
+    pub fn health(&self) -> i16 {
+        match *self {
+            UnitType::Squaddie => 100,
+            UnitType::Machine => 150
+        }
+    }
+
+    pub fn image(&self) -> Image {
+        match *self {
+            UnitType::Squaddie => Image::Squaddie,
+            UnitType::Machine => Image::Machine
+        }
+    }
+
+    pub fn capacity(&self) -> f32 {
+        match *self {
+            UnitType::Squaddie => 25.0,
+            UnitType::Machine => 75.0
+        }
+    }
+}
+
 impl fmt::Display for UnitType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match *self {
@@ -110,12 +140,9 @@ pub struct Unit {
     pub x: usize,
     pub y: usize,
     pub weapon: Weapon,
-    pub image: Image,
     pub name: String,
     pub moves: u16,
-    pub max_moves: u16,
     pub health: i16,
-    pub max_health: i16,
     pub inventory: Vec<Item>
 }
 
@@ -124,42 +151,32 @@ impl Unit {
     fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
         match tag {
             UnitType::Squaddie => {   
-                let moves = 30;
-                let health = 100;
-
                 // Randomly choose a weapon
                 let mut rng = rand::thread_rng();
                 let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
                 let weapon_type = *rng.choose(&weapons).unwrap();
-                let weapon = Weapon::new(weapon_type, weapon_type.capacity());
-
-                // Set the inventory
-                let capacity = weapon.tag.capacity();
-                let inventory = if let WeaponType::Rifle = weapon.tag {
-                    vec![Item::RifleClip(capacity), Item::RifleClip(capacity)]
-                } else {
-                    vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity)]
-                };
+                let capacity = weapon_type.capacity();
 
                 Unit {
-                    tag, side, x, y, moves, health, id, weapon, inventory,
-                    image: Image::Squaddie,
+                    tag, side, x, y, id,
+                    weapon: Weapon::new(weapon_type, capacity),
                     name: generate_squaddie_name(),
-                    max_moves: moves,
-                    max_health: health,
+                    moves: tag.moves(),
+                    health: tag.health(),
+                    inventory: if let WeaponType::Rifle = weapon_type {
+                        vec![Item::RifleClip(capacity), Item::RifleClip(capacity), Item::Bandages]
+                    } else {
+                        vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity), Item::Bandages]
+                    }
                 }
             },
             UnitType::Machine => {
-                let moves = 25;
-                let health = 150;
-
                 Unit {
-                    tag, side, x, y, moves, health, id,
-                    image: Image::Machine,
+                    tag, side, x, y, id,
                     weapon: Weapon::new(WeaponType::PlasmaRifle, WeaponType::PlasmaRifle.capacity()),
                     name: generate_machine_name(),
-                    max_moves: moves,
-                    max_health: health,
+                    moves: tag.moves(),
+                    health: tag.health(),
                     inventory: Vec::new()
                 }
             }
