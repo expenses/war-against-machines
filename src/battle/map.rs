@@ -121,7 +121,7 @@ impl Map {
                             unit.health += BANDAGE_HEAL;
                             item_consumed = true;
                         }
-                    }
+                    },
                     _ => {}
                 }
             }
