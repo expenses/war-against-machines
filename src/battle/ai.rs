@@ -7,7 +7,7 @@ use super::map::Map;
 use super::units::{Unit, UnitSide};
 use super::paths::{pathfind, PathPoint, WALK_LATERAL_COST};
 use super::commands::{CommandQueue, Command, WalkCommand, FireCommand, FinishedCommand};
-use utils::{chance_to_hit, distance_under, distance};
+use utils::{chance_to_hit, distance};
 
 // A move that the AI could take
 struct AIMove {
@@ -245,7 +245,7 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     for tile_x in 0 .. map.tiles.cols {
         for tile_y in 0 .. map.tiles.rows {
             // If the tile would be visible, add the score
-            if distance_under(x, y, tile_x, tile_y, unit.tag.sight()) {
+            if map.tiles.visible(x, y, tile_x, tile_y, unit.tag.sight()) {
                 score += match map.tiles.at(tile_x, tile_y).ai_visibility {
                     Visibility::Invisible => 1.0,
                     Visibility::Foggy => 0.1,

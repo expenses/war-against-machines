@@ -9,6 +9,18 @@ use items::Item;
 use utils::distance_under;
 use resources::Image;
 
+// A point for line-of-sight
+type Point = (isize, isize);
+
+// Sort two points on the x axis 
+fn sort(a: Point, b: Point) -> (Point, Point) {
+    if a.0 > b.0 {
+        (b, a)
+    } else {
+        (a, b)
+    }
+}
+
 // The visibility of the tile
 #[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum Visibility {
@@ -222,9 +234,14 @@ impl Tiles {
         self.at_mut(x, y).items.append(items);
     }
 
-    // Is these is a clear line-of-sight between two points
-    pub fn clear_los(&self, start: (isize, isize), end: (isize, isize)) -> bool {
+    // Is these is a clean line-of-sight between two points
+    fn clean_los(&self, start: Point, end: Point) -> bool {
+        // Sort the points so that line-of-sight is symmetrical
+        let (start, end) = sort(start, end);
+
         Bresenham::new(start, end)
+            // This implementation includes the first point, so we skip it
+            .skip(1)
             .map(|(x, y)| self.at(x as usize, y as usize))
             .all(|tile| !tile.obstacle.blocks_visbility())
     }
@@ -233,8 +250,12 @@ impl Tiles {
     fn tile_visible(&self, units: &Units, side: UnitSide, x: usize, y: usize) -> bool {
         units.iter()
             .filter(|unit| unit.side == side)
-            .any(|unit| distance_under(unit.x, unit.y, x, y, unit.tag.sight()) &&
-                        self.clear_los((unit.x as isize, unit.y as isize), (x as isize, y as isize))
-            )
+            .any(|unit| self.visible(unit.x, unit.y, x, y, unit.tag.sight()))
+    }
+
+    // would a unit with a particular sight range be able to see from one tile to another
+    pub fn visible(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32) -> bool {
+        distance_under(a_x, a_y, b_x, b_y, sight) &&
+        self.clean_los((a_x as isize, a_y as isize), (b_x as isize, b_y as isize))
     }
 }
