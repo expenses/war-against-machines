@@ -4,7 +4,7 @@ use ord_subset::OrdSubsetIterExt;
 
 use super::tiles::Visibility;
 use super::map::Map;
-use super::units::{Unit, UnitSide, UNIT_SIGHT};
+use super::units::{Unit, UnitSide};
 use super::paths::{pathfind, PathPoint, WALK_LATERAL_COST};
 use super::commands::{CommandQueue, Command, WalkCommand, FireCommand, FinishedCommand};
 use utils::{chance_to_hit, distance_under, distance};
@@ -141,7 +141,7 @@ fn maximize_tile_search(unit: &Unit, map: &Map) -> AIMove {
 
             // If there is a path to the tile, check its movement score
             if let Some((path, cost)) = pathfind(unit, x, y, map) {
-                ai_move.compare(unit, AIMove::new(x, y, path, cost, None, search_score(x, y, map)));
+                ai_move.compare(unit, AIMove::new(x, y, path, cost, None, search_score(x, y, map, unit)));
             }
         }
     }
@@ -238,14 +238,14 @@ fn damage_score(x: usize, y: usize, cost: u16, unit: &Unit, target: &Unit) -> f3
 
 // Calculate the search score for a tile.
 // Visible tiles that were invisible count for 1.0, while visible tiles that were foggy count for 0.1
-fn search_score(x: usize, y: usize, map: &Map) -> f32 {
+fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     let mut score = 0.0;
 
     // Loop though the tiles
     for tile_x in 0 .. map.tiles.cols {
         for tile_y in 0 .. map.tiles.rows {
             // If the tile would be visible, add the score
-            if distance_under(x, y, tile_x, tile_y, UNIT_SIGHT) {
+            if distance_under(x, y, tile_x, tile_y, unit.tag.sight()) {
                 score += match map.tiles.at(tile_x, tile_y).ai_visibility {
                     Visibility::Invisible => 1.0,
                     Visibility::Foggy => 0.1,

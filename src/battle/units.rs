@@ -9,11 +9,8 @@ use std::slice::{Iter, IterMut};
 use super::tiles::Tiles;
 use items::Item;
 use weapons::{Weapon, WeaponType};
-use utils::{distance_under, chance_to_hit};
+use utils::chance_to_hit;
 use resources::Image;
-
-// The sight range of units
-pub const UNIT_SIGHT: f32 = 7.5;
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str] = &[
@@ -111,6 +108,10 @@ impl UnitType {
             UnitType::Squaddie => 25.0,
             UnitType::Machine => 75.0
         }
+    }
+
+    pub fn sight(&self) -> f32 {
+        7.5
     }
 }
 
@@ -259,13 +260,6 @@ impl Units {
     // Count the number of units on a particular side
     pub fn count(&self, side: UnitSide) -> u8 {
         self.iter().filter(|unit| unit.side == side).count() as u8
-    }
-
-    // Calculate if (x, y) is visible to any units on a particular side
-    pub fn visible(&self, x: usize, y: usize, side: UnitSide) -> bool {
-        self.iter()
-            .filter(|unit| unit.side == side)
-            .any(|unit| distance_under(unit.x, unit.y, x, y, UNIT_SIGHT))
     }
 
     // Convert a unit ID to that unit's index in the vec

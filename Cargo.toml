@@ -14,6 +14,8 @@ pathfinding = "*"
 ord_subset = "*"
 ## For 'retain_mut'
 odds = "*"
+## Line aliasing for line-of-sight
+bresenham = "*"
 
 # Serialization/deserialization
 serde = "*"

@@ -2,7 +2,7 @@
 
 use super::Battle;
 use super::units::UnitSide;
-use super::tiles::Visibility;
+use super::tiles::{Visibility, Obstacle};
 use super::animations::Animation;
 use resources::Image;
 use utils::{clamp_float, convert_rotation};
@@ -102,12 +102,17 @@ impl Drawer {
             // Draw the tile base
             ctx.render_with_overlay(&tile.base, dest, self.zoom, overlay);
 
+            // If the tile has a pit on it, draw it
+            if let Obstacle::Pit(ref image) = tile.obstacle {
+                ctx.render_with_overlay(image, dest, self.zoom, overlay);
+            }
+
             // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
             if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
                 if let Some((cursor_x, cursor_y)) = battle.cursor.position {
                     if cursor_x == x && cursor_y == y {
                         // Determine the cursor type
-                        let colour = if !tile.walkable() {
+                        let colour = if !tile.obstacle.walkable() {
                             colours::RED
                         } else if battle.map.units.at(x, y).is_some() {
                             colours::ORANGE
@@ -144,9 +149,9 @@ impl Drawer {
                 }
             }
 
-            // Draw the tile obstacle
-            if let Some(ref obstacle) = tile.obstacle {
-                ctx.render_with_overlay(obstacle, dest, self.zoom, overlay);
+            // If the tile has an obstacle on it, draw it
+            if let Obstacle::Object(ref image) = tile.obstacle {
+                ctx.render_with_overlay(image, dest, self.zoom, overlay);
             }
         }
     }

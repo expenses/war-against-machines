@@ -2,9 +2,11 @@
 
 use rand;
 use rand::Rng;
+use bresenham::Bresenham;
 
 use super::units::{UnitSide, Units};
 use items::Item;
+use utils::distance_under;
 use resources::Image;
 
 // The visibility of the tile
@@ -15,11 +17,36 @@ pub enum Visibility {
     Invisible
 }
 
+#[derive(Serialize, Deserialize)]
+pub enum Obstacle {
+    Object(Image),
+    Pit(Image),
+    None
+}
+
+impl Obstacle {
+    pub fn walkable(&self) -> bool {
+        if let Obstacle::None = *self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn blocks_visbility(&self) -> bool {
+        if let Obstacle::Object(_) = *self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 // A tile in the map
 #[derive(Serialize, Deserialize)]
 pub struct Tile {
     pub base: Image,
-    pub obstacle: Option<Image>,
+    pub obstacle: Obstacle,
     pub decoration: Option<Image>,
     pub player_visibility: Visibility,
     pub ai_visibility: Visibility,
@@ -31,7 +58,7 @@ impl Tile {
     fn new(base: Image) -> Tile {
         Tile {
             base,
-            obstacle: None,
+            obstacle: Obstacle::None,
             decoration: None,
             player_visibility: Visibility::Invisible,
             ai_visibility: Visibility::Invisible,
@@ -41,18 +68,13 @@ impl Tile {
 
     // Set the tile to be one of the pit images and remove the decoration
     fn set_pit(&mut self, pit_image: Image) {
-        self.obstacle = Some(pit_image);
+        self.obstacle = Obstacle::Pit(pit_image);
         self.decoration = None;
     }
 
     // return if the tile is visible to the player
     pub fn visible(&self) -> bool {
         self.player_visibility != Visibility::Invisible
-    }
-
-    // return if the tile can be walked on
-    pub fn walkable(&self) -> bool {
-        self.obstacle.is_none()
     }
 
     // Actions that occur when the tile is walked on
@@ -109,7 +131,7 @@ impl Tiles {
 
                 // Add in ruins
                 if !unit && rand::random::<f32>() < 0.1 {
-                    tile.obstacle = Some(*rng.choose(ruins).unwrap());
+                    tile.obstacle = Obstacle::Object(*rng.choose(ruins).unwrap());
                 } 
 
                 // Push the tile
@@ -169,17 +191,19 @@ impl Tiles {
     pub fn update_visibility(&mut self, units: &Units) {
         for x in 0 .. self.cols {
             for y in 0 .. self.rows {
+                let player_visible = self.tile_visible(units, UnitSide::Player, x, y);
+                let ai_visible = self.tile_visible(units, UnitSide::AI, x, y);
                 let tile = self.at_mut(x, y);
                 
                 // If the tile is visible set the visibility to visible, or if it was visible make it foggy
                 
-                if units.visible(x, y, UnitSide::Player) {
+                if player_visible {
                     tile.player_visibility = Visibility::Visible;
                 } else if tile.player_visibility == Visibility::Visible {
                     tile.player_visibility = Visibility::Foggy;
                 }
                 
-                if units.visible(x, y, UnitSide::AI) {
+                if ai_visible {
                     tile.ai_visibility = Visibility::Visible;
                 } else if tile.ai_visibility == Visibility::Visible {
                     tile.ai_visibility = Visibility::Foggy;
@@ -196,5 +220,21 @@ impl Tiles {
     // Drop a vec of items onto the map
     pub fn drop_all(&mut self, x: usize, y: usize, items: &mut Vec<Item>) {
         self.at_mut(x, y).items.append(items);
+    }
+
+    // Is these is a clear line-of-sight between two points
+    pub fn clear_los(&self, start: (isize, isize), end: (isize, isize)) -> bool {
+        Bresenham::new(start, end)
+            .map(|(x, y)| self.at(x as usize, y as usize))
+            .all(|tile| !tile.obstacle.blocks_visbility())
+    }
+
+    // Is a tile visible by any unit on a particular side
+    fn tile_visible(&self, units: &Units, side: UnitSide, x: usize, y: usize) -> bool {
+        units.iter()
+            .filter(|unit| unit.side == side)
+            .any(|unit| distance_under(unit.x, unit.y, x, y, unit.tag.sight()) &&
+                        self.clear_los((unit.x as isize, unit.y as isize), (x as isize, y as isize))
+            )
     }
 }
