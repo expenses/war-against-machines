@@ -2,8 +2,6 @@
 
 use pathfinding;
 
-use std::cmp::{min, max};
-
 use super::map::Map;
 use super::units::Unit;
 
@@ -15,7 +13,7 @@ pub const WALK_DIAGONAL_COST: u16 = 3;
 // Use the A Star algorithm to find a path between a unit and a destination
 pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, u16)> {
     if map.taken(dest_x, dest_y) {
-        return None
+        return None;
     }
 
     pathfinding::astar(
@@ -73,24 +71,52 @@ impl PathPoint {
     fn neighbours(&self, map: &Map) -> Vec<(PathPoint, u16)> {
         let mut neighbours = Vec::new();
 
-        let min_x = max(0, self.x as i32 - 1) as usize;
-        let min_y = max(0, self.y as i32 - 1) as usize;
+        let tiles = &map.tiles;
 
-        let max_x = min(map.tiles.cols - 1, self.x + 1);
-        let max_y = min(map.tiles.rows - 1, self.y + 1);
+        // lateral movement
 
-        // Loop through the possible neighbours
-        for x in min_x .. max_x + 1 {
-            for y in min_y .. max_y + 1 {
-                if !map.taken(x, y) && !(x == self.x && y == self.y) {
-                    // Add the point
-                    let cost = self.cost(x, y);
-                    let point = PathPoint::new(x, y, cost);
-                    neighbours.push((point, cost));
-                }
-            }
+        if self.x > 0 && tiles.horizontal_clear(self.x, self.y) {
+            self.add_point(&mut neighbours, map, self.x - 1, self.y);
+        }
+
+        if self.x < tiles.cols - 1 && tiles.horizontal_clear(self.x + 1, self.y) {
+            self.add_point(&mut neighbours, map, self.x + 1, self.y);
+        }
+
+        if self.y > 0 && tiles.vertical_clear(self.x, self.y) {
+            self.add_point(&mut neighbours, map, self.x, self.y - 1);
+        }
+
+        if self.y < tiles.rows - 1 && tiles.vertical_clear(self.x, self.y + 1) {
+            self.add_point(&mut neighbours, map, self.x, self.y + 1);
+        }
+
+        // Diagonal movement
+
+        if tiles.diagonal_clear(self.x, self.y, true) {
+            self.add_point(&mut neighbours, map, self.x - 1, self.y - 1);
+        }
+
+        if tiles.diagonal_clear(self.x + 1, self.y, false) {
+            self.add_point(&mut neighbours, map, self.x + 1, self.y - 1);
+        }
+
+        if tiles.diagonal_clear(self.x, self.y + 1, false) {
+            self.add_point(&mut neighbours, map, self.x - 1, self.y + 1);
+        }
+
+        if tiles.diagonal_clear(self.x + 1, self.y + 1, true) {
+            self.add_point(&mut neighbours, map, self.x + 1, self.y + 1);
         }
 
         neighbours
+    }
+
+    // Add a point the the neighbours if it's not taken
+    fn add_point(&self, neighbours: &mut Vec<(PathPoint, u16)>, map: &Map, x: usize, y: usize) {
+        if !map.taken(x, y) {
+            let cost = self.cost(x, y);
+            neighbours.push((PathPoint::new(x, y, cost), cost));
+        }
     }
 }

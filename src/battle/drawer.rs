@@ -64,9 +64,8 @@ impl Drawer {
         let y = (y - self.y) * y_size;
 
         // Check if the tile is onscreen
-        if  x > -max_x - x_size && y > -max_y - y_size &&
-            x < max_x  + x_size && y < max_y  + y_size * 2.0 {
-            
+        if x > -max_x - x_size && y > -max_y - y_size * 2.0 &&
+           x < max_x  + x_size && y < max_y  + y_size * 2.0 {    
             Some([x, y])
         } else {
             None
@@ -82,76 +81,92 @@ impl Drawer {
 
     // Draw all the elements of a particular map tile
     pub fn draw_tile(&self, x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
-        // Get the tile
-        let tile = battle.map.tiles.at(x, y);
+        let tiles = &battle.map.tiles;
 
-        // If the tile is invisible, return
-        if !tile.visible() {
-            return;
-        }
+        // Get the tile
+        let tile = tiles.at(x, y);
 
         // If the tile is on the screen, draw it
         if let Some(dest) = self.draw_location(ctx, x as f32, y as f32) {
             // Get the colour overlay
-            let overlay = if tile.player_visibility == Visibility::Foggy {
-                colours::FOGGY
-            } else {
-                colours::ALPHA
-            };
+            let overlay = tile.player_visibility.colour();
 
-            // Draw the tile base
-            ctx.render_with_overlay(&tile.base, dest, self.zoom, overlay);
-
-            // If the tile has a pit on it, draw it
-            if let Obstacle::Pit(ref image) = tile.obstacle {
-                ctx.render_with_overlay(image, dest, self.zoom, overlay);
+            // Draw the tile base if visible
+            if tile.visible() {
+                ctx.render_with_overlay(&tile.base, dest, self.zoom, overlay);
             }
 
-            // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
-            if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
-                if let Some((cursor_x, cursor_y)) = battle.cursor.position {
-                    if cursor_x == x && cursor_y == y {
-                        // Determine the cursor type
-                        let colour = if !tile.obstacle.walkable() {
-                            colours::RED
-                        } else if battle.map.units.at(x, y).is_some() {
-                            colours::ORANGE
-                        } else {
-                            colours::YELLOW
-                        };
+            // Draw the left wall if visible
+            if let Some(ref wall) = tile.walls.left {
+                let visibility = tiles.left_wall_visibility(x, y);
 
-                        ctx.render_with_overlay(&Image::Cursor, dest, self.zoom, colour);
-                    }
+                if visibility != Visibility::Invisible {
+                    ctx.render_with_overlay(&wall.tag.left_image(), dest, self.zoom, visibility.colour());
                 }
             }
 
-            // Draw items that should only be shown on visible tiles
-            if tile.player_visibility == Visibility::Visible {
-                // Draw the tile decoration
-                if let Some(ref decoration) = tile.decoration {
-                    ctx.render_with_overlay(decoration, dest, self.zoom, overlay);
+            // Draw the right wall if visible
+            if let Some(ref wall) = tile.walls.top {
+                let visibility = tiles.top_wall_visibility(x, y);
+
+                if visibility != Visibility::Invisible {
+                    ctx.render_with_overlay(&wall.tag.top_image(), dest, self.zoom, visibility.colour());
+                }
+            }
+
+            // If the tile is visible, draw the rest
+            if tile.visible() {
+                // If the tile has a pit on it, draw it
+                if let Obstacle::Pit(ref image) = tile.obstacle {
+                    ctx.render_with_overlay(image, dest, self.zoom, overlay);
                 }
 
-                for item in &tile.items {
-                    ctx.render(&item.image(), dest, self.zoom);
-                }
+                // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
+                if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
+                    if let Some((cursor_x, cursor_y)) = battle.cursor.position {
+                        if cursor_x == x && cursor_y == y {
+                            // Determine the cursor type
+                            let colour = if !tile.obstacle.is_empty() {
+                                colours::RED
+                            } else if battle.map.units.at(x, y).is_some() {
+                                colours::ORANGE
+                            } else {
+                                colours::YELLOW
+                            };
 
-                // Draw a unit at the position
-                if let Some(unit) = battle.map.units.at(x, y) {
-                    // Draw the cursor to show that the unit is selected
-                    if let Some(selected) = battle.selected {
-                        if selected == unit.id {
-                            ctx.render_with_overlay(&Image::Cursor, dest, self.zoom, colours::ORANGE);
+                            ctx.render_with_overlay(&Image::Cursor, dest, self.zoom, colour);
                         }
                     }
-
-                    ctx.render(&unit.tag.image(), dest, self.zoom);
                 }
-            }
 
-            // If the tile has an obstacle on it, draw it
-            if let Obstacle::Object(ref image) = tile.obstacle {
-                ctx.render_with_overlay(image, dest, self.zoom, overlay);
+                // Draw items that should only be shown on visible tiles
+                if tile.player_visibility == Visibility::Visible {
+                    // Draw the tile decoration
+                    if let Some(ref decoration) = tile.decoration {
+                        ctx.render_with_overlay(decoration, dest, self.zoom, overlay);
+                    }
+
+                    for item in &tile.items {
+                        ctx.render(&item.image(), dest, self.zoom);
+                    }
+
+                    // Draw a unit at the position
+                    if let Some(unit) = battle.map.units.at(x, y) {
+                        // Draw the cursor to show that the unit is selected
+                        if let Some(selected) = battle.selected {
+                            if selected == unit.id {
+                                ctx.render_with_overlay(&Image::Cursor, dest, self.zoom, colours::ORANGE);
+                            }
+                        }
+
+                        ctx.render(&unit.tag.image(), dest, self.zoom);
+                    }
+                }
+
+                // If the tile has an obstacle on it, draw it
+                if let Obstacle::Object(ref image) = tile.obstacle {
+                    ctx.render_with_overlay(image, dest, self.zoom, overlay);
+                }
             }
         }
     }

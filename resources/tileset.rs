@@ -9,9 +9,9 @@ use std::env::args;
 
 const SIZE: u32 = 480;
 const FILES: &[&[&str]] = &[
-    &["base/1.png", "base/2.png", "ruin/1.png", "pit/top.png", "pit/left.png", "pit/right.png", "pit/bottom.png", "pit/center.png"],
-    &["ruin/2.png", "ruin/3.png", "ruin/4.png", "pit/tl.png", "pit/tr.png", "pit/bl.png", "pit/br.png"],
-    &["unit/squaddie.png", "unit/machine.png"],
+    &["base/1.png", "base/2.png", "pit/top.png", "pit/left.png", "pit/right.png", "pit/bottom.png", "pit/center.png"],
+    &["object/rebar.png", "object/rubble.png", "pit/tl.png", "pit/tr.png", "pit/bl.png", "pit/br.png"],
+    &["unit/squaddie.png", "unit/machine.png", "wall/ruin1_left.png", "wall/ruin1_top.png", "wall/ruin2_left.png", "wall/ruin2_top.png"],
     &["bullet/regular.png", "bullet/plasma.png"],
     &["item/squaddie_corpse.png", "item/machine_corpse.png", "item/scrap.png", "item/weapon.png", "item/ammo_clip.png", "item/bandages.png"],
     &["cursor/default.png", "cursor/crosshair.png", "path.png"],

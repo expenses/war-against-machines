@@ -36,7 +36,7 @@ impl Map {
     
     // Work out if a tile is taken or not
     pub fn taken(&self, x: usize, y: usize) -> bool {
-        !self.tiles.at(x, y).obstacle.walkable() || self.units.at(x, y).is_some()
+        !self.tiles.at(x, y).obstacle.is_empty() || self.units.at(x, y).is_some()
     }
 
     // Work out how many units of a particular side are visible to the other side

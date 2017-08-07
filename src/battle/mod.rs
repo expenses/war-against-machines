@@ -8,6 +8,7 @@ mod paths;
 mod animations;
 mod ai;
 mod commands;
+mod walls;
 
 use glutin::{VirtualKeyCode, MouseButton};
 

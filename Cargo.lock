@@ -21,7 +21,7 @@ dependencies = [
 
 [[package]]
 name = "adler32"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -228,7 +228,7 @@ name = "deflate"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "adler32 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "adler32 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1001,7 +1001,7 @@ dependencies = [
 ]
 
 [metadata]
-"checksum adler32 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ff33fe13a08dbce05bcefa2c68eea4844941437e33d6f808240b54d7157b9cd"
+"checksum adler32 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ce93f29e3642662cac79d45e9c27ead906b91ac9921c1cf6f4801d01b4e19a8b"
 "checksum alsa-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9013f855a808ab924a4c08b5c1ec9bd6b04fdb2295b4d570fb723e0ed2802a4f"
 "checksum android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
 "checksum approx 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08abcc3b4e9339e33a3d0a5ed15d84a687350c05689d825e0f6655eef9e76a94"
