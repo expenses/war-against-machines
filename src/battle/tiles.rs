@@ -209,14 +209,14 @@ impl Tiles {
 
     // Add a left wall if possible
     fn add_left_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if self.not_pit(x, y) || self.not_pit(x - 1, y) {
+        if x < self.rows && y < self.rows && (self.not_pit(x, y) || self.not_pit(x - 1, y)) {
             self.at_mut(x, y).walls.set_left(tag);
         }
     }
 
     // Add a top wall if possible
     fn add_top_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if self.not_pit(x, y) || self.not_pit(x, y - 1) {
+        if x < self.rows && y < self.rows && (self.not_pit(x, y) || self.not_pit(x, y - 1)) {
             self.at_mut(x, y).walls.set_top(tag);
         }
     }
