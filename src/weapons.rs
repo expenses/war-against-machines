@@ -151,8 +151,14 @@ impl Weapon {
     }
 
     // Can the weapon be reloaded with a given amount of bullets
-    pub fn can_reload(&self, ammo: u8) -> bool {
-        ammo > 0 && (self.tag.capacity() - self.ammo) >= ammo
+    pub fn reload(&mut self, ammo: u8) -> bool {
+        let can_reload = ammo > 0 && (self.tag.capacity() - self.ammo) >= ammo;
+
+        if can_reload {
+            self.ammo += ammo
+        }
+
+        can_reload
     }
 
     // The current firing mode of the weapon

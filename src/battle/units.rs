@@ -12,6 +12,13 @@ use weapons::{Weapon, WeaponType};
 use utils::chance_to_hit;
 use resources::Image;
 
+// The cost for a unit to walk laterally
+pub const WALK_LATERAL_COST: u16 = 2;
+// The cost for a unit to walk diagonally
+pub const WALK_DIAGONAL_COST: u16 = 3;
+// The cost for a unit ti pick up / drop / use an item
+pub const ITEM_COST: u16 = 5;
+
 // A list of first names to pick from
 const FIRST_NAMES: &[&str] = &[
     "David",
@@ -75,7 +82,7 @@ fn generate_machine_name() -> String {
 }
 
 // The type of a unit
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum UnitType {
     Squaddie,
     Machine
@@ -194,6 +201,10 @@ impl Unit {
     // Get the chance-to-hit of a tile from the unit
     pub fn chance_to_hit(&self, target_x: usize, target_y: usize) -> f32 {
         chance_to_hit(self.x, self.y, target_x, target_y)
+    }
+
+    pub fn can_heal(&self, amount: i16) -> bool {
+        self.tag == UnitType::Squaddie && self.tag.health() - self.health >= amount
     }
 }
 

@@ -1,7 +1,7 @@
 // A Map struct that combines Tiles and Units for convenience
 // This struct contains all the stuff that is saved/loaded
 
-use super::units::{UnitSide, UnitType, Units};
+use super::units::{UnitSide, Units, ITEM_COST};
 use super::tiles::{Visibility, Tiles};
 use items::{Item, BANDAGE_HEAL};
 use weapons::{Weapon, WeaponType};
@@ -85,44 +85,33 @@ impl Map {
 
         if let Some(unit) = self.units.get_mut(unit) {
             if let Some(item) = unit.inventory.get(index) {
-                match (*item, unit.weapon.tag) {
+                item_consumed = match (*item, unit.weapon.tag) {
                     // Reload the corresponding weapon
-                    (Item::RifleClip(ammo), WeaponType::Rifle) => if unit.weapon.can_reload(ammo) {
-                        unit.weapon.ammo += ammo;
-                        item_consumed = true;
-                    },
-                    (Item::MachineGunClip(ammo), WeaponType::MachineGun) => if unit.weapon.can_reload(ammo) {
-                        unit.weapon.ammo += ammo;
-                        item_consumed = true;
-                    },
-                    (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => if unit.weapon.can_reload(ammo) {
-                        unit.weapon.ammo += ammo;
-                        item_consumed = true;
-                    },
+                    (Item::RifleClip(ammo), WeaponType::Rifle) |
+                    (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
+                    (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => unit.weapon.reload(ammo),
                     // Switch weapons
                     (Item::Rifle(ammo), _) => {
                         new_item = Some(unit.weapon.to_item());
                         unit.weapon = Weapon::new(WeaponType::Rifle, ammo);
-                        item_consumed = true;
+                        true
                     },
                     (Item::MachineGun(ammo), _) => {
                         new_item = Some(unit.weapon.to_item());
                         unit.weapon = Weapon::new(WeaponType::MachineGun, ammo);
-                        item_consumed = true;
+                        true
                     },
                     (Item::PlasmaRifle(ammo), _) => {
                         new_item = Some(unit.weapon.to_item());
                         unit.weapon = Weapon::new(WeaponType::PlasmaRifle, ammo);
-                        item_consumed = true;
+                        true
                     },
                     // Use other items
-                    (Item::Bandages, _) => if let UnitType::Squaddie = unit.tag {
-                        if unit.tag.health() - unit.health >= BANDAGE_HEAL {
-                            unit.health += BANDAGE_HEAL;
-                            item_consumed = true;
-                        }
-                    },
-                    _ => {}
+                    (Item::Bandages, _) if unit.can_heal(BANDAGE_HEAL) => {
+                        unit.health += BANDAGE_HEAL;
+                        true
+                    }
+                    _ => false
                 }
             }
 

@@ -216,6 +216,8 @@ impl Battle {
             let (active, inactive) = if self.inventory.menu(0).selected {(0, 1)} else {(1, 0)};
             
             match key {
+                // Toggle the inventory
+                VirtualKeyCode::I => self.inventory.toggle(),
                 // Rotate the selection up
                 VirtualKeyCode::Up   | VirtualKeyCode::W => self.inventory.menu(active).rotate_up(),
                 // Rotate the selection down
@@ -276,6 +278,9 @@ impl Battle {
             VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
             VirtualKeyCode::O => self.keys[4] = pressed,
             VirtualKeyCode::P => self.keys[5] = pressed,
+            VirtualKeyCode::I => if pressed && self.selected.is_some() {
+                self.inventory.toggle();
+            }
             _ => {}
         }
 
@@ -421,7 +426,7 @@ impl Battle {
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
                 Some(1) => if self.selected.is_some() {
-                    self.inventory.active = !self.inventory.active;
+                    self.inventory.toggle();
                 },
                 // Change the selected units fire mode
                 Some(2) => if let Some(unit) = self.selected_mut() {

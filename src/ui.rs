@@ -288,6 +288,10 @@ impl UI {
         self.menus.append(&mut menus);
     }
 
+    pub fn toggle(&mut self) {
+        self.active = !self.active;
+    }
+
     // Get a mutable reference to a text display
     pub fn text_display(&mut self, index: usize) -> &mut TextDisplay {
         &mut self.text_displays[index]

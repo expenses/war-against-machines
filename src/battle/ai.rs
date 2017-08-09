@@ -4,8 +4,8 @@ use ord_subset::OrdSubsetIterExt;
 
 use super::tiles::Visibility;
 use super::map::Map;
-use super::units::{Unit, UnitSide};
-use super::paths::{pathfind, PathPoint, WALK_LATERAL_COST};
+use super::units::{Unit, UnitSide, WALK_LATERAL_COST};
+use super::paths::{pathfind, PathPoint};
 use super::commands::{CommandQueue, Command, WalkCommand, FireCommand, FinishedCommand};
 use utils::{chance_to_hit, distance};
 

@@ -3,12 +3,7 @@
 use pathfinding;
 
 use super::map::Map;
-use super::units::Unit;
-
-// The cost for a unit to walk laterally
-pub const WALK_LATERAL_COST: u16 = 2;
-// The cost for a unit to walk diagonally
-pub const WALK_DIAGONAL_COST: u16 = 3;
+use super::units::{Unit, WALK_LATERAL_COST, WALK_DIAGONAL_COST};
 
 // Use the A Star algorithm to find a path between a unit and a destination
 pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, u16)> {

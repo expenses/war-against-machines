@@ -209,19 +209,15 @@ impl Tiles {
 
     // Add a left wall if possible
     fn add_left_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if x < self.rows && y < self.cols {
-            if self.not_pit(x, y) || self.not_pit(x - 1, y) {
-                self.at_mut(x, y).walls.set_left(tag);
-            }
+        if self.not_pit(x, y) || self.not_pit(x - 1, y) {
+            self.at_mut(x, y).walls.set_left(tag);
         }
     }
 
     // Add a top wall if possible
     fn add_top_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if x < self.rows && y < self.cols {
-            if self.not_pit(x, y) || self.not_pit(x, y - 1) {
-                self.at_mut(x, y).walls.set_top(tag);
-            }
+        if self.not_pit(x, y) || self.not_pit(x, y - 1) {
+            self.at_mut(x, y).walls.set_top(tag);
         }
     }
 
@@ -345,12 +341,12 @@ impl Tiles {
         self.clean_los((a_x as isize, a_y as isize), (b_x as isize, b_y as isize))
     }
 
-    // Is there a wall between two horizontal tiles
+    // Is the wall space between two horizontal tiles empty
     pub fn horizontal_clear(&self, x: usize, y: usize) -> bool {
         self.at(x, y).walls.left.is_none()
     }
 
-    // If there a wall between two vertical tiles
+    // Is the wall space between two vertical tiles empty
     pub fn vertical_clear(&self, x: usize, y: usize) -> bool {
         self.at(x, y).walls.top.is_none()
     }
@@ -368,36 +364,34 @@ impl Tiles {
         let right = self.vertical_clear(x, y);
         let bottom = self.horizontal_clear(x, y);
 
-        // Check if the right corners are open and there isn't a wall in between
+        // Check that there isn't a wall across the tiles and the right corners are open 
 
-        let lateral_clear = (top || bottom) && (left || right);
-
-        if tl_to_br {
-            (top || left) && (bottom || right) && lateral_clear
+        (top || bottom) && (left || right) && if tl_to_br {
+            (top || left) && (bottom || right)
         } else {
-            (top || right) && (bottom || left) && lateral_clear
+            (top || right) && (bottom || left)
         }
     }
 
     // What should the visiblity of a left wall at a position be
     pub fn left_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let vis = self.at(x, y).player_visibility;
+        let visibility = self.at(x, y).player_visibility;
 
         if x > 0 {
-            vis + self.at(x - 1, y).player_visibility
+            visibility + self.at(x - 1, y).player_visibility
         } else {
-            vis
+            visibility
         }
     }
 
     // What should the visibility of a top wall at a position be
     pub fn top_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let vis = self.at(x, y).player_visibility;
+        let visibility = self.at(x, y).player_visibility;
         
         if y > 0 {
-            vis + self.at(x, y - 1).player_visibility
+            visibility + self.at(x, y - 1).player_visibility
         } else {
-            vis
+            visibility
         }
     }
 }

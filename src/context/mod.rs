@@ -63,7 +63,7 @@ impl Context {
         x = (x - self.font_width(string) / 2.0).floor();
         
         // If the ui scale is odd (ui scale mod 2 is very close to 1.0),
-        // offset by 0.5 (this seems to sort out rendering issues)
+        // offset by 0.5 (this seems to sort out rendering issues at odd ui scales)
         if (self.ui_scale % 2.0 - 1.0).abs() < EPSILON {
             x += 0.5;
         }
