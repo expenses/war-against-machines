@@ -1,10 +1,8 @@
 // A Map struct that combines Tiles and Units for convenience
 // This struct contains all the stuff that is saved/loaded
 
-use super::units::{UnitSide, Units, ITEM_COST};
+use super::units::{UnitSide, Units};
 use super::tiles::{Visibility, Tiles};
-use items::{Item, BANDAGE_HEAL};
-use weapons::{Weapon, WeaponType};
 
 use std::fs::{File, create_dir_all};
 use std::path::{Path, PathBuf};
@@ -76,58 +74,6 @@ impl Map {
                 } 
             }
         }
-    }
-
-    // Get a unit to use an item in its inventory
-    pub fn use_item(&mut self, unit: u8, index: usize) -> bool {
-        let mut item_consumed = false;
-        let mut new_item = None;
-
-        if let Some(unit) = self.units.get_mut(unit) {
-            if let Some(item) = unit.inventory.get(index) {
-                item_consumed = match (*item, unit.weapon.tag) {
-                    // Reload the corresponding weapon
-                    (Item::RifleClip(ammo), WeaponType::Rifle) |
-                    (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
-                    (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => unit.weapon.reload(ammo),
-                    // Switch weapons
-                    (Item::Rifle(ammo), _) => {
-                        new_item = Some(unit.weapon.to_item());
-                        unit.weapon = Weapon::new(WeaponType::Rifle, ammo);
-                        true
-                    },
-                    (Item::MachineGun(ammo), _) => {
-                        new_item = Some(unit.weapon.to_item());
-                        unit.weapon = Weapon::new(WeaponType::MachineGun, ammo);
-                        true
-                    },
-                    (Item::PlasmaRifle(ammo), _) => {
-                        new_item = Some(unit.weapon.to_item());
-                        unit.weapon = Weapon::new(WeaponType::PlasmaRifle, ammo);
-                        true
-                    },
-                    // Use other items
-                    (Item::Bandages, _) if unit.can_heal(BANDAGE_HEAL) => {
-                        unit.health += BANDAGE_HEAL;
-                        true
-                    }
-                    _ => false
-                }
-            }
-
-            // If the item was consumed, remove it from the inventory
-            if item_consumed {
-                unit.inventory.remove(index);
-            }
-
-            // If a new item was created, add it to the inventory
-            if let Some(item) = new_item {
-                unit.inventory.push(item);
-            }
-        }
-
-        // return true if an item was consumed and no item took its place
-        item_consumed && new_item.is_none()
     }
 
     // Load a skirmish if possible

@@ -77,7 +77,6 @@ pub enum Image {
 
     EndTurnButton,
     InventoryButton,
-    ChangeFireModeButton,
     SaveGameButton,
 
     LeftEdge,
@@ -141,8 +140,7 @@ impl ImageSource for Image {
             
             Image::EndTurnButton => tiles!(0, 8, 1, 0.5),
             Image::InventoryButton => tiles!(1, 8, 1, 0.5),
-            Image::ChangeFireModeButton => tiles!(2, 8, 1, 0.5),
-            Image::SaveGameButton => tiles!(3, 8, 1, 0.5),
+            Image::SaveGameButton => tiles!(2, 8, 1, 0.5),
         }
     }
 

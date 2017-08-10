@@ -5,8 +5,6 @@ use std::fmt;
 use resources::Image;
 use weapons::WeaponType;
 
-pub const BANDAGE_HEAL: i16 = 25;
-
 // The type of an item
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum Item {
@@ -72,6 +70,14 @@ impl Item {
             Item::Rifle(_) | Item::RifleClip(_) => WeaponType::Rifle.capacity(),
             Item::MachineGun(_) | Item::MachineGunClip(_) => WeaponType::MachineGun.capacity(),
             Item::PlasmaRifle(_) | Item::PlasmaClip(_) => WeaponType::PlasmaRifle.capacity(),
+            _ => 0
+        }
+    }
+
+    // If the item is a healing item, the ammount it heals by
+    pub fn heal(&self) -> i16 {
+        match *self {
+            Item::Bandages => 25,
             _ => 0
         }
     }

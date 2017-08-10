@@ -106,7 +106,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 
         // If the move has a target, fire at the target as many times as possible
         if let Some(target_id) = ai_move.target_id {
-            for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.info().cost {
+            for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.tag.cost() {
                 command_queue.push(Command::Fire(FireCommand::new(unit.id, target_id)));
             }
         }
@@ -221,19 +221,17 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<&'a Unit> {
 }
 
 // Calculate the damage score for a tile
-fn damage_score(x: usize, y: usize, cost: u16, unit: &Unit, target: &Unit) -> f32 {
+fn damage_score(x: usize, y: usize, walk_cost: u16, unit: &Unit, target: &Unit) -> f32 {
     // Return if the cost is too high
-    if cost > unit.moves {
+    if walk_cost > unit.moves {
         return 0.0;
     }
 
-    // Get the weapon mode info
-    let info = unit.weapon.info();
     // Calculate the chance to hit
-    let chance_to_hit = chance_to_hit(x, y, target.x, target.y) * info.hit_modifier;
+    let chance_to_hit = chance_to_hit(x, y, target.x, target.y);
 
-    // Return chance to hit * times the weapon can be fired * number of bullets the weapon fires
-    chance_to_hit * ((unit.moves - cost) / info.cost) as f32 * info.bullets as f32
+    // Return chance to hit * times the weapon can be fired
+    chance_to_hit * ((unit.moves - walk_cost) / unit.weapon.tag.cost()) as f32
 }
 
 // Calculate the search score for a tile.

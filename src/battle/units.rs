@@ -304,4 +304,61 @@ impl Units {
         // Update the visibility of the tiles
         tiles.update_visibility(self);
     }
+
+    // Get a unit to use an item in its inventory
+    pub fn use_item(&mut self, id: u8, item: usize) -> bool {
+        let mut item_consumed = false;
+        let mut new_item = None;
+
+        if let Some(unit) = self.get_mut(id) {
+            if unit.moves < ITEM_COST {
+                return false;
+            }
+
+            if let Some(item) = unit.inventory.get(item) {
+                item_consumed = match (*item, unit.weapon.tag) {
+                    // Reload the corresponding weapon
+                    (Item::RifleClip(ammo), WeaponType::Rifle) |
+                    (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
+                    (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => unit.weapon.reload(ammo),
+                    // Switch weapons
+                    (Item::Rifle(ammo), _) => {
+                        new_item = Some(unit.weapon.to_item());
+                        unit.weapon = Weapon::new(WeaponType::Rifle, ammo);
+                        true
+                    },
+                    (Item::MachineGun(ammo), _) => {
+                        new_item = Some(unit.weapon.to_item());
+                        unit.weapon = Weapon::new(WeaponType::MachineGun, ammo);
+                        true
+                    },
+                    (Item::PlasmaRifle(ammo), _) => {
+                        new_item = Some(unit.weapon.to_item());
+                        unit.weapon = Weapon::new(WeaponType::PlasmaRifle, ammo);
+                        true
+                    },
+                    // Use other items
+                    (Item::Bandages, _) if unit.can_heal(item.heal()) => {
+                        unit.health += item.heal();
+                        true
+                    }
+                    _ => false
+                }
+            }
+
+            // If the item was consumed, remove it from the inventory
+            if item_consumed {
+                unit.inventory.remove(item);
+                unit.moves -= ITEM_COST;
+            }
+
+            // If a new item was created, add it to the inventory
+            if let Some(item) = new_item {
+                unit.inventory.push(item);
+            }
+        }
+
+        // return true if an item was consumed and no item took its place
+        item_consumed && new_item.is_none()
+    }
 }

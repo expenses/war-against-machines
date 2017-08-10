@@ -210,7 +210,7 @@ impl Drawer {
 
                         let colour = if total_cost > unit.moves {
                             colours::RED
-                        } else if total_cost + unit.weapon.info().cost > unit.moves {
+                        } else if total_cost + unit.weapon.tag.cost() > unit.moves {
                             colours::ORANGE
                         } else {
                             colours::WHITE
@@ -250,7 +250,7 @@ impl Drawer {
                     ) {
                         if firing.side == UnitSide::Player && target.side == UnitSide::AI {
                             // Get the chance to hit
-                            let hit_chance = firing.chance_to_hit(target.x, target.y) * firing.weapon.info().hit_modifier;
+                            let hit_chance = firing.chance_to_hit(target.x, target.y);
 
                             let colour = if firing.weapon.can_fire() {
                                 colours::WHITE
