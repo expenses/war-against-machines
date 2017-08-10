@@ -249,13 +249,15 @@ impl Battle {
                     if active == 0 {
                         let index = self.inventory.menu(active).selection;
 
-                        if self.map.units.use_item(selected, index) {
-                            let new_len = self.inventory.menu(active).len() - 1;
+                        if let Some(unit) = self.map.units.get_mut(selected) {
+                            if unit.use_item(index) {
+                                let new_len = self.inventory.menu(active).len() - 1;
 
-                            if index >= new_len {
-                                self.inventory.menu(active).selection = match new_len {
-                                    0 => 0,
-                                    _ => new_len - 1
+                                if index >= new_len {
+                                    self.inventory.menu(active).selection = match new_len {
+                                        0 => 0,
+                                        _ => new_len - 1
+                                    }
                                 }
                             }
                         }

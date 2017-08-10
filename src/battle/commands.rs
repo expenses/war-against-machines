@@ -166,7 +166,9 @@ impl UseItemCommand {
     }
 
     fn process(&mut self, map: &mut Map) {
-        map.units.use_item(self.id, self.item);
+        if let Some(unit) = map.units.get_mut(self.id) {
+            unit.use_item(self.item);
+        }
     }
 }
 
