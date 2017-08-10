@@ -1,7 +1,7 @@
 // The units in the game, and a struct to contain them
 
 use rand;
-use rand::Rng;
+use rand::{Rng, ThreadRng};
 
 use std::fmt;
 use std::slice::{Iter, IterMut};
@@ -16,7 +16,7 @@ use resources::Image;
 pub const WALK_LATERAL_COST: u16 = 2;
 // The cost for a unit to walk diagonally
 pub const WALK_DIAGONAL_COST: u16 = 3;
-// The cost for a unit ti pick up / drop / use an item
+// The cost for a unit to pick up / drop / use an item
 pub const ITEM_COST: u16 = 5;
 
 // A list of first names to pick from
@@ -62,8 +62,7 @@ const LAST_NAMES: &[&str] = &[
 ];
 
 // Generate a new random squaddie name
-fn generate_squaddie_name() -> String {
-    let mut rng = rand::thread_rng();
+fn generate_squaddie_name(rng: &mut ThreadRng) -> String {
     let first = rng.choose(FIRST_NAMES).unwrap();
     let last = rng.choose(LAST_NAMES).unwrap();
 
@@ -71,8 +70,8 @@ fn generate_squaddie_name() -> String {
 }
 
 // Generate a new random machine name
-fn generate_machine_name() -> String {
-    let mut serial = rand::thread_rng().gen_range(0, 100_000).to_string();
+fn generate_machine_name(rng: &mut ThreadRng) -> String {
+    let mut serial = rng.gen_range(0, 100_000).to_string();
 
     while serial.len() < 5 {
         serial.insert(0, '0');
@@ -157,10 +156,11 @@ pub struct Unit {
 impl Unit {
     // Create a new unit based on unit type
     fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
+        let mut rng = rand::thread_rng();
+
         match tag {
             UnitType::Squaddie => {   
                 // Randomly choose a weapon
-                let mut rng = rand::thread_rng();
                 let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
                 let weapon_type = *rng.choose(&weapons).unwrap();
                 let capacity = weapon_type.capacity();
@@ -168,7 +168,7 @@ impl Unit {
                 Unit {
                     tag, side, x, y, id,
                     weapon: Weapon::new(weapon_type, capacity),
-                    name: generate_squaddie_name(),
+                    name: generate_squaddie_name(&mut rng),
                     moves: tag.moves(),
                     health: tag.health(),
                     inventory: if let WeaponType::Rifle = weapon_type {
@@ -182,13 +182,21 @@ impl Unit {
                 Unit {
                     tag, side, x, y, id,
                     weapon: Weapon::new(WeaponType::PlasmaRifle, WeaponType::PlasmaRifle.capacity()),
-                    name: generate_machine_name(),
+                    name: generate_machine_name(&mut rng),
                     moves: tag.moves(),
                     health: tag.health(),
                     inventory: Vec::new()
                 }
             }
         }
+    }
+
+    // The weight of the items that the units is carrying
+    pub fn carrying(&self) -> f32 {
+        self.inventory.iter().fold(
+            self.weapon.tag.weight(),
+            |total, item| total + item.weight()
+        )
     }
 
     // Move the unit to a location with a specific cost
@@ -206,6 +214,35 @@ impl Unit {
     pub fn can_heal_from(&self, item: &Item) -> bool {
         let amount = item.heal(self.tag);
         amount > 0 && self.moves >= ITEM_COST && self.tag.health() - self.health >= amount
+    }
+
+    // Drop an item from the unit's inventory
+    pub fn drop_item(&mut self, tiles: &mut Tiles, index: usize) {
+        if self.moves < ITEM_COST {
+            return;
+        }
+
+        if let Some(item) = self.inventory.get(index).cloned() {
+            tiles.drop(self.x, self.y, item);
+            self.inventory.remove(index);
+            self.moves -= ITEM_COST;
+        }
+    }
+
+    pub fn pick_up_item(&mut self, tiles: &mut Tiles, index: usize) {
+        if self.moves < ITEM_COST {
+            return;
+        }
+        
+        let tile = tiles.at_mut(self.x, self.y);
+
+        if let Some(item) = tile.items.get(index).cloned() {
+            if self.carrying() + item.weight() <= self.tag.capacity() {                        
+                self.inventory.push(item);
+                tile.items.remove(index);
+                self.moves -= ITEM_COST;
+            } 
+        }
     }
 }
 
@@ -351,12 +388,15 @@ impl Units {
             // If the item was consumed, remove it from the inventory
             if item_consumed {
                 unit.inventory.remove(item);
-                unit.moves -= ITEM_COST;
             }
 
             // If a new item was created, add it to the inventory
             if let Some(item) = new_item {
                 unit.inventory.push(item);
+            }
+
+            if item_consumed || new_item.is_some() {
+                unit.moves -= ITEM_COST;
             }
         }
 

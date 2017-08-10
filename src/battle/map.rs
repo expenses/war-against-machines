@@ -47,35 +47,6 @@ impl Map {
             .count()
     }
 
-    // Get a unit to drop an item
-    pub fn drop_item(&mut self, unit: u8, index: usize) {
-        if let Some(unit) = self.units.get_mut(unit) {
-            if let Some(item) = unit.inventory.get(index).cloned() {
-                self.tiles.drop(unit.x, unit.y, item);
-                unit.inventory.remove(index);
-            }
-        }
-    }
-
-    // Get a unit to pick up am item
-    pub fn pick_up_item(&mut self, unit: u8, index: usize) {
-        if let Some(unit) = self.units.get_mut(unit) {
-            let tile = self.tiles.at_mut(unit.x, unit.y);
-        
-            if let Some(item) = tile.items.get(index).cloned() {
-                let new_weight = unit.inventory.iter().fold(
-                    item.weight() + unit.weapon.tag.weight(),
-                    |total, item| total + item.weight()
-                );
-
-                if new_weight <= unit.tag.capacity() {                        
-                    unit.inventory.push(item);
-                    tile.items.remove(index);
-                } 
-            }
-        }
-    }
-
     // Load a skirmish if possible
     pub fn load(filename: &str) -> Option<Map> {
         let path = Path::new(SAVES).join(filename);

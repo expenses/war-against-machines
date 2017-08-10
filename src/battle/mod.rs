@@ -227,12 +227,14 @@ impl Battle {
                 VirtualKeyCode::Return => if let Some(selected) = self.selected {
                     let index = self.inventory.menu(active).selection;
 
-                    if active == 0 {
-                        self.map.drop_item(selected, index)
-                    } else {
-                        self.map.pick_up_item(selected, index)
-                    };
-
+                    if let Some(unit) = self.map.units.get_mut(selected) {
+                        if active == 0 {
+                            unit.drop_item(&mut self.map.tiles, index);
+                        } else {
+                            unit.pick_up_item(&mut self.map.tiles, index);
+                        };
+                    }
+                    
                     let new_len = self.inventory.menu(active).len() - 1;
 
                     if index >= new_len {
@@ -360,13 +362,11 @@ impl Battle {
         if self.inventory.active {
             // Get the name of the selected unit, it's items and the items on the ground
             let info = self.selected().map(|unit| {
-                let mut weight = unit.weapon.tag.weight();
-
                 // Collect the unit's items into a vec
                 let items: Vec<String> = unit.inventory.iter()
-                    .inspect(|item| weight += item.weight())
                     .map(|item| item.to_string())
                     .collect();
+
                 // Collect the items on the ground into a vec
                 let ground: Vec<String> = self.map.tiles.at(unit.x, unit.y).items.iter()
                     .map(|item| item.to_string())
@@ -374,10 +374,8 @@ impl Battle {
                 
                 (
                     format!(
-                        "{}\n{} ({}/{})\nCarry Capacity: {}/{} kg",
-                        unit.name,
-                        unit.weapon.tag, unit.weapon.ammo, unit.weapon.tag.capacity(),
-                        weight, unit.tag.capacity()
+                        "{}\n{} - {} kg\nCarry Capacity: {}/{} kg",
+                        unit.name, unit.weapon, unit.weapon.tag.weight(), unit.carrying(), unit.tag.capacity()
                     ),
                     items,
                     ground
