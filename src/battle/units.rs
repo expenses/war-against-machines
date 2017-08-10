@@ -161,8 +161,7 @@ impl Unit {
         match tag {
             UnitType::Squaddie => {   
                 // Randomly choose a weapon
-                let weapons = [WeaponType::Rifle, WeaponType::MachineGun];
-                let weapon_type = *rng.choose(&weapons).unwrap();
+                let weapon_type = *rng.choose(&[WeaponType::Rifle, WeaponType::MachineGun]).unwrap();
                 let capacity = weapon_type.capacity();
 
                 Unit {
@@ -216,22 +215,30 @@ impl Unit {
         amount > 0 && self.moves >= ITEM_COST && self.tag.health() - self.health >= amount
     }
 
+    pub fn can_reload_from(&self, item: &Item) -> bool {
+        let ammo = item.ammo(self.weapon.tag);
+        ammo > 0 && self.weapon.can_reload(ammo)
+    }
+
     // Drop an item from the unit's inventory
-    pub fn drop_item(&mut self, tiles: &mut Tiles, index: usize) {
+    pub fn drop_item(&mut self, tiles: &mut Tiles, index: usize) -> bool {
         if self.moves < ITEM_COST {
-            return;
+            return false;
         }
 
         if let Some(item) = self.inventory.get(index).cloned() {
             tiles.drop(self.x, self.y, item);
             self.inventory.remove(index);
             self.moves -= ITEM_COST;
+            return true;
         }
+
+        false
     }
 
-    pub fn pick_up_item(&mut self, tiles: &mut Tiles, index: usize) {
+    pub fn pick_up_item(&mut self, tiles: &mut Tiles, index: usize) -> bool {
         if self.moves < ITEM_COST {
-            return;
+            return false;
         }
         
         let tile = tiles.at_mut(self.x, self.y);
@@ -241,8 +248,11 @@ impl Unit {
                 self.inventory.push(item);
                 tile.items.remove(index);
                 self.moves -= ITEM_COST;
+                return true;
             } 
         }
+
+        false
     }
 
     pub fn use_item(&mut self, index: usize) -> bool {
@@ -301,6 +311,17 @@ impl Unit {
 
         // return true if an item was consumed and no item took its place
         item_consumed && new_item.is_none()
+    }
+
+    pub fn fire_weapon(&mut self) -> bool {
+        let can_fire = self.moves >= self.weapon.tag.cost() && self.weapon.can_fire();
+
+        if can_fire {
+            self.moves -= self.weapon.tag.cost();
+            self.weapon.ammo -= 1;
+        }
+
+        can_fire
     }
 }
 

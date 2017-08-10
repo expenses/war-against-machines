@@ -54,18 +54,14 @@ impl FireCommand {
 
         // Fire the unit's weapon and get if the bullet will hit and the damage it will do
         let (will_hit, damage) = match map.units.get_mut(self.unit_id) {
-            Some(unit) => {
-                let will_hit = unit.chance_to_hit(target_x, target_y) > rand::random::<f32>();
-
-                if unit.moves >= unit.weapon.tag.cost() {
-                    unit.moves -= unit.weapon.tag.cost();
-                    unit.weapon.fire();
-
-                    (will_hit, unit.weapon.tag.damage())
-                } else {
-                    return;
-                }   
-            }
+            Some(unit) => if unit.fire_weapon() {
+                (
+                    unit.chance_to_hit(target_x, target_y) > rand::random::<f32>(),
+                    unit.weapon.tag.damage()
+                )
+            } else {
+                return;
+            },   
             _ => return
         };
         

@@ -228,19 +228,20 @@ impl Battle {
                     let index = self.inventory.menu(active).selection;
 
                     if let Some(unit) = self.map.units.get_mut(selected) {
-                        if active == 0 {
-                            unit.drop_item(&mut self.map.tiles, index);
+                        // Was the item transferred?
+                        let transferred = if active == 0 {
+                            unit.drop_item(&mut self.map.tiles, index)
                         } else {
-                            unit.pick_up_item(&mut self.map.tiles, index);
+                            unit.pick_up_item(&mut self.map.tiles, index)
                         };
-                    }
-                    
-                    let new_len = self.inventory.menu(active).len() - 1;
 
-                    if index >= new_len {
-                        self.inventory.menu(active).selection = match new_len {
-                            0 => 0,
-                            _ => new_len - 1
+                        let shortened_len = self.inventory.menu(active).len() - 1;
+
+                        if transferred && index >= shortened_len {
+                            self.inventory.menu(active).selection = match shortened_len {
+                                0 => 0,
+                                _ => shortened_len - 1
+                            }
                         }
                     }
                 },
@@ -457,9 +458,7 @@ impl Battle {
                             if ai_unit.side == UnitSide::AI {
                                 self.path = None;
                                 
-                                if let Some(true) = self.selected().map(|unit| unit.weapon.can_fire()) {
-                                    self.command_queue.push(Command::Fire(FireCommand::new(selected_id, ai_unit.id)));
-                                }
+                                self.command_queue.push(Command::Fire(FireCommand::new(selected_id, ai_unit.id)));
                             }
                         }
                         _ => if let Some(unit) = self.map.units.get(selected_id) {

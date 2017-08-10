@@ -75,9 +75,9 @@ impl AIMove {
 pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
     // Get the first unit that can be moved
     if let Some(unit) = next_unit(map) {
-        // If the unit has a healing item and can heal from it, add a use item command
+        // If the unit has a consumable item and can use it, add a use item command
         for (index, item) in unit.inventory.iter().enumerate() {
-            if unit.can_heal_from(item) {
+            if unit.can_heal_from(item) || unit.can_reload_from(item) {
                 command_queue.push(Command::UseItem(UseItemCommand::new(unit.id, index)));
                 return true;
             }
@@ -114,7 +114,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 
         // If the move has a target, fire at the target as many times as possible
         if let Some(target_id) = ai_move.target_id {
-            for _ in 0 .. (unit.moves - ai_move.cost) / unit.weapon.tag.cost() {
+            for _ in 0 .. unit.weapon.times_can_fire(unit.moves - ai_move.cost) {
                 command_queue.push(Command::Fire(FireCommand::new(unit.id, target_id)));
             }
         }
@@ -239,7 +239,7 @@ fn damage_score(x: usize, y: usize, walk_cost: u16, unit: &Unit, target: &Unit) 
     let chance_to_hit = chance_to_hit(x, y, target.x, target.y);
 
     // Return chance to hit * times the weapon can be fired
-    chance_to_hit * ((unit.moves - walk_cost) / unit.weapon.tag.cost()) as f32
+    chance_to_hit * unit.weapon.times_can_fire(unit.moves - walk_cost) as f32
 }
 
 // Calculate the search score for a tile.

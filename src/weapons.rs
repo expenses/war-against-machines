@@ -1,6 +1,7 @@
 // The different weapons in the game
 
 use std::fmt;
+use std::cmp::min;
 
 use resources::{Image, SoundEffect};
 use items::Item;
@@ -50,7 +51,7 @@ impl WeaponType {
         match *self {
             WeaponType::Rifle => 6,
             WeaponType::MachineGun => 10,
-            WeaponType::PlasmaRifle => 8
+            WeaponType::PlasmaRifle => 15
         }
     }
 
@@ -94,21 +95,22 @@ impl Weapon {
         }
     }
 
-    // Use up a piece of ammo in the weapon
-    pub fn fire(&mut self) {
-        if self.ammo != 0 {
-            self.ammo -= 1;
-        }
-    }
-
     // Can the weapon be fired with the current firing mode
     pub fn can_fire(&self) -> bool {
         self.ammo > 0
     }
 
+    pub fn times_can_fire(&self, moves: u16) -> u16 {
+        min(moves / self.tag.cost(), self.ammo as u16)
+    }
+
+    pub fn can_reload(&self, ammo: u8) -> bool {
+        ammo > 0 && (self.tag.capacity() - self.ammo) >= ammo
+    }
+
     // Can the weapon be reloaded with a given amount of bullets
     pub fn reload(&mut self, ammo: u8) -> bool {
-        let can_reload = ammo > 0 && (self.tag.capacity() - self.ammo) >= ammo;
+        let can_reload = self.can_reload(ammo);
 
         if can_reload {
             self.ammo += ammo
