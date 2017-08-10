@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use battle::units::UnitType;
 use resources::Image;
 use weapons::WeaponType;
 
@@ -75,9 +76,9 @@ impl Item {
     }
 
     // If the item is a healing item, the ammount it heals by
-    pub fn heal(&self) -> i16 {
-        match *self {
-            Item::Bandages => 25,
+    pub fn heal(&self, tag: UnitType) -> i16 {
+        match (*self, tag) {
+            (Item::Bandages, UnitType::Squaddie) => 25,
             _ => 0
         }
     }

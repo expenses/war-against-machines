@@ -203,8 +203,9 @@ impl Unit {
         chance_to_hit(self.x, self.y, target_x, target_y)
     }
 
-    pub fn can_heal(&self, amount: i16) -> bool {
-        self.tag == UnitType::Squaddie && self.tag.health() - self.health >= amount
+    pub fn can_heal_from(&self, item: &Item) -> bool {
+        let amount = item.heal(self.tag);
+        amount > 0 && self.moves >= ITEM_COST && self.tag.health() - self.health >= amount
     }
 }
 
@@ -311,6 +312,7 @@ impl Units {
         let mut new_item = None;
 
         if let Some(unit) = self.get_mut(id) {
+            // Return if the unit doesn't have the moves to use the item
             if unit.moves < ITEM_COST {
                 return false;
             }
@@ -338,8 +340,8 @@ impl Units {
                         true
                     },
                     // Use other items
-                    (Item::Bandages, _) if unit.can_heal(item.heal()) => {
-                        unit.health += item.heal();
+                    (Item::Bandages, _) if unit.can_heal_from(item) => {
+                        unit.health += item.heal(unit.tag);
                         true
                     }
                     _ => false

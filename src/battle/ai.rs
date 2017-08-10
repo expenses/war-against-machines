@@ -6,7 +6,7 @@ use super::tiles::Visibility;
 use super::map::Map;
 use super::units::{Unit, UnitSide, WALK_LATERAL_COST};
 use super::paths::{pathfind, PathPoint};
-use super::commands::{CommandQueue, Command, WalkCommand, FireCommand, FinishedCommand};
+use super::commands::{CommandQueue, Command, WalkCommand, FireCommand, FinishedCommand, UseItemCommand};
 use utils::{chance_to_hit, distance};
 
 // A move that the AI could take
@@ -75,6 +75,14 @@ impl AIMove {
 pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
     // Get the first unit that can be moved
     if let Some(unit) = next_unit(map) {
+        // If the unit has a healing item and can heal from it, add a use item command
+        for (index, item) in unit.inventory.iter().enumerate() {
+            if unit.can_heal_from(item) {
+                command_queue.push(Command::UseItem(UseItemCommand::new(unit.id, index)));
+                return true;
+            }
+        }
+
         // Determine if any targets are visible
         let visible_target = closest_target(unit, map).is_some();
 
