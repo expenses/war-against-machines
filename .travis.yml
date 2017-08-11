@@ -27,17 +27,12 @@ before_install:
       sudo apt-get install -qq libasound2-dev;
     fi
 
-# Clippy!
-before_script:
-  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
-      cargo install clippy;
-    fi
-
 # The script itself
 script:
   - cargo build
   - cargo test
   - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
+      cargo install clippy;
       cargo clippy;
     fi
 
