@@ -23,8 +23,8 @@ build: false
 
 # Build and test the project
 test_script:
-  - cargo build --verbose
-  - cargo test --verbose
+  - cargo build
+  - cargo test
 
 # Build and zip the release
 before_deploy:

@@ -12,6 +12,9 @@ matrix:
     - os: osx
       rust: stable
 
+  allow_failures:
+    - rust: nightly
+
 # Cache packages
 cache: cargo
 
@@ -32,8 +35,11 @@ before_script:
 
 # The script itself
 script:
-  - cargo build --verbose
-  - cargo test --verbose
+  - cargo build
+  - cargo test
+  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
+      cargo clippy;
+    fi
 
 # Build and zip the release
 before_deploy:
