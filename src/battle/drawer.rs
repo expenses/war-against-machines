@@ -271,7 +271,7 @@ impl Drawer {
 
         // Draw all the bullets in the animation queue
         for bullet in battle.animations.iter().filter_map(|animation| match *animation {
-            Animation::Bullet(ref bullet) => Some(bullet),
+            Animation::Bullet(ref bullet) if bullet.status.in_progress() => Some(bullet),
             _ => None
         }) {
             // Calculate if the nearest tile to the bullet is visible

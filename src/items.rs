@@ -86,8 +86,8 @@ impl Item {
     // How much ammo this clip could reload a weapon by
     pub fn ammo(&self, tag: WeaponType) -> u8 {
         match (*self, tag) {
-            (Item::RifleClip(ammo), WeaponType::Rifle) => ammo,
-            (Item::MachineGunClip(ammo), WeaponType::MachineGun) => ammo,
+            (Item::RifleClip(ammo), WeaponType::Rifle) |
+            (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
             (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => ammo,
             _ => 0
         }

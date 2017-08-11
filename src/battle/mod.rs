@@ -278,9 +278,7 @@ impl Battle {
             VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
             VirtualKeyCode::O => self.keys[4] = pressed,
             VirtualKeyCode::P => self.keys[5] = pressed,
-            VirtualKeyCode::I => if pressed && self.selected.is_some() {
-                self.inventory.toggle();
-            },
+            VirtualKeyCode::I if pressed && self.selected.is_some() => self.inventory.toggle(),
             _ => {}
         }
 

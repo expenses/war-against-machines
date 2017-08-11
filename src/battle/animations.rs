@@ -11,12 +11,46 @@ use weapons::WeaponType;
 use context::Context;
 
 const MARGIN: f32 = 5.0;
+// Bullets travel 30 tiles a second
 const BULLET_SPEED: f32 = 30.0;
-const WALK_SPEED: f32 = 5.0;
+// The minimum length of time for a bullet animation is half a second
+const MIN_BULLET_TIME: f32 = 0.5;
+// Units move 5 tiles a second
+const WALK_TIME: f32 = 1.0 / 5.0;
+
+pub struct AnimationStatus {
+    status: f32,
+    finished: bool
+}
+
+impl AnimationStatus {
+    fn new() -> AnimationStatus {
+        AnimationStatus {
+            status: 0.0,
+            finished: false
+        }
+    }
+
+    fn increment(&mut self, value: f32) {
+        self.status += value;
+    }
+
+    fn past(&self, value: f32) -> bool {
+        self.status >= value
+    }
+
+    fn at_start(&self) -> bool {
+        self.status == 0.0
+    }
+
+    pub fn in_progress(&self) -> bool {
+        !self.at_start() && !self.finished
+    }
+}
 
 // A pretty simple walk animation
 pub struct Walk {
-    status: f32,
+    status: AnimationStatus,
     unit_id: u8,
     x: usize,
     y: usize,
@@ -28,16 +62,16 @@ impl Walk {
     pub fn new(unit_id: u8, x: usize, y: usize, cost: u16) -> Walk {
         Walk {
             unit_id, x, y, cost,
-            status: 0.0
+            status: AnimationStatus::new()
         }
     }
 
     // Move the animation a step, and return if its still going
     // If not, move the unit
     fn step(&mut self, map: &mut Map, ctx: &Context, dt: f32) -> bool {
-        self.status += WALK_SPEED * dt;
+        self.status.increment(dt);
         
-        let still_going = self.status <= 1.0;
+        let still_going = !self.status.past(WALK_TIME);
 
         if !still_going {
             match map.units.get_mut(self.unit_id) {
@@ -63,15 +97,13 @@ pub struct Bullet {
     pub x: f32,
     pub y: f32,
     pub direction: f32,
-    pub weapon_type: WeaponType,
+    pub status: AnimationStatus,
+    weapon_type: WeaponType,
     left: bool,
     above: bool,
     target_id: u8,
-    target_x: f32,
-    target_y: f32,
     will_hit: bool,
-    lethal: bool,
-    started: bool
+    lethal: bool
 }
 
 impl Bullet {
@@ -90,7 +122,7 @@ impl Bullet {
         }
 
         Bullet {
-           x, y, direction, target_x, target_y, will_hit, lethal,
+           x, y, direction, will_hit, lethal,
            target_id: target.id,
            // Work out if the bullet started to the left/right and above/below the target
            left: x < target_x,
@@ -98,7 +130,7 @@ impl Bullet {
            // Get the type of the firing weapon
            weapon_type: unit.weapon.tag,
            // The bullet hasn't started moving
-           started: false
+           status: AnimationStatus::new()
         }
     }
     
@@ -110,30 +142,47 @@ impl Bullet {
     // Move the bullet a step and work out if its still going or not
     fn step(&mut self, map: &mut Map, ctx: &Context, dt: f32) -> bool {
         // If the bullet hasn't started moving, play its sound effect
-        if !self.started {
+        if self.status.at_start() {
             ctx.play_sound(self.weapon_type.fire_sound());
-            self.started = true;
         }
 
-        // Move the bullet
-        self.x += self.direction.cos() * BULLET_SPEED * dt;
-        self.y += self.direction.sin() * BULLET_SPEED * dt;
+        // Increment the time
+        self.status.increment(dt);
 
-        // If the bullet won't hit the target or hasn't hit the target
-        let still_going = (!self.will_hit || (
-            self.left  == (self.x < self.target_x) &&
-            self.above == (self.y < self.target_y)
-        )) &&
-        // And if the bullet is within a certain margin of the map
-        self.x >= -MARGIN && self.x <= map.tiles.cols as f32 + MARGIN &&
-        self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN;
+        // If the bullet is still moving
+        if self.status.in_progress() {
+            // Move the bullet
+            self.x += self.direction.cos() * BULLET_SPEED * dt;
+            self.y += self.direction.sin() * BULLET_SPEED * dt;
 
-        // If the bullet is finished and is lethal, kill the target unit
-        if !still_going && self.lethal {
-            map.units.kill(&mut map.tiles, self.target_id);
+            // Get the target x and y position
+            let (target_x, target_y) = match map.units.get(self.target_id) {
+                Some(target) => (target.x as f32, target.y as f32),
+                _ => return false
+            };
+
+            // Calculate if the bullet has hit the target (if it's going to)
+            let hit_target = self.will_hit && (
+                self.left  != (self.x < target_x) ||
+                self.above != (self.y < target_y)
+            );
+
+            // And if the bullet is within a certain margin of the map
+            let within_margins = 
+                self.x >= -MARGIN && self.x <= map.tiles.cols as f32 + MARGIN &&
+                self.y >= -MARGIN && self.y <= map.tiles.rows as f32 + MARGIN;
+
+            // Set if the bullet is finished
+            self.status.finished = hit_target || !within_margins;
+
+            // If the bullet is finished and is lethal, kill the target unit
+            if self.status.finished && self.lethal {
+                map.units.kill(&mut map.tiles, self.target_id);
+            }
         }
 
-        still_going
+        // If the bullet hasn't finished or isn't past the minimum time
+        !(self.status.finished && self.status.past(MIN_BULLET_TIME))
     }
 }
 
