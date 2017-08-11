@@ -1,9 +1,16 @@
 language: rust
 
-# Test both OSes
-os:
-  - linux
-  - osx
+# Test on linux/stable, linux/beta, linux/nightly and osx/stable
+matrix:
+  include:
+    - os: linux
+      rust: stable
+    - os: linux
+      rust: beta
+    - os: linux
+      rust: nightly
+    - os: osx
+      rust: stable
 
 # Cache packages
 cache: cargo
@@ -16,6 +23,17 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
       sudo apt-get install -qq libasound2-dev;
     fi
+
+# Clippy!
+before_script:
+  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
+      cargo install clippy;
+    fi
+
+# The script itself
+script:
+  - cargo build --verbose
+  - cargo test --verbose
 
 # Build and zip the release
 before_deploy:
