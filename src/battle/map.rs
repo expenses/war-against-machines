@@ -26,10 +26,10 @@ pub struct Map {
 
 impl Map {
     // Create a new map
-    pub fn new() -> Map {
+    pub fn new(cols: usize, rows: usize) -> Map {
         Map {
             units: Units::new(),
-            tiles: Tiles::new(),
+            tiles: Tiles::new(cols, rows),
             camera: Camera::new(),
             turn: 1
         }

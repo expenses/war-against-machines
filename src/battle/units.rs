@@ -163,7 +163,7 @@ pub struct Unit {
 
 impl Unit {
     // Create a new unit based on unit type
-    fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
+    pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
         let mut rng = rand::thread_rng();
 
         match tag {

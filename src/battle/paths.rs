@@ -24,7 +24,7 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
 }
 
 // A point in the path
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct PathPoint {
     pub x: usize,
     pub y: usize,
@@ -114,4 +114,39 @@ impl PathPoint {
             neighbours.push((PathPoint::new(x, y, cost), cost));
         }
     }
+}
+
+#[test]
+fn pathfinding() {
+    use super::units::{UnitSide, UnitType};
+    use super::walls::WallType;
+
+    let size = 30;
+    let unit = Unit::new(UnitType::Squaddie, UnitSide::Player, 0, 0, 0);
+    let mut map = Map::new(size, size);
+
+    // A path between (0, 0) and (29, 29) should be a straight diagonal
+
+    let mut path = Vec::new();
+    for i in 1 .. size {
+        path.push(PathPoint::new(i, i, WALK_DIAGONAL_COST));
+    }
+
+    let cost = (size - 1) as u16 * WALK_DIAGONAL_COST;
+
+    let path = Some((path, cost));
+
+    assert_eq!(pathfind(&unit, size - 1, size - 1, &map), path);
+
+    // The path should work fine if it's blocked on one side
+
+    map.tiles.add_left_wall(1, 0, WallType::Ruin1);
+
+    assert_eq!(pathfind(&unit, size - 1, size - 1, &map), path);
+
+    // But not both
+
+    map.tiles.add_top_wall(0, 1, WallType::Ruin1);
+
+    assert_eq!(pathfind(&unit, size - 1, size - 1, &map), None);
 }

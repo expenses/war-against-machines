@@ -314,3 +314,10 @@ pub fn tile_under_cursor(x: f32, y: f32, camera: &Camera) -> (usize, usize) {
     // And then to usize
     (x.round() as usize, y.round() as usize)
 }
+
+#[test]
+fn default_camera_pos() {
+    // If the cursor is in the center of the screen and the camera is
+    // the default, the tile under the cursor should be at (0, 0)
+    assert_eq!(tile_under_cursor(0.0, -1.0, &Camera::new()), (0, 0));
+}
