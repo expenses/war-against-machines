@@ -17,7 +17,7 @@ use std::fmt;
 use self::drawer::Drawer;
 use self::paths::{pathfind, PathPoint};
 use self::animations::{Animations, UpdateAnimations};
-use self::commands::{CommandQueue, Command, UpdateCommands, FireCommand, WalkCommand};
+use self::commands::{CommandQueue, UpdateCommands, FireCommand, WalkCommand};
 use self::units::{Unit, UnitSide};
 use self::map::Map;
 use resources::{ImageSource, Image};
@@ -456,7 +456,7 @@ impl Battle {
                             if ai_unit.side == UnitSide::AI {
                                 self.path = None;
                                 
-                                self.command_queue.push(Command::Fire(FireCommand::new(selected_id, ai_unit.id)));
+                                self.command_queue.push(Box::new(FireCommand::new(selected_id, ai_unit.id)));
                             }
                         }
                         _ => if let Some(unit) = self.map.units.get(selected_id) {
@@ -483,7 +483,7 @@ impl Battle {
 
                             // If the paths are the same and the player unit can move to the destination, get rid of the path
                             self.path = if same_path {
-                                self.command_queue.push(Command::Walk(WalkCommand::new(selected_id, &self.map, points)));
+                                self.command_queue.push(Box::new(WalkCommand::new(unit, &self.map, points)));
                                 None
                             } else {
                                 Some(points)

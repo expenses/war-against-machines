@@ -13,8 +13,8 @@ use context::Context;
 const MARGIN: f32 = 5.0;
 // Bullets travel 30 tiles a second
 const BULLET_SPEED: f32 = 30.0;
-// The minimum length of time for a bullet animation is half a second
-const MIN_BULLET_TIME: f32 = 0.5;
+// The minimum length of time for a bullet animation is a quarter of a second
+const MIN_BULLET_TIME: f32 = 0.25;
 // Units move 5 tiles a second
 const WALK_TIME: f32 = 1.0 / 5.0;
 
@@ -99,20 +99,19 @@ pub struct Bullet {
     pub direction: f32,
     pub status: AnimationStatus,
     weapon_type: WeaponType,
-    left: bool,
-    above: bool,
-    target_id: u8,
+    target_x: f32,
+    target_y: f32,
     will_hit: bool,
-    lethal: bool
 }
 
 impl Bullet {
     // Create a new bullet based of the firing unit and the target unit
-    pub fn new(unit: &Unit, target: &Unit, will_hit: bool, lethal: bool) -> Bullet {
+    pub fn new(unit: &Unit, target: &Unit, will_hit: bool) -> Bullet {
         let x = unit.x as f32;
         let y = unit.y as f32;
         let target_x = target.x as f32;
         let target_y = target.y as f32;
+
         // Calculate the direction of the bullet
         let mut direction = (target_y - y).atan2(target_x - x);
 
@@ -122,11 +121,7 @@ impl Bullet {
         }
 
         Bullet {
-           x, y, direction, will_hit, lethal,
-           target_id: target.id,
-           // Work out if the bullet started to the left/right and above/below the target
-           left: x < target_x,
-           above: y < target_y,
+           x, y, direction, will_hit, target_x, target_y,
            // Get the type of the firing weapon
            weapon_type: unit.weapon.tag,
            // The bullet hasn't started moving
@@ -151,20 +146,18 @@ impl Bullet {
 
         // If the bullet is still moving
         if self.status.in_progress() {
+            // Work out if the bullet started to the left/right and above/below the target
+            let left = self.x < self.target_x;
+            let above = self.y < self.target_y;
+
             // Move the bullet
             self.x += self.direction.cos() * BULLET_SPEED * dt;
             self.y += self.direction.sin() * BULLET_SPEED * dt;
 
-            // Get the target x and y position
-            let (target_x, target_y) = match map.units.get(self.target_id) {
-                Some(target) => (target.x as f32, target.y as f32),
-                _ => return false
-            };
-
             // Calculate if the bullet has hit the target (if it's going to)
             let hit_target = self.will_hit && (
-                self.left  != (self.x < target_x) ||
-                self.above != (self.y < target_y)
+                left  != (self.x < self.target_x) ||
+                above != (self.y < self.target_y)
             );
 
             // And if the bullet is within a certain margin of the map
@@ -174,11 +167,6 @@ impl Bullet {
 
             // Set if the bullet is finished
             self.status.finished = hit_target || !within_margins;
-
-            // If the bullet is finished and is lethal, kill the target unit
-            if self.status.finished && self.lethal {
-                map.units.kill(&mut map.tiles, self.target_id);
-            }
         }
 
         // If the bullet hasn't finished or isn't past the minimum time

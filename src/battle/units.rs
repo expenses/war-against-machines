@@ -134,8 +134,16 @@ impl fmt::Display for UnitType {
 #[derive(Eq, PartialEq, Serialize, Deserialize)]
 pub enum UnitSide {
     Player,
-    // Neutral,
     AI
+}
+
+impl UnitSide {
+    pub fn enemies(&self) -> UnitSide {
+        match *self {
+            UnitSide::Player => UnitSide::AI,
+            UnitSide::AI => UnitSide::Player
+        }
+    }
 }
 
 // A struct for a unit in the game
