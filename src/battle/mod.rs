@@ -14,7 +14,7 @@ use glutin::{VirtualKeyCode, MouseButton};
 
 use std::fmt;
 
-use self::drawer::Drawer;
+use self::drawer::{draw_battle, tile_under_cursor, CAMERA_SPEED, CAMERA_ZOOM_SPEED};
 use self::paths::{pathfind, PathPoint};
 use self::animations::{Animations, UpdateAnimations};
 use self::commands::{CommandQueue, UpdateCommands, FireCommand, WalkCommand};
@@ -24,14 +24,6 @@ use resources::{ImageSource, Image};
 use context::Context;
 use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
 use settings::SkirmishSettings;
-
-const CAMERA_SPEED: f32 = 10.0;
-const CAMERA_ZOOM_SPEED: f32 = 1.0;
-
-// A cursor on the map with a possible position
-pub struct Cursor {
-    pub position: Option<(usize, usize)>
-}
 
 // Whose turn is it
 #[derive(Eq, PartialEq)]
@@ -58,12 +50,11 @@ pub enum BattleCallback {
 // The main Battle struct the handles actions
 pub struct Battle {
     pub map: Map,
-    pub cursor: Cursor,
+    pub cursor: Option<(usize, usize)>,
     pub selected: Option<u8>,
     pub path: Option<Vec<PathPoint>>,
     pub animations: Animations,
     pub command_queue: CommandQueue,
-    drawer: Drawer,
     keys: [bool; 6],
     ui: UI,
     inventory: UI,
@@ -148,8 +139,7 @@ impl Battle {
         // Create the battle
         Battle {
             map: map,
-            drawer: Drawer::new(),
-            cursor: Cursor { position: None },
+            cursor: None,
             keys: [false; 6],
             selected: None,
             path: None,
@@ -191,7 +181,9 @@ impl Battle {
         // Respond to key presses when the text input is open
         if self.ui.text_input(0).active && pressed {
             if key == VirtualKeyCode::Return {
-                if let Some(save) = self.map.save(Some(self.ui.text_input(0).text())) {
+                let filename = self.ui.text_input(0).text();
+
+                if let Some(save) = self.map.save(Some(filename)) {
                     self.ui.text_display(1).append(&format!("Saved to '{}'", save.display()));
                 } else {
                     self.ui.text_display(1).append("Failed to save game");
@@ -288,12 +280,12 @@ impl Battle {
     // Update the battle
     pub fn update(&mut self, ctx: &Context, dt: f32) {
         // Change camera variables if a key is being pressed
-        if self.keys[0] { self.drawer.y += CAMERA_SPEED * dt; }
-        if self.keys[1] { self.drawer.y -= CAMERA_SPEED * dt; }
-        if self.keys[2] { self.drawer.x -= CAMERA_SPEED * dt; }
-        if self.keys[3] { self.drawer.x += CAMERA_SPEED * dt; }
-        if self.keys[4] { self.drawer.zoom(-CAMERA_ZOOM_SPEED * dt); }
-        if self.keys[5] { self.drawer.zoom(CAMERA_ZOOM_SPEED  * dt); }
+        if self.keys[0] { self.map.camera.y += CAMERA_SPEED * dt; }
+        if self.keys[1] { self.map.camera.y -= CAMERA_SPEED * dt; }
+        if self.keys[2] { self.map.camera.x -= CAMERA_SPEED * dt; }
+        if self.keys[3] { self.map.camera.x += CAMERA_SPEED * dt; }
+        if self.keys[4] { self.map.camera.zoom(-CAMERA_ZOOM_SPEED * dt); }
+        if self.keys[5] { self.map.camera.zoom(CAMERA_ZOOM_SPEED  * dt); }
 
         // If the controller is the AI and the command queue and animations are empty, make a ai move
         // If that returns false, switch control back to the player
@@ -340,7 +332,7 @@ impl Battle {
             self.ui.menu(0).render(ctx);
         // Otherwise draw the battle and UI
         } else {
-            self.drawer.draw_battle(ctx, self);
+            draw_battle(ctx, self);
             self.draw_ui(ctx);
         }
     }
@@ -400,10 +392,10 @@ impl Battle {
     // Move the cursor on the screen
     pub fn move_cursor(&mut self, x: f32, y: f32) {
         // Get the position where the cursor should be
-        let (x, y) = self.drawer.tile_under_cursor(x, y);
+        let (x, y) = tile_under_cursor(x, y, &self.map.camera);
 
         // Set cursor position if it is on the map and visible
-        self.cursor.position = if x < self.map.tiles.cols &&
+        self.cursor = if x < self.map.tiles.cols &&
                                   y < self.map.tiles.rows &&
                                   self.map.tiles.at(x, y).visible() {
             Some((x, y))
@@ -425,7 +417,7 @@ impl Battle {
                 // Toggle the save game input
                 Some(2) => self.ui.text_input(0).toggle(),
                 // Or select/deselect a unit
-                _ => if let Some((x, y)) = self.cursor.position {
+                _ => if let Some((x, y)) = self.cursor {
                     // Clear the path
                     self.path = None;
                     // Set the selection
@@ -443,7 +435,7 @@ impl Battle {
                 }
             },
             // Check if the cursor has a position and a unit is selected
-            MouseButton::Right => if let Some((x, y)) = self.cursor.position {
+            MouseButton::Right => if let Some((x, y)) = self.cursor {
                 if let Some(selected_id) = self.selected {
                     // Don't do anything if it's the AI's turn or if there is a command in progress
                     if self.controller == Controller::AI || !self.command_queue.is_empty() {
@@ -503,7 +495,7 @@ impl Battle {
 
     // Work out if the cursor is on an ai unit
     pub fn cursor_on_ai_unit(&self) -> bool {
-        self.cursor.position
+        self.cursor
             .and_then(|(x, y)| self.map.units.at(x, y))
             .map(|unit| unit.side == UnitSide::AI)
             .unwrap_or(false)

@@ -3,6 +3,7 @@
 
 use super::units::{UnitSide, Units};
 use super::tiles::{Visibility, Tiles};
+use super::drawer::Camera;
 
 use std::fs::{File, create_dir_all};
 use std::path::{Path, PathBuf};
@@ -19,6 +20,7 @@ const AUTOSAVE: &str = "autosave.sav";
 pub struct Map {
     pub units: Units,
     pub tiles: Tiles,
+    pub camera: Camera,
     pub turn: u8
 }
 
@@ -28,6 +30,7 @@ impl Map {
         Map {
             units: Units::new(),
             tiles: Tiles::new(),
+            camera: Camera::new(),
             turn: 1
         }
     }
