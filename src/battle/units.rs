@@ -336,8 +336,8 @@ impl Unit {
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize)]
 pub struct Units {
-    pub max_player_units: u8,
-    pub max_ai_units: u8,
+    pub total_player_units: u8,
+    pub total_ai_units: u8,
     index: u8,
     units: Vec<Unit>
 }
@@ -347,8 +347,8 @@ impl Units {
     pub fn new() -> Units {
         Units {
             index: 0,
-            max_player_units: 0,
-            max_ai_units: 0,
+            total_player_units: 0,
+            total_ai_units: 0,
             units: Vec::new()
         }
     }
@@ -356,8 +356,8 @@ impl Units {
     // Add a unit to the struct
     pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize) {
         match side {
-            UnitSide::Player => self.max_player_units += 1,
-            UnitSide::AI => self.max_ai_units += 1
+            UnitSide::Player => self.total_player_units += 1,
+            UnitSide::AI => self.total_ai_units += 1
         };
 
         self.units.push(Unit::new(tag, side, x, y, self.index));

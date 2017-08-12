@@ -50,45 +50,26 @@ impl AnimationStatus {
 
 // A pretty simple walk animation
 pub struct Walk {
-    status: AnimationStatus,
-    unit_id: u8,
-    x: usize,
-    y: usize,
-    cost: u16
+    status: AnimationStatus
 }
 
 impl Walk {
     // Create a new walk animation
-    pub fn new(unit_id: u8, x: usize, y: usize, cost: u16) -> Walk {
+    pub fn new() -> Walk {
         Walk {
-            unit_id, x, y, cost,
             status: AnimationStatus::new()
         }
     }
 
     // Move the animation a step, and return if its still going
-    // If not, move the unit
-    fn step(&mut self, map: &mut Map, ctx: &Context, dt: f32) -> bool {
-        self.status.increment(dt);
-        
-        let still_going = !self.status.past(WALK_TIME);
-
-        if !still_going {
-            match map.units.get_mut(self.unit_id) {
-                Some(unit) => {
-                    // Move the unit and play a walking sound
-                    unit.move_to(self.x, self.y, self.cost);
-                    map.tiles.at_mut(self.x, self.y).walk_on();
-                    ctx.play_sound(SoundEffect::Walk);
-                }
-                _ => return true
-            }
-
-            // Update the visibility of the tiles
-            map.tiles.update_visibility(&map.units);
+    fn step(&mut self, ctx: &Context, dt: f32) -> bool {
+        if self.status.at_start() {
+            ctx.play_sound(SoundEffect::Walk);
         }
+        
+        self.status.increment(dt);
 
-        still_going
+        !self.status.past(WALK_TIME)
     }
 }
 
@@ -191,8 +172,8 @@ pub trait UpdateAnimations {
 impl UpdateAnimations for Animations {
     // Update all of the animations, keeping only those that are still going
     fn update(&mut self, map: &mut Map, ctx: &Context, dt: f32) {
-        self.retain_mut(|mut animation| match *animation {
-            Animation::Walk(ref mut walk) => walk.step(map, ctx, dt),
+        self.retain_mut(|animation| match *animation {
+            Animation::Walk(ref mut walk) => walk.step(ctx, dt),
             Animation::Bullet(ref mut bullet) => bullet.step(map, ctx, dt)
         });
     }

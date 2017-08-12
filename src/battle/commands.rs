@@ -118,33 +118,41 @@ impl Command for WalkCommand {
     // Process the walk command, moving the unit one tile along the path and checking
     // if it spots an enemy unit
     fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> CommandStatus {
-        // Get the path x, y and cost
-        let (x, y, cost) = {
-            let point = &self.path[0];
-            (point.x, point.y, point.cost)
-        };
+        if let Some(point) = self.path.first() {
+            let moves = match map.units.get(self.unit_id) {
+                Some(unit) => {
+                    // If there are more visible enemies than there were when the walk started, end it
+                    if map.visible(unit.side.enemies()) > self.visible_enemies {
+                        // Log a message to the player that an enemy was spotted
+                        if unit.side == UnitSide::Player {
+                            log.append("Enemy spotted!");
+                        }
 
-        if let Some(unit) = map.units.get(self.unit_id) {
-            // If there are more visible enemies than there were when the walk started, end it
-            if map.visible(unit.side.enemies()) > self.visible_enemies {
-                // Log a message to the player that an enemy was spotted
-                if unit.side == UnitSide::Player {
-                    log.append("Enemy spotted!");
-                }
+                        return (false, None);
+                    }
 
-                return (false, None);
-            }
+                    unit.moves
+                },
+                _ => return (false, None)
+            };
 
             // If the move costs too much or if the tile is taken, end the walk
-            if unit.moves < cost || map.units.at(x, y).is_some() {
+            if moves < point.cost || map.taken(point.x, point.y) {
                 return (false, None);
             } else {
-                // Otherwise, add a walk to the animation queue
-                animation_queue.push(Animation::Walk(Walk::new(self.unit_id, x, y, cost)));
+                // Move the unit
+                if let Some(unit) = map.units.get_mut(self.unit_id) {
+                    unit.move_to(point.x, point.y, point.cost);
+                    map.tiles.at_mut(point.x, point.y).walk_on();
+                }
+
+                // Update the visibility of the tiles
+                map.tiles.update_visibility(&map.units);
+
+                // Add a walk to the animation queue (so that there is a delay and a footstep sound)
+                animation_queue.push(Animation::Walk(Walk::new()));
             }
-        } else {
-            return (false, None);
-        }            
+        }
 
         // Remove the point from the path
         self.path.remove(0);

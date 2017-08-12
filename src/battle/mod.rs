@@ -317,8 +317,8 @@ impl Battle {
                 self.ui.menu(0).active = true;
                 self.ui.menu(0).list = vec![
                     "Skirmish Ended".into(),
-                    format!("Units lost: {}", self.map.units.max_player_units - player_count),
-                    format!("Units killed: {}", self.map.units.max_ai_units - ai_count),
+                    format!("Units lost: {}", self.map.units.total_player_units - player_count),
+                    format!("Units killed: {}", self.map.units.total_ai_units - ai_count),
                     "Close".into(),
                     "Quit".into()
                 ];
