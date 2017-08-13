@@ -4,17 +4,13 @@ use rodio::{Decoder, Source};
 
 use std::rc::Rc;
 use std::io::Cursor;
-use std::f32::EPSILON;
 
 mod renderer;
 
 use colours;
 use settings::Settings;
-use resources::{ImageSource, Image, SoundEffect, FONT_HEIGHT};
+use resources::{ImageSource, Image, SoundEffect, CHARACTER_GAP};
 use self::renderer::{Renderer, Properties}; 
-
-// The size of a tile
-const CHARACTER_GAP: f32 = 1.0;
 
 // Use reference-counting to avoid cloning the source each time
 type Audio = Rc<Vec<u8>>;
@@ -25,26 +21,24 @@ fn load_audio(bytes: &[u8]) -> Audio {
 }
 
 pub struct Context {
-    renderer: Renderer,
-    volume: u8,
-    audio: [Audio; 3],
+    pub settings: Settings,
     pub width: f32,
     pub height: f32,
-    pub ui_scale: f32,
+    renderer: Renderer,
+    audio: [Audio; 3]
 }
 
 impl Context {
     // Create a new context
-    pub fn new(event_loop: &EventsLoop, title: String, width: u32, height: u32, tileset: &[u8], audio: [&[u8]; 3]) -> Context {
+    pub fn new(event_loop: &EventsLoop, settings: Settings, title: String, width: u32, height: u32, tileset: &[u8], audio: [&[u8]; 3]) -> Context {
         let renderer = Renderer::new(event_loop, tileset, title, width, height);
 
         // Create the context!
         Context {
             renderer,
+            settings,
             width: width as f32,
             height: height as f32,
-            ui_scale: 2.0,
-            volume: 100,
             audio: [load_audio(audio[0]), load_audio(audio[1]), load_audio(audio[2])]
         }
     }
@@ -60,16 +54,14 @@ impl Context {
     // Render text
     pub fn render_text(&mut self, string: &str, mut x: f32, y: f32, colour: [f32; 4]) {
         // Center the text on its width
-        x = (x - self.font_width(string) / 2.0).floor();
+        x = (x - self.settings.font_width(string) / 2.0).floor();
         
-        // If the ui scale is odd (ui scale mod 2 is very close to 1.0),
-        // offset by 0.5 (this seems to sort out rendering issues at odd ui scales)
-        if (self.ui_scale % 2.0 - 1.0).abs() < EPSILON {
+        // If the ui scale is odd, offset by 0.5
+        if self.settings.ui_scale % 2 == 1 {
             x += 0.5;
         }
 
-        // get the scale to render the text at
-        let scale = self.ui_scale;
+        let scale = self.settings.ui_scale();
 
         // Render each character
         for character in string.chars() {
@@ -118,16 +110,6 @@ impl Context {
         });
     }
 
-    // Get the width that a string would be rendered at
-    pub fn font_width(&self, string: &str) -> f32 {
-        string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.ui_scale)
-    }
-
-    // Get the height of rendered text
-    pub fn font_height(&self) -> f32 {
-        FONT_HEIGHT * self.ui_scale
-    }
-
     // Flush the renderer
     pub fn flush(&mut self) {
         self.renderer.flush();
@@ -136,11 +118,6 @@ impl Context {
     // Clear the renderer
     pub fn clear(&mut self) {
         self.renderer.clear(colours::BLACK);
-    }
-
-    // Set the context from settings
-    pub fn set(&mut self, settings: &Settings) {
-        self.volume = settings.volume;
     }
 
     // Play a sound effect
@@ -158,6 +135,6 @@ impl Context {
         let decoder = Decoder::new(cursor).unwrap();
         // Play it!
         let endpoint = rodio::get_default_endpoint().unwrap();        
-        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(self.volume as f32 / 100.0));
+        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(self.settings.volume as f32 / 100.0));
     }
 }

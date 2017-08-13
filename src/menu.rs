@@ -35,14 +35,13 @@ const SKIRMISH_SAVES: usize = 3;
 // The main menu struct
 pub struct MainMenu {
     pub skirmish_settings: SkirmishSettings,
-    pub settings: Settings,
     submenu: usize,
     submenus: [Menu; 4]
 }
 
 impl MainMenu {
     // Create a new Menu
-    pub fn new(settings: Settings) -> MainMenu {
+    pub fn new(settings: &Settings) -> MainMenu {
         let skirmish_settings = SkirmishSettings::default();
 
         MainMenu {
@@ -67,13 +66,13 @@ impl MainMenu {
                 ),
                 menu!(
                     "Back".into(),
-                    format!("Volume: {:.2}", settings.volume),
-                    "Reset".into(),
-                    "Save".into()
+                    format!("Volume: {}", settings.volume),
+                    format!("UI Scale: {}", settings.ui_scale),
+                    "Reset".into()
                 ),
                 menu!()
             ],
-            skirmish_settings, settings
+            skirmish_settings
         }
     }
 
@@ -101,11 +100,12 @@ impl MainMenu {
     }
 
     // refresh the settings submenu
-    fn refresh_settings(&mut self) {
-        let settings = &mut self.submenus[SETTINGS];
+    fn refresh_settings(&mut self, settings: &mut Settings) {
+        let settings_submenu = &mut self.submenus[SETTINGS];
 
-        self.settings.clamp();
-        settings.set_item(1, format!("Volume: {}", self.settings.volume));
+        settings.clamp();
+        settings_submenu.set_item(1, format!("Volume: {}", settings.volume));
+        settings_submenu.set_item(2, format!("UI Scale: {}", settings.ui_scale));
     }
 
     // refresh the saves submenu
@@ -124,7 +124,7 @@ impl MainMenu {
     }
 
     // Handle key presses, returning an optional callback
-    pub fn handle_key(&mut self, key: VirtualKeyCode, ctx: &mut Context) -> Option<MenuCallback> {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, settings: &mut Settings) -> Option<MenuCallback> {
         match key {
             // Rotate the selections up
             VirtualKeyCode::Up | VirtualKeyCode::W => self.submenus[self.submenu].rotate_up(),
@@ -148,15 +148,13 @@ impl MainMenu {
                     _ => {}
                 },
                 SETTINGS => match self.submenus[SETTINGS].selection {
-                    0 => self.submenu = MAIN,
-                    2 => {
-                        self.settings = Settings::default();
-                        ctx.set(&self.settings);
-                        self.refresh_settings();
+                    0 => {
+                        self.submenu = MAIN;
+                        settings.save();
                     },
                     3 => {
-                        ctx.set(&self.settings);
-                        self.settings.save();
+                        settings.reset();
+                        self.refresh_settings(settings);
                     },
                     _ => {}
                 },
@@ -182,12 +180,14 @@ impl MainMenu {
                     self.refresh_skirmish();
                 }
                 SETTINGS => {
-                    if let 1 = self.submenus[SETTINGS].selection {
-                        if self.settings.volume > 0 {
-                            self.settings.volume -= VOLUME_CHANGE;
-                        }
+                    match self.submenus[SETTINGS].selection {
+                        1 => if settings.volume > 0 {
+                            settings.volume -= VOLUME_CHANGE;
+                        },
+                        2 => settings.ui_scale -= 1,
+                        _ => {}
                     }
-                    self.refresh_settings();
+                    self.refresh_settings(settings);
                 }
                 _ => {}
             },
@@ -206,10 +206,12 @@ impl MainMenu {
                     self.refresh_skirmish();
                 },
                 SETTINGS => {
-                    if let 1 = self.submenus[SETTINGS].selection {
-                        self.settings.volume += VOLUME_CHANGE
+                    match self.submenus[SETTINGS].selection {
+                        1 => settings.volume += VOLUME_CHANGE,
+                        2 => settings.ui_scale += 1,
+                        _ => {}
                     }
-                    self.refresh_settings();
+                    self.refresh_settings(settings);
                 }
                 _ => {}
             },

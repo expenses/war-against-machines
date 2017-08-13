@@ -6,6 +6,9 @@ const TILE: f32 = 48.0;
 const FONT_Y: f32 = TILE * 8.5;
 pub const FONT_HEIGHT: f32 = 8.0;
 
+// The gap between text characters
+pub const CHARACTER_GAP: f32 = 1.0;
+
 // include_bytes! but prepends the resources directory
 macro_rules! bytes {
     ($file: expr) => (

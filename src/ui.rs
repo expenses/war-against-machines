@@ -118,13 +118,13 @@ impl TextDisplay {
 
     // Draw the text display on the screen
     fn draw(&self, ctx: &mut Context) {
-        let height = ctx.font_height() * self.text.lines().count() as f32;
+        let height = ctx.settings.font_height() * self.text.lines().count() as f32;
         let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
         
         for line in self.text.lines() {
-            let x = self.v_align.get_x(self.x, ctx.font_width(line), ctx.width);
+            let x = self.v_align.get_x(self.x, ctx.settings.font_width(line), ctx.width);
             ctx.render_text(line, x, y, WHITE);
-            y -= ctx.font_height();
+            y -= ctx.settings.font_height();
         }
     }
 }
@@ -138,13 +138,13 @@ pub struct TextInput {
 
 impl TextInput {
     // Create a new text input
-    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, ctx: &Context, display: &str) -> TextInput {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, font_height: f32, display: &str) -> TextInput {
         let mut title = TextDisplay::new(x, y, v_align, h_align, active);
         title.text = display.into();
 
         TextInput {
             title, active,
-            input: TextDisplay::new(x, y - ctx.font_height(), v_align, h_align, active)
+            input: TextDisplay::new(x, y - font_height, v_align, h_align, active)
         }
     }
 
@@ -204,7 +204,7 @@ impl Menu {
     // Draw the items in the menu
     pub fn render(&self, ctx: &mut Context) {
         // Get the height of the rendered text
-        let height = ctx.font_height() * self.list.len() as f32;
+        let height = ctx.settings.font_height() * self.list.len() as f32;
         // Get a starting y value
         let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
 
@@ -216,10 +216,10 @@ impl Menu {
             if self.selected && i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let x = self.v_align.get_x(self.x, ctx.font_width(&string), ctx.width);
+            let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx.width);
             ctx.render_text(&string, x, y, WHITE);
             // Decrease the y value
-            y -= ctx.font_height();
+            y -= ctx.settings.font_height();
         }
     }
 

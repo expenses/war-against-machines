@@ -59,10 +59,10 @@ struct App {
 
 impl App {
     // Create a new state, starting on the menu
-    fn new(ctx: Context, settings: Settings) -> App {
+    fn new(ctx: Context) -> App {
         App {
             mode: Mode::Menu,
-            menu: MainMenu::new(settings),
+            menu: MainMenu::new(&ctx.settings),
             skirmish: None,
             mouse: (0.0, 0.0),
             ctx
@@ -82,16 +82,16 @@ impl App {
     fn handle_key_press(&mut self, key: VirtualKeyCode) -> bool {
         match self.mode {
             // If the mode is the menu, respond to callbacks
-            Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.ctx) {
+            Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.ctx.settings) {
                 match callback {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish = Some(Battle::new(&self.ctx, &self.menu.skirmish_settings, None));
+                        self.skirmish = Some(Battle::new(&self.ctx.settings, &self.menu.skirmish_settings, None));
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename) {
-                        self.skirmish = Some(Battle::new(&self.ctx, &self.menu.skirmish_settings, Some(map)));
+                        self.skirmish = Some(Battle::new(&self.ctx.settings, &self.menu.skirmish_settings, Some(map)));
                         self.mode = Mode::Skirmish;
                     },
                     // Quit
@@ -167,13 +167,11 @@ impl App {
 
 // The main function
 fn main() {
-    // Load (or use the default) settings
-    let settings = Settings::load();
-
     // Generate the event loop and the context
     let mut events_loop = glutin::EventsLoop::new();
-    let mut ctx = Context::new(
+    let ctx = Context::new(
         &events_loop,
+        Settings::load(),
         TITLE.into(), WINDOW_WIDTH, WINDOW_HEIGHT,
         bytes!("tileset.png"),
         [
@@ -182,10 +180,8 @@ fn main() {
             bytes!("audio/plasma_shot.ogg")
         ]
     );
-    // Set the context based off the settings
-    ctx.set(&settings);
 
-    let mut app = App::new(ctx, settings);
+    let mut app = App::new(ctx);
     let mut running = true;
     let mut start = Instant::now();
 

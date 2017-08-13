@@ -23,7 +23,7 @@ use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
 use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
-use settings::SkirmishSettings;
+use settings::{Settings, SkirmishSettings};
 
 // Whose turn is it
 #[derive(Eq, PartialEq)]
@@ -63,8 +63,8 @@ pub struct Battle {
 
 impl Battle {
     // Create a new Battle
-    pub fn new(ctx: &Context, settings: &SkirmishSettings, map: Option<Map>) -> Battle {
-        let width_offset = - Image::EndTurnButton.width() * ctx.ui_scale;
+    pub fn new(settings: &Settings, skirmish_settings: &SkirmishSettings, map: Option<Map>) -> Battle {
+        let width_offset = - Image::EndTurnButton.width() * settings.ui_scale();
 
         // Create the base UI
 
@@ -73,17 +73,17 @@ impl Battle {
         ui.add_buttons(vec![
             Button::new(
                 Image::EndTurnButton,
-                0.0, 0.0, ctx.ui_scale,
+                0.0, 0.0, settings.ui_scale(),
                 Vertical::Right, Horizontal::Bottom
             ),
             Button::new(
                 Image::InventoryButton,
-                width_offset, 0.0, ctx.ui_scale,
+                width_offset, 0.0, settings.ui_scale(),
                 Vertical::Right, Horizontal::Bottom
             ),
             Button::new(
                 Image::SaveGameButton,
-                width_offset * 2.0, 0.0, ctx.ui_scale,
+                width_offset * 2.0, 0.0, settings.ui_scale(),
                 Vertical::Right, Horizontal::Bottom
             )
         ]);
@@ -94,7 +94,7 @@ impl Battle {
         ]);
 
         ui.add_text_inputs(vec![
-            TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, ctx, "Save game to:")
+            TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, settings.font_height(), "Save game to:")
         ]);
 
         ui.add_menus(vec![
@@ -118,16 +118,16 @@ impl Battle {
 
         // Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
         let map = map.unwrap_or_else(|| {
-            let mut map = Map::new(settings.cols, settings.rows);
+            let mut map = Map::new(skirmish_settings.cols, skirmish_settings.rows);
 
             // Add player units
-            for x in 0 .. settings.player_units {
-                map.units.add(settings.player_unit_type, UnitSide::Player, x, 0);
+            for x in 0 .. skirmish_settings.player_units {
+                map.units.add(skirmish_settings.player_unit_type, UnitSide::Player, x, 0);
             }
 
             // Add ai units
-            for y in settings.cols - settings.ai_units .. settings.cols {
-                map.units.add(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1);
+            for y in skirmish_settings.cols - skirmish_settings.ai_units .. skirmish_settings.cols {
+                map.units.add(skirmish_settings.ai_unit_type, UnitSide::AI, y, skirmish_settings.rows - 1);
             }
             
             // Generate tiles

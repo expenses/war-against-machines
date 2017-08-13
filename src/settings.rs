@@ -2,24 +2,29 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use battle::units::UnitType;
+use resources::{FONT_HEIGHT, CHARACTER_GAP, ImageSource};
 
 use toml;
 
 const FILENAME: &str = "settings.toml";
 const MIN_MAP_SIZE: usize = 10;
 const MAX_MAP_SIZE: usize = 60;
-const MAX_VOLUME: u8 = 100;
+const DEFAULT_VOLUME: u8 = 100;
+const DEFAULT_UI_SCALE: u8 = 2;
+const MAX_UI_SCALE: u8 = 4;
 
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
     pub volume: u8,
+    pub ui_scale: u8
 }
 
 // The default settings
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            volume: MAX_VOLUME
+            volume: DEFAULT_VOLUME,
+            ui_scale: DEFAULT_UI_SCALE
         }
     }
 }
@@ -46,9 +51,30 @@ impl Settings {
         file.write_all(&buffer).unwrap();
     }
 
+    pub fn ui_scale(&self) -> f32 {
+        self.ui_scale as f32
+    }
+
     // Make sure the volume isn't too high
     pub fn clamp(&mut self) {
-        self.volume = clamp!(self.volume, 0, MAX_VOLUME);
+        self.volume = clamp!(self.volume, 0, DEFAULT_VOLUME);
+        self.ui_scale = clamp!(self.ui_scale, 1, MAX_UI_SCALE);
+    }
+
+    // Get the height that a string would be rendered at
+    pub fn font_height(&self) -> f32 {
+        FONT_HEIGHT * self.ui_scale()
+    }
+
+    // Get the width that a string would be rendered at
+    pub fn font_width(&self, string: &str) -> f32 {
+        string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.ui_scale())
+    }
+
+    // Reset the settings
+    pub fn reset(&mut self) {
+        self.volume = DEFAULT_VOLUME;
+        self.ui_scale = DEFAULT_UI_SCALE;
     }
 }
 
@@ -100,4 +126,32 @@ impl SkirmishSettings {
             UnitType::Machine => UnitType::Squaddie
         }
     }
+}
+
+#[test]
+fn load_save() {
+    let mut settings = Settings::default();
+
+    // Test clamping the settings
+
+    settings.volume = 255;
+    settings.ui_scale = 100;
+
+    settings.clamp();
+
+    assert_eq!(settings.volume, DEFAULT_VOLUME);
+    assert_eq!(settings.ui_scale, MAX_UI_SCALE);
+
+    settings.volume = 99;
+
+    // Test saving and loading the settings
+
+    settings.save();
+
+    let settings_2 = Settings::load();
+
+    assert_eq!(settings_2.volume, 99);
+
+    settings.reset();
+    settings.save();
 }
