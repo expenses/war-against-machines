@@ -21,10 +21,10 @@ cache: cargo
 # Use Trusty Ubuntu (14.04 LTS), not Precise (12.04 LTS)
 dist: trusty
 
-# Addons for `kcov`
 addons:
   apt:
     packages:
+      # Addons for `kcov`
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
@@ -32,12 +32,8 @@ addons:
       - gcc
       - binutils-dev
       - libiberty-dev
-
-before_install: 
-  # Install ALSA on Linux
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-      sudo apt-get install -qq libasound2-dev;
-    fi
+      # Install ALSA on Linux
+      - libasound2-dev
 
 # The script itself
 script:
@@ -51,7 +47,7 @@ script:
 
 # `kcov` example, taken from 'https://github.com/codecov/example-rust'`
 after_success:
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+  - if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_RUST_VERSION" == "stable"]; then
       wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
       tar xzf master.tar.gz &&
       cd kcov-master &&
