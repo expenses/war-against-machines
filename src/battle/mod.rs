@@ -13,6 +13,7 @@ mod walls;
 use glutin::{VirtualKeyCode, MouseButton};
 
 use std::fmt;
+use std::path::PathBuf;
 
 use self::drawer::{draw_battle, tile_under_cursor, CAMERA_SPEED, CAMERA_ZOOM_SPEED};
 use self::paths::{pathfind, PathPoint};
@@ -26,7 +27,7 @@ use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
 use settings::{Settings, SkirmishSettings};
 
 // Whose turn is it
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum Controller {
     Player,
     AI
@@ -42,9 +43,10 @@ impl fmt::Display for Controller {
 }
 
 // An optional callback that is returned by the key handler. It species if the game ended or was quit
+#[derive(Debug, Eq, PartialEq)]
 pub enum BattleCallback {
     Ended,
-    Quit
+    Quit(Option<PathBuf>)
 }
 
 // The main Battle struct the handles actions
@@ -159,12 +161,12 @@ impl Battle {
                 match key {
                     VirtualKeyCode::Return => match self.ui.menu(0).selection {
                         3 => return Some(BattleCallback::Ended),
-                        4 => return Some(BattleCallback::Quit),
+                        4 => return Some(BattleCallback::Quit(None)),
                         _ => {}
                     },
                     VirtualKeyCode::Up => self.ui.menu(0).rotate_up(),
                     VirtualKeyCode::Down => self.ui.menu(0).rotate_down(),
-                    VirtualKeyCode::Escape => return Some(BattleCallback::Quit),
+                    VirtualKeyCode::Escape => return Some(BattleCallback::Quit(None)),
                     _ => {}
                 };
             }
@@ -174,8 +176,7 @@ impl Battle {
 
         // If the escape key was pressed, create an autosave and quit the game
         if key == VirtualKeyCode::Escape && pressed {
-            self.map.save(None);
-            return Some(BattleCallback::Quit);
+            return Some(BattleCallback::Quit(self.map.save(None)));
         }
 
         // Respond to key presses when the text input is open
@@ -511,4 +512,53 @@ impl Battle {
             self.controller = Controller::AI;
         }   
     }
+}
+
+#[test]
+fn battle_operations() {
+    let settings = Settings::default();
+    let skirmish_settings = SkirmishSettings::default();
+
+    let mut battle = Battle::new(&settings, &skirmish_settings, None);
+
+    // It should be on the first turn and it should be the player's turn
+
+    assert_eq!(battle.map.turn, 1);
+    assert_eq!(battle.controller, Controller::Player);
+
+    // The cols and rows are equal
+    assert_eq!(battle.map.tiles.cols, skirmish_settings.cols);
+    assert_eq!(battle.map.tiles.rows, skirmish_settings.rows);
+
+    // The unit counts are equal
+    assert_eq!(battle.map.units.count(UnitSide::Player) as usize, skirmish_settings.player_units);
+    assert_eq!(battle.map.units.count(UnitSide::AI) as usize, skirmish_settings.ai_units);
+
+    // The unit types are correct
+
+    assert!(battle.map.units.iter()
+        .filter(|unit| unit.side == UnitSide::Player)
+        .all(|unit| unit.tag == skirmish_settings.player_unit_type));
+
+    assert!(battle.map.units.iter()
+        .filter(|unit| unit.side == UnitSide::AI)
+        .all(|unit| unit.tag == skirmish_settings.ai_unit_type));
+
+    {
+        // The first unit should be a player unit at (0, 0)
+
+        let unit = battle.map.units.get_mut(0).unwrap();
+
+        assert_eq!(unit.side, UnitSide::Player);
+        assert_eq!(unit.tag, skirmish_settings.player_unit_type);
+
+        assert_eq!((unit.x, unit.y), (0, 0));
+    }
+
+    // The game should quit and make an autosave if the escape key is pressed
+
+    assert_eq!(
+        battle.handle_key(VirtualKeyCode::Escape, true),
+        Some(BattleCallback::Quit(Some(PathBuf::from("savegames/skirmishes/autosave.sav"))))
+    );
 }

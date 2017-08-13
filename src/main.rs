@@ -101,7 +101,7 @@ impl App {
             // If the skirmish returns a callback, match it
             Mode::Skirmish => if let Some(callback) = self.skirmish.as_mut().and_then(|skirmish| skirmish.handle_key(key, true)) {
                 match callback {
-                    BattleCallback::Quit => return false,
+                    BattleCallback::Quit(_) => return false,
                     BattleCallback::Ended => {
                         self.mode = Mode::Menu;
                         self.skirmish = None;

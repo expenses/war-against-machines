@@ -81,7 +81,7 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
 }
 
 // The type of a unit
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum UnitType {
     Squaddie,
     Machine
@@ -131,7 +131,7 @@ impl fmt::Display for UnitType {
 }
 
 // Which side the unit is on
-#[derive(Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Serialize, Deserialize, Debug)]
 pub enum UnitSide {
     Player,
     AI
