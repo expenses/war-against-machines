@@ -88,3 +88,11 @@ impl Map {
             .map(|_| save)
     }
 }
+
+#[test]
+fn load_save() {
+    // Test saving and loading a map
+    let map = Map::new(20, 20);
+    map.save(Some("test".into()));
+    Map::load("test.sav").unwrap();
+}

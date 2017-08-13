@@ -430,3 +430,73 @@ impl Units {
         tiles.update_visibility(self);
     }
 }
+
+#[test]
+fn unit_actions() {
+    let mut units = Units::new();
+    let mut tiles = Tiles::new(30, 30);
+
+    let rifle = WeaponType::Rifle;
+    let plasma_rifle = WeaponType::PlasmaRifle;
+
+    // After adding 10 units, there should be 10 ai units into total
+
+    for i in 0 .. 10 {
+        units.add(UnitType::Machine, UnitSide::AI, i, i);
+    }
+
+    assert_eq!(units.count(UnitSide::AI), 10);
+
+    {
+        // A unit should be carrying the weight of a plasma rifle
+
+        let unit = units.get_mut(0).unwrap();
+
+        assert_eq!(unit.carrying(), plasma_rifle.weight());
+
+        // Test picking up a rifle
+
+        tiles.at_mut(0, 0).items.push(Item::Rifle(rifle.capacity()));
+
+        assert!(unit.pick_up_item(&mut tiles, 0));
+        assert_eq!(tiles.at(0, 0).items, Vec::new());
+
+        assert_eq!(unit.inventory[0], Item::Rifle(rifle.capacity()));
+
+        assert_eq!(unit.carrying(), plasma_rifle.weight() + rifle.weight());
+
+        assert_eq!(unit.moves, unit.tag.moves() - ITEM_COST);
+
+        // Test equpping a rifle
+
+        unit.use_item(0);
+
+        assert_eq!(unit.inventory[0], Item::PlasmaRifle(plasma_rifle.capacity()));
+
+        assert_eq!(unit.moves, unit.tag.moves() - ITEM_COST * 2);
+
+        // The unit is at full health and shouldn't be able to heal
+
+        assert!(!unit.can_heal_from(&Item::Bandages));
+
+        // Or reload
+
+        assert!(!unit.can_reload_from(&Item::RifleClip(rifle.capacity())));
+
+        // Test firing the weapon
+
+        assert!(unit.fire_weapon());
+
+        assert_eq!(unit.moves, unit.tag.moves() - ITEM_COST * 2 - rifle.cost());
+    }
+
+    // After killing a unit there should be 9 left
+
+    units.kill(&mut tiles, 0);
+
+    assert_eq!(units.count(UnitSide::AI), 9);
+
+    // And the tile under the unit should have items on it
+
+    assert_ne!(tiles.at(0, 0).items, Vec::new());
+}
