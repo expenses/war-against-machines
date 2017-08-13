@@ -449,3 +449,22 @@ fn unit_visibility() {
         }
     }
 }
+
+#[test]
+fn pit_generation() {
+    let mut tiles = Tiles::new(30, 30);
+    tiles.generate(&Units::new());
+
+    // At least one tile should have a pit on it
+    assert!(tiles.tiles.iter().any(|tile| tile.obstacle.is_pit()));
+}
+
+#[test]
+fn walk_on_tile() {
+    let mut tiles = Tiles::new(30, 30);
+   
+    let tile = tiles.at_mut(0, 0);
+    tile.decoration = Some(Image::Skeleton);
+    tile.walk_on();
+    assert_eq!(tile.decoration, Some(Image::SkeletonCracked));
+}

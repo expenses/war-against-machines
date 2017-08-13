@@ -447,6 +447,8 @@ fn unit_actions() {
 
     assert_eq!(units.count(UnitSide::AI), 10);
 
+    // Iterating over the units should work as expected
+
     {
         // A unit should be carrying the weight of a plasma rifle
 

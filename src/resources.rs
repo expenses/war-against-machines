@@ -35,7 +35,7 @@ pub trait ImageSource {
 }
 
 // An image in the tileset
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Image {
     Base1,
     Base2,

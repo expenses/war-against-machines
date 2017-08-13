@@ -66,16 +66,10 @@ impl Map {
             filename
         }).unwrap_or_else(|| AUTOSAVE.into());
         
-        // Don't save invisible files
-        if filename.starts_with('.') {
-            return None;
-        }
-
-        // Create the directory
-
         let directory = Path::new(SAVES);
 
-        if !directory.exists() && create_dir_all(&directory).is_err() {
+        // Don't save invisible files and return if the directory fails to be created
+        if filename.starts_with('.') || (!directory.exists() && create_dir_all(&directory).is_err()) {
             return None;
         }
 
@@ -93,6 +87,7 @@ impl Map {
 fn load_save() {
     // Test saving and loading a map
     let map = Map::new(20, 20);
-    map.save(Some("test".into()));
+
+    assert_eq!(map.save(Some("test".into())), Some(PathBuf::from("savegames/skirmishes/test.sav")));
     Map::load("test.sav").unwrap();
 }
