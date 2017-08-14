@@ -526,11 +526,4 @@ fn battle_operations() {
 
         assert_eq!((unit.x, unit.y), (0, 0));
     }
-
-    // The game should quit and make an autosave if the escape key is pressed
-
-    assert_eq!(
-        battle.handle_key(VirtualKeyCode::Escape, true),
-        Some(BattleCallback::Quit(Some(PathBuf::from("savegames/skirmishes/autosave.sav"))))
-    );
 }
