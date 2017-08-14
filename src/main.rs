@@ -21,7 +21,6 @@ use glutin::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode, Mo
 
 mod weapons;
 mod items;
-mod ui;
 #[macro_use]
 mod resources;
 #[macro_use]
@@ -32,6 +31,7 @@ mod menu;
 mod colours;
 mod context;
 mod battle;
+mod ui;
 
 use context::Context;
 use settings::Settings;
@@ -88,11 +88,11 @@ impl App {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish = Some(Battle::new(&self.ctx.settings, &self.menu.skirmish_settings, None));
+                        self.skirmish = Some(Battle::new(&self.menu.skirmish_settings, None));
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename) {
-                        self.skirmish = Some(Battle::new(&self.ctx.settings, &self.menu.skirmish_settings, Some(map)));
+                        self.skirmish = Some(Battle::new(&self.menu.skirmish_settings, Some(map)));
                         self.mode = Mode::Skirmish;
                     },
                     MenuCallback::Resume => self.mode = Mode::Skirmish,

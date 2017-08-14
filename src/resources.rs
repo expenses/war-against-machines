@@ -33,8 +33,14 @@ macro_rules! char_loc {
 // A trait for mapping an image to its position in the tileset
 pub trait ImageSource {
     fn source(&self) -> [f32; 4];
-    fn width(&self) -> f32;
-    fn height(&self) -> f32;
+     
+    fn width(&self) -> f32 {
+        self.source()[2]
+    }
+
+    fn height(&self) -> f32 {
+        self.source()[3]
+    }
 }
 
 // An image in the tileset
@@ -146,14 +152,6 @@ impl ImageSource for Image {
             Image::SaveGameButton => tiles!(2, 8, 1, 0.5),
         }
     }
-
-    fn width(&self) -> f32 {
-        self.source()[2]
-    }
-
-    fn height(&self) -> f32 {
-        self.source()[3]
-    }
 }
 
 impl ImageSource for char {
@@ -236,16 +234,6 @@ impl ImageSource for char {
             ' ' => char_loc!(324, 4),
             _ => char_loc!(329, 4),
         }
-    }
-    
-    // get the width of the character
-    fn width(&self) -> f32 {
-        self.source()[2]
-    }
-
-    // Get the height of the character
-    fn height(&self) -> f32 {
-        self.source()[3]
     }
 }
 

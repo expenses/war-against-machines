@@ -11,7 +11,6 @@ use ui::{Menu, Vertical, Horizontal};
 
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
-const TOP_ITEM_OFFSET: f32 = 150.0;
 const VOLUME_CHANGE: u8 = 5;
 
 macro_rules! item {
@@ -28,7 +27,7 @@ macro_rules! item {
 
 macro_rules! menu {
     ($($item: expr),*) => (
-        Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, true, vec![$($item,)*])
+        Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, true, true, vec![$($item,)*])
     )
 }
 
@@ -102,15 +101,15 @@ impl MainMenu {
 
     // Refresh the skirmish submenu
     fn refresh_skirmish(&mut self) {
-        let skirmish = &mut self.submenus[SKIRMISH];
+        let skirmish_submenu = &mut self.submenus[SKIRMISH];
         
         self.skirmish_settings.clamp();
-        skirmish.list[5]  = item!("Cols: {}", self.skirmish_settings.cols, true);
-        skirmish.list[6]  = item!("Rows: {}", self.skirmish_settings.rows, true);
-        skirmish.list[7]  = item!("Player units: {}", self.skirmish_settings.player_units, true);
-        skirmish.list[8]  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
-        skirmish.list[9]  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
-        skirmish.list[10] = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
+        skirmish_submenu.list[5]  = item!("Cols: {}", self.skirmish_settings.cols, true);
+        skirmish_submenu.list[6]  = item!("Rows: {}", self.skirmish_settings.rows, true);
+        skirmish_submenu.list[7]  = item!("Player units: {}", self.skirmish_settings.player_units, true);
+        skirmish_submenu.list[8]  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
+        skirmish_submenu.list[9]  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
+        skirmish_submenu.list[10] = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
     }
 
     // refresh the settings submenu
@@ -138,7 +137,6 @@ impl MainMenu {
         self.submenus[SKIRMISH].set_enabled(1, skirmish_open);
         self.submenus[SKIRMISH].selection = 1;
     }
-
 
     // Handle key presses, returning an optional callback
     pub fn handle_key(&mut self, key: VirtualKeyCode, settings: &mut Settings) -> Option<MenuCallback> {
@@ -238,4 +236,15 @@ impl MainMenu {
 
         None
     }
+}
+
+#[test]
+fn test_menu_lengths() {
+    let main_menu = MainMenu::new(&Settings::default());
+
+    assert_eq!(main_menu.submenus.len(), 4);
+    assert_eq!(main_menu.submenus[0].len(), 3);
+    assert_eq!(main_menu.submenus[1].len(), 11);
+    assert_eq!(main_menu.submenus[2].len(), 4);
+    assert_eq!(main_menu.submenus[3].len(), 0);
 }

@@ -16,7 +16,9 @@ pub enum Vertical {
 
 impl Vertical {
     // Get the x position on the screen for an item of a certain width and alignment
-    fn get_x(&self, x: f32, width: f32, screen_width: f32) -> f32 {
+    fn get_x(&self, mut x: f32, width: f32, screen_width: f32, scale: f32) -> f32 {
+        x *= scale;
+
         match *self {
             Vertical::Left => x - (screen_width - width) / 2.0,
             Vertical::Middle => x,
@@ -35,7 +37,9 @@ pub enum Horizontal {
 
 impl Horizontal{
     // Get the y position on the screen for an item of a certain height and alignment
-    fn get_y(&self, y: f32, height: f32, screen_height: f32) -> f32 {
+    fn get_y(&self, mut y: f32, height: f32, screen_height: f32, scale: f32) -> f32 {
+        y *= scale;
+
         match *self {
             Horizontal::Top => (screen_height - height) / 2.0 - y,
             Horizontal::Middle => y,
@@ -75,18 +79,21 @@ impl Button {
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &mut Context) {
-        let x = self.v_align.get_x(self.x, self.width(ctx), ctx.width);
-        let y = self.h_align.get_y(self.y, self.height(ctx), ctx.height);
-
         let ui_scale = ctx.settings.ui_scale();
+
+        let x = self.v_align.get_x(self.x, self.width(ctx), ctx.width, ui_scale);
+        let y = self.h_align.get_y(self.y, self.height(ctx), ctx.height, ui_scale);
+
 
         ctx.render(&self.image, [x, y], ui_scale)
     }
 
     // Calculate if the button was pressed
     pub fn clicked(&self, ctx: &Context, x: f32, y: f32) -> bool {
-        let pos_x = self.v_align.get_x(self.x, self.width(ctx), ctx.width);
-        let pos_y = self.h_align.get_y(self.y, self.height(ctx), ctx.height);
+        let ui_scale = ctx.settings.ui_scale();
+
+        let pos_x = self.v_align.get_x(self.x, self.width(ctx), ctx.width, ui_scale);
+        let pos_y = self.h_align.get_y(self.y, self.height(ctx), ctx.height, ui_scale);
 
         x >= pos_x - self.width(ctx) / 2.0 && x <= pos_x + self.width(ctx) / 2.0 &&
         y >= pos_y - self.width(ctx) / 2.0 && y <= pos_y + self.height(ctx) / 2.0
@@ -119,11 +126,13 @@ impl TextDisplay {
 
     // Draw the text display on the screen
     fn draw(&self, ctx: &mut Context) {
+        let ui_scale = ctx.settings.ui_scale();
+
         let height = ctx.settings.font_height() * self.text.lines().count() as f32;
-        let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
+        let mut y = self.h_align.get_y(self.y, height, ctx.height, ui_scale) + height / 2.0;
         
         for line in self.text.lines() {
-            let x = self.v_align.get_x(self.x, ctx.settings.font_width(line), ctx.width);
+            let x = self.v_align.get_x(self.x, ctx.settings.font_width(line), ctx.width, ui_scale);
             ctx.render_text(line, x, y, WHITE);
             y -= ctx.settings.font_height();
         }
@@ -133,50 +142,58 @@ impl TextDisplay {
 // A text input on the UI
 pub struct TextInput {
     title: TextDisplay,
-    input: TextDisplay,
+    display: String,
+    text: String,
     pub active: bool
 }
 
 impl TextInput {
     // Create a new text input
-    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, font_height: f32, display: &str) -> TextInput {
-        let mut title = TextDisplay::new(x, y, v_align, h_align, active);
-        title.text = display.into();
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, display: &str) -> TextInput {
+        let mut text_input = TextInput {
+            active,
+            title: TextDisplay::new(x, y, v_align, h_align, active),
+            display: display.into(),
+            text: String::new()
+        };
 
-        TextInput {
-            title, active,
-            input: TextDisplay::new(x, y - font_height, v_align, h_align, active)
-        }
+        text_input.set_text();
+
+        text_input
+    }
+
+    fn set_text(&mut self) {
+        self.title.text = [self.display.clone(), self.text.clone()].join("\n");
     }
 
     // Draw the text input
     fn draw(&self, ctx: &mut Context) {
         self.title.draw(ctx);
-        self.input.draw(ctx);
     }
 
     // Toggle if the text input is active or not
     pub fn toggle(&mut self) {
         self.active = !self.active;
         self.title.active = self.active;
-        self.input.active = self.active;
     }
 
     // Handle key presses
     pub fn handle_key(&mut self, key: VirtualKeyCode) {
         if key == VirtualKeyCode::Back {
-            self.input.text.pop();
+            self.text.pop();
         } else {
-            self.input.text.push(match key.to_char() {
+            self.text.push(match key.to_char() {
                 '�' => return,
                 character => character
             });
         }
+
+        self.set_text();
     }
 
     // Get a copy of the text
     pub fn text(&self) -> String {
-        self.input.text.clone()
+        self.text.clone()
     }
 }
 
@@ -204,10 +221,12 @@ impl Menu {
 
     // Draw the items in the menu
     pub fn render(&self, ctx: &mut Context) {
+        let ui_scale = ctx.settings.ui_scale();
+
         // Get the height of the rendered text
         let height = ctx.settings.font_height() * self.list.len() as f32;
         // Get a starting y value
-        let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
+        let mut y = self.h_align.get_y(self.y, height, ctx.height, ui_scale) + height / 2.0;
 
         // Enumerate through the items
         for (i, &(ref item, enabled)) in self.list.iter().enumerate() {
@@ -219,7 +238,7 @@ impl Menu {
             if self.selected && i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx.width);
+            let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx.width, ui_scale);
             ctx.render_text(&string, x, y, colour);
             // Decrease the y value
             y -= ctx.settings.font_height();
@@ -368,4 +387,34 @@ impl UI {
             .find(|&(_, button)| button.active && button.clicked(ctx, mouse.0, mouse.1))
             .map(|(i, _)| i)
     }
+}
+
+#[test]
+fn test_menu() {
+    let items = vec![item!("Item 1"), item!("Item 2", false), item!("Item 3")];
+
+    // Test the `item!` macro
+
+    assert_eq!(items, vec![
+        ("Item 1".into(), true),
+        ("Item 2".into(), false),
+        ("Item 3".into(), true)
+    ]);
+
+    let mut menu = Menu::new(0.0, 0.0, Vertical::Left, Horizontal::Top, true, true, items);
+
+    assert_eq!(menu.selected(), "Item 1".to_string());
+
+    menu.rotate_down();
+
+    assert_eq!(menu.selected(), "Item 3".to_string());
+
+    menu.rotate_up();
+
+    assert_eq!(menu.selected(), "Item 1".to_string());
+
+    menu.set_enabled(1, true);
+    menu.rotate_down();
+
+    assert_eq!(menu.selected(), "Item 2".to_string());
 }

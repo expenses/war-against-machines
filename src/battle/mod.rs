@@ -23,7 +23,7 @@ use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
 use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
-use settings::{Settings, SkirmishSettings};
+use settings::SkirmishSettings;
 
 // Whose turn is it
 #[derive(Debug, Eq, PartialEq)]
@@ -57,8 +57,8 @@ pub struct Battle {
 
 impl Battle {
     // Create a new Battle
-    pub fn new(settings: &Settings, skirmish_settings: &SkirmishSettings, map: Option<Map>) -> Battle {
-        let width_offset = - Image::EndTurnButton.width() * settings.ui_scale();
+    pub fn new(skirmish_settings: &SkirmishSettings, map: Option<Map>) -> Battle {
+        let width_offset = -Image::EndTurnButton.width();
 
         // Create the base UI
 
@@ -76,7 +76,7 @@ impl Battle {
         ]);
 
         ui.add_text_inputs(vec![
-            TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, settings.font_height(), "Save game to:")
+            TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, "Save game to:")
         ]);
 
         ui.add_menus(vec![
@@ -88,13 +88,13 @@ impl Battle {
         let mut inventory = UI::new(false);
         
         inventory.add_text_displays(vec![
-            TextDisplay::new(-150.0, 100.0, Vertical::Middle, Horizontal::Top, true),
-            TextDisplay::new(150.0, 100.0, Vertical::Middle, Horizontal::Top, true)
+            TextDisplay::new(-75.0, 50.0, Vertical::Middle, Horizontal::Top, true),
+            TextDisplay::new(75.0, 50.0, Vertical::Middle, Horizontal::Top, true)
         ]);
 
         inventory.add_menus(vec![
-            Menu::new(-150.0, 165.0, Vertical::Middle, Horizontal::Top, true, true, Vec::new()),
-            Menu::new(150.0, 125.0, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
+            Menu::new(-75.0, 82.5, Vertical::Middle, Horizontal::Top, true, true, Vec::new()),
+            Menu::new(75.0, 62.5, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
         ]);
 
 
@@ -488,10 +488,9 @@ impl Battle {
 
 #[test]
 fn battle_operations() {
-    let settings = Settings::default();
     let skirmish_settings = SkirmishSettings::default();
 
-    let mut battle = Battle::new(&settings, &skirmish_settings, None);
+    let mut battle = Battle::new(&skirmish_settings, None);
 
     // It should be on the first turn and it should be the player's turn
 
