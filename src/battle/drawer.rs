@@ -290,7 +290,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
 
         // If the bullet is visable and on screen, draw it with the right rotation
         if visible {
-            if let Some(dest) = draw_location(ctx, &camera, bullet.x, bullet.y) {
+            if let Some(dest) = draw_location(ctx, camera, bullet.x, bullet.y) {
                 ctx.render_with_rotation(
                     &bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction)
                 );

@@ -27,6 +27,7 @@ mod resources;
 #[macro_use]
 mod utils;
 mod settings;
+#[macro_use]
 mod menu;
 mod colours;
 mod context;
@@ -35,7 +36,7 @@ mod battle;
 use context::Context;
 use settings::Settings;
 use menu::{MainMenu, MenuCallback};
-use battle::{Battle, BattleCallback};
+use battle::Battle;
 use battle::map::Map;
 
 const TITLE: &str = "War Against Machines";
@@ -94,19 +95,15 @@ impl App {
                         self.skirmish = Some(Battle::new(&self.ctx.settings, &self.menu.skirmish_settings, Some(map)));
                         self.mode = Mode::Skirmish;
                     },
+                    MenuCallback::Resume => self.mode = Mode::Skirmish,
                     // Quit
                     MenuCallback::Quit => return false
                 }  
             },
-            // If the skirmish returns a callback, match it
-            Mode::Skirmish => if let Some(callback) = self.skirmish.as_mut().and_then(|skirmish| skirmish.handle_key(key, true)) {
-                match callback {
-                    BattleCallback::Quit(_) => return false,
-                    BattleCallback::Ended => {
-                        self.mode = Mode::Menu;
-                        self.skirmish = None;
-                    }
-                }
+            // If the skirmish returns false for a key press, switch to the menu
+            Mode::Skirmish => if let Some(false) = self.skirmish.as_mut().map(|skirmish| skirmish.handle_key(key, true)) {
+                self.mode = Mode::Menu;
+                self.menu.refresh(self.skirmish.is_some());
             }
         }
 

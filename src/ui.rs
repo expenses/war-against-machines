@@ -4,7 +4,7 @@ use glutin::VirtualKeyCode;
 
 use resources::{ImageSource, Image, ToChar};
 use context::Context;
-use colours::WHITE;
+use colours::{WHITE, GREY};
 
 // The vertical alignment of an item
 #[derive(Clone, Copy)]
@@ -49,7 +49,6 @@ pub struct Button {
     image: Image,
     x: f32,
     y: f32,
-    scale: f32,
     active: bool,
     v_align: Vertical,
     h_align: Horizontal
@@ -57,38 +56,40 @@ pub struct Button {
 
 impl Button {
     // Add a new button
-    pub fn new(image: Image, x: f32, y: f32, scale: f32, v_align: Vertical, h_align: Horizontal) -> Button {     
+    pub fn new(image: Image, x: f32, y: f32, v_align: Vertical, h_align: Horizontal) -> Button {     
         Button {
-            x, y, scale, v_align, h_align, image,
+            x, y, v_align, h_align, image,
             active: true
         }
     }
 
     // Get the width of the button
-    fn width(&self) -> f32 {
-        self.image.width() * self.scale
+    fn width(&self, ctx: &Context) -> f32 {
+        self.image.width() * ctx.settings.ui_scale()
     }
 
     // Get the height of the button
-    fn height(&self) -> f32 {
-        self.image.height() * self.scale
+    fn height(&self, ctx: &Context) -> f32 {
+        self.image.height() * ctx.settings.ui_scale()
     }
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &mut Context) {
-        let x = self.v_align.get_x(self.x, self.width(), ctx.width);
-        let y = self.h_align.get_y(self.y, self.height(), ctx.height);
+        let x = self.v_align.get_x(self.x, self.width(ctx), ctx.width);
+        let y = self.h_align.get_y(self.y, self.height(ctx), ctx.height);
 
-        ctx.render(&self.image, [x, y], self.scale)
+        let ui_scale = ctx.settings.ui_scale();
+
+        ctx.render(&self.image, [x, y], ui_scale)
     }
 
     // Calculate if the button was pressed
     pub fn clicked(&self, ctx: &Context, x: f32, y: f32) -> bool {
-        let pos_x = self.v_align.get_x(self.x, self.width(), ctx.width);
-        let pos_y = self.h_align.get_y(self.y, self.height(), ctx.height);
+        let pos_x = self.v_align.get_x(self.x, self.width(ctx), ctx.width);
+        let pos_y = self.h_align.get_y(self.y, self.height(ctx), ctx.height);
 
-        x >= pos_x - self.width() / 2.0 && x <= pos_x + self.width() / 2.0 &&
-        y >= pos_y - self.width() / 2.0 && y <= pos_y + self.height() / 2.0
+        x >= pos_x - self.width(ctx) / 2.0 && x <= pos_x + self.width(ctx) / 2.0 &&
+        y >= pos_y - self.width(ctx) / 2.0 && y <= pos_y + self.height(ctx) / 2.0
     }
 }
 
@@ -184,7 +185,7 @@ pub struct Menu {
     pub selection: usize,
     // In a situation where there might be multiple menus, is this menu selected?
     pub selected: bool,
-    pub list: Vec<String>,
+    pub list: Vec<(String, bool)>,
     pub active: bool,
     x: f32,
     y: f32,
@@ -194,7 +195,7 @@ pub struct Menu {
 
 impl Menu {
     // Create a new menu
-    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, selected: bool, list: Vec<String>) -> Menu {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, selected: bool, list: Vec<(String, bool)>) -> Menu {
         Menu {
             x, y, v_align, h_align, list, active, selected,
             selection: 0,
@@ -209,7 +210,9 @@ impl Menu {
         let mut y = self.h_align.get_y(self.y, height, ctx.height) + height / 2.0;
 
         // Enumerate through the items
-        for (i, item) in self.list.iter().enumerate() {
+        for (i, &(ref item, enabled)) in self.list.iter().enumerate() {
+            let colour = if enabled { WHITE } else { GREY };
+            
             let mut string = item.clone();
 
             // If the index is the same as the selection index, push a '>' to indicate that the option is selected
@@ -217,7 +220,7 @@ impl Menu {
 
             // Render the string
             let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx.width);
-            ctx.render_text(&string, x, y, WHITE);
+            ctx.render_text(&string, x, y, colour);
             // Decrease the y value
             y -= ctx.settings.font_height();
         }
@@ -229,25 +232,45 @@ impl Menu {
 
     // Get the selected item
     pub fn selected(&self) -> String {
-        self.list[self.selection].clone()
+        self.list[self.selection].0.clone()
     }
 
-    // Change an item in the list
-    pub fn set_item(&mut self, i: usize, string: String) {
-        self.list[i] = string;
+    pub fn set_enabled(&mut self, i: usize, enabled: bool) {
+        self.list[i].1 = enabled;
+    }
+
+    pub fn enabled(&self, i: usize) -> bool {
+        self.list[i].1
+    }
+
+    // Are any of the items in the list enabled?
+    pub fn any_enabled(&self) -> bool {
+        self.list.iter().any(|&(_, enabled)| enabled)
     }
 
     // Rotate the selection up
     pub fn rotate_up(&mut self) {
-        self.selection = match self.selection {
-            0 => self.list.len() - 1,
-            _ => self.selection - 1
+        if self.any_enabled() {
+            self.selection = match self.selection {
+                0 => self.list.len() - 1,
+                _ => self.selection - 1
+            };
+
+            if !self.enabled(self.selection) {
+                self.rotate_up();
+            }
         }
     }
 
     // Rotate the selection down
     pub fn rotate_down(&mut self) {
-        self.selection = (self.selection + 1) % self.list.len();
+        if self.any_enabled() {
+            self.selection = (self.selection + 1) % self.list.len();
+
+            if !self.enabled(self.selection) {
+                self.rotate_down();
+            }
+        }
     }
 }
 

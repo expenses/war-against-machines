@@ -13,7 +13,6 @@ mod walls;
 use glutin::{VirtualKeyCode, MouseButton};
 
 use std::fmt;
-use std::path::PathBuf;
 
 use self::drawer::{draw_battle, tile_under_cursor, CAMERA_SPEED, CAMERA_ZOOM_SPEED};
 use self::paths::{pathfind, PathPoint};
@@ -42,13 +41,6 @@ impl fmt::Display for Controller {
     }
 }
 
-// An optional callback that is returned by the key handler. It species if the game ended or was quit
-#[derive(Debug, Eq, PartialEq)]
-pub enum BattleCallback {
-    Ended,
-    Quit(Option<PathBuf>)
-}
-
 // The main Battle struct the handles actions
 pub struct Battle {
     pub map: Map,
@@ -73,21 +65,9 @@ impl Battle {
         let mut ui = UI::new(true);
 
         ui.add_buttons(vec![
-            Button::new(
-                Image::EndTurnButton,
-                0.0, 0.0, settings.ui_scale(),
-                Vertical::Right, Horizontal::Bottom
-            ),
-            Button::new(
-                Image::InventoryButton,
-                width_offset, 0.0, settings.ui_scale(),
-                Vertical::Right, Horizontal::Bottom
-            ),
-            Button::new(
-                Image::SaveGameButton,
-                width_offset * 2.0, 0.0, settings.ui_scale(),
-                Vertical::Right, Horizontal::Bottom
-            )
+            Button::new(Image::EndTurnButton, 0.0, 0.0, Vertical::Right, Horizontal::Bottom),
+            Button::new(Image::InventoryButton, width_offset, 0.0, Vertical::Right, Horizontal::Bottom),
+            Button::new(Image::SaveGameButton, width_offset * 2.0, 0.0, Vertical::Right, Horizontal::Bottom)
         ]);
 
         ui.add_text_displays(vec![
@@ -154,29 +134,21 @@ impl Battle {
     }
 
     // Handle keypresses
-    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> Option<BattleCallback> {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
         // Respond to key presses on the score screen            
         if self.ui.menu(0).active {
             if pressed {
-                match key {
-                    VirtualKeyCode::Return => match self.ui.menu(0).selection {
-                        3 => return Some(BattleCallback::Ended),
-                        4 => return Some(BattleCallback::Quit(None)),
-                        _ => {}
-                    },
-                    VirtualKeyCode::Up => self.ui.menu(0).rotate_up(),
-                    VirtualKeyCode::Down => self.ui.menu(0).rotate_down(),
-                    VirtualKeyCode::Escape => return Some(BattleCallback::Quit(None)),
-                    _ => {}
-                };
+                if let VirtualKeyCode::Return = key {
+                    return false;
+                }
             }
 
-            return None;
+            return true;
         }
 
         // If the escape key was pressed, create an autosave and quit the game
         if key == VirtualKeyCode::Escape && pressed {
-            return Some(BattleCallback::Quit(self.map.save(None)));
+            return false;
         }
 
         // Respond to key presses when the text input is open
@@ -195,7 +167,7 @@ impl Battle {
                 self.ui.text_input(0).handle_key(key);
             }
 
-            return None;
+            return true;
         }
 
         // Respond to key presses when the inventory is open
@@ -260,7 +232,7 @@ impl Battle {
                 _ => {}
             }
 
-            return None;
+            return true;
         }
     
         // Respond to keys normally!
@@ -275,7 +247,7 @@ impl Battle {
             _ => {}
         }
 
-        None
+        true
     }
 
     // Update the battle
@@ -308,12 +280,12 @@ impl Battle {
             // If one side has lost all their units, Set the score screen menu
             if player_count == 0 || ai_count == 0 {
                 self.ui.menu(0).active = true;
+                self.ui.menu(0).selection = 3;
                 self.ui.menu(0).list = vec![
-                    "Skirmish Ended".into(),
-                    format!("Units lost: {}", self.map.units.total_player_units - player_count),
-                    format!("Units killed: {}", self.map.units.total_ai_units - ai_count),
-                    "Close".into(),
-                    "Quit".into()
+                    item!("Skirmish Ended", false),
+                    item!("Units lost: {}", self.map.units.total_player_units - player_count, false),
+                    item!("Units killed: {}", self.map.units.total_ai_units - ai_count, false),
+                    item!("Close")
                 ];
             }
         }
@@ -357,13 +329,13 @@ impl Battle {
             // Get the name of the selected unit, it's items and the items on the ground
             let info = self.selected().map(|unit| {
                 // Collect the unit's items into a vec
-                let items: Vec<String> = unit.inventory.iter()
-                    .map(|item| item.to_string())
+                let items: Vec<(String, bool)> = unit.inventory.iter()
+                    .map(|item| item!(item))
                     .collect();
 
                 // Collect the items on the ground into a vec
-                let ground: Vec<String> = self.map.tiles.at(unit.x, unit.y).items.iter()
-                    .map(|item| item.to_string())
+                let ground: Vec<(String, bool)> = self.map.tiles.at(unit.x, unit.y).items.iter()
+                    .map(|item| item!(item))
                     .collect();
                 
                 (
@@ -380,8 +352,8 @@ impl Battle {
             if let Some((unit_string, items, ground)) = info {
                 self.inventory.text_display(0).text = unit_string;
                 self.inventory.text_display(1).text = "Ground".into();
-                self.inventory.menu(0).list = vec_or_default!(items, vec!["No items".into()]);
-                self.inventory.menu(1).list = vec_or_default!(ground, vec!["No items".into()]);
+                self.inventory.menu(0).list = vec_or_default!(items, vec![item!("No items")]);
+                self.inventory.menu(1).list = vec_or_default!(ground, vec![item!("No items")]);
             }
         }
         
@@ -432,7 +404,7 @@ impl Battle {
                     };
 
                     // Make sure the inventory is only active if a unit is selected
-                    self.inventory.active = self.inventory.active && self.selected.is_some();
+                    self.inventory.active &= self.selected.is_some();
                 }
             },
             // Check if the cursor has a position and a unit is selected

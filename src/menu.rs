@@ -14,6 +14,18 @@ const TITLE_TOP_OFFSET: f32 = 50.0;
 const TOP_ITEM_OFFSET: f32 = 150.0;
 const VOLUME_CHANGE: u8 = 5;
 
+macro_rules! item {
+    ($item: expr) => (
+        ($item.to_string(), true)
+    );
+    ($item: expr, $boolean: expr) => (
+        ($item.to_string(), $boolean)
+    );
+    ($item: expr, $thing: expr, $boolean: expr) => (
+        (format!($item, $thing), $boolean)
+    )
+}
+
 macro_rules! menu {
     ($($item: expr),*) => (
         Menu::new(0.0, TOP_ITEM_OFFSET, Vertical::Middle, Horizontal::Top, true, true, vec![$($item,)*])
@@ -24,6 +36,7 @@ macro_rules! menu {
 pub enum MenuCallback {
     NewSkirmish,
     LoadSkirmish(String),
+    Resume,
     Quit
 }
 
@@ -48,27 +61,28 @@ impl MainMenu {
             submenu: MAIN,
             submenus: [
                 menu!(
-                    "Skirmish".into(),
-                    "Settings".into(),
-                    "Quit".into()
+                    item!("Skirmish"),
+                    item!("Settings"),
+                    item!("Quit")
                 ),
                 menu!(
-                    "Back".into(),
-                    "New Skirmish".into(),
-                    "Load Skirmish".into(),
-                    "--Settings--".into(),
-                    format!("Cols: {}", skirmish_settings.cols),
-                    format!("Rows: {}", skirmish_settings.rows),
-                    format!("Player units: {}", skirmish_settings.player_units),
-                    format!("AI units: {}", skirmish_settings.ai_units),
-                    format!("Player unit type: {}", skirmish_settings.player_unit_type),
-                    format!("AI unit type: {}", skirmish_settings.ai_unit_type)
+                    item!("Back"),
+                    item!("Resume Skirmish", false),
+                    item!("New Skirmish"),
+                    item!("Load Skirmish"),
+                    item!("--Settings--", false),
+                    item!("Cols: {}", skirmish_settings.cols, true),
+                    item!("Rows: {}", skirmish_settings.rows, true),
+                    item!("Player units: {}", skirmish_settings.player_units, true),
+                    item!("AI units: {}", skirmish_settings.ai_units, true),
+                    item!("Player unit type: {}", skirmish_settings.player_unit_type, true),
+                    item!("AI unit type: {}", skirmish_settings.ai_unit_type, true)
                 ),
                 menu!(
-                    "Back".into(),
-                    format!("Volume: {}", settings.volume),
-                    format!("UI Scale: {}", settings.ui_scale),
-                    "Reset".into()
+                    item!("Back"),
+                    item!("Volume: {}", settings.volume, true),
+                    item!("UI Scale: {}", settings.ui_scale, true),
+                    item!("Reset")
                 ),
                 menu!()
             ],
@@ -91,12 +105,12 @@ impl MainMenu {
         let skirmish = &mut self.submenus[SKIRMISH];
         
         self.skirmish_settings.clamp();
-        skirmish.set_item(4, format!("Cols: {}", self.skirmish_settings.cols));
-        skirmish.set_item(5, format!("Rows: {}", self.skirmish_settings.rows));
-        skirmish.set_item(6, format!("Player units: {}", self.skirmish_settings.player_units));
-        skirmish.set_item(7, format!("AI units: {}", self.skirmish_settings.ai_units));
-        skirmish.set_item(8, format!("Player unit type: {}", self.skirmish_settings.player_unit_type));
-        skirmish.set_item(9, format!("AI unit type: {}", self.skirmish_settings.ai_unit_type));
+        skirmish.list[5]  = item!("Cols: {}", self.skirmish_settings.cols, true);
+        skirmish.list[6]  = item!("Rows: {}", self.skirmish_settings.rows, true);
+        skirmish.list[7]  = item!("Player units: {}", self.skirmish_settings.player_units, true);
+        skirmish.list[8]  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
+        skirmish.list[9]  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
+        skirmish.list[10] = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
     }
 
     // refresh the settings submenu
@@ -104,24 +118,27 @@ impl MainMenu {
         let settings_submenu = &mut self.submenus[SETTINGS];
 
         settings.clamp();
-        settings_submenu.set_item(1, format!("Volume: {}", settings.volume));
-        settings_submenu.set_item(2, format!("UI Scale: {}", settings.ui_scale));
+        settings_submenu.list[1] = item!("Volume: {}", settings.volume, true);
+        settings_submenu.list[2] = item!("UI Scale: {}", settings.ui_scale, true);
     }
 
     // refresh the saves submenu
     fn refresh_skirmish_saves(&mut self) {
-        let mut files: Vec<String> = read_dir("savegames/skirmishes").unwrap()
+        let mut files: Vec<(String, bool)> = read_dir("savegames/skirmishes").unwrap()
             .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))
             .filter(|entry| !entry.starts_with('.'))
+            .map(|entry| item!(entry))
             .collect();
 
-        self.submenus[SKIRMISH_SAVES].list = vec![
-            "Back".into(),
-            "Refresh".into()
-        ];
-
+        self.submenus[SKIRMISH_SAVES].list = vec![item!("Back"), item!("Refresh")];
         self.submenus[SKIRMISH_SAVES].list.append(&mut files);
     }
+
+    pub fn refresh(&mut self, skirmish_open: bool) {
+        self.submenus[SKIRMISH].set_enabled(1, skirmish_open);
+        self.submenus[SKIRMISH].selection = 1;
+    }
+
 
     // Handle key presses, returning an optional callback
     pub fn handle_key(&mut self, key: VirtualKeyCode, settings: &mut Settings) -> Option<MenuCallback> {
@@ -140,8 +157,9 @@ impl MainMenu {
                 },
                 SKIRMISH => match self.submenus[SKIRMISH].selection {
                     0 => self.submenu = MAIN,
-                    1 => return Some(MenuCallback::NewSkirmish),
-                    2 => {
+                    1 if self.submenus[SKIRMISH].enabled(1) => return Some(MenuCallback::Resume),
+                    2 => return Some(MenuCallback::NewSkirmish),
+                    3 => {
                         self.submenu = SKIRMISH_SAVES;
                         self.refresh_skirmish_saves();
                     }
@@ -169,12 +187,12 @@ impl MainMenu {
             VirtualKeyCode::Left | VirtualKeyCode::A => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
-                        4 => self.skirmish_settings.cols -= MAP_SIZE_CHANGE,
-                        5 => self.skirmish_settings.rows -= MAP_SIZE_CHANGE,
-                        6 => self.skirmish_settings.player_units -= 1,
-                        7 => self.skirmish_settings.ai_units -= 1,
-                        8 => self.skirmish_settings.change_player_unit_type(),
-                        9 => self.skirmish_settings.change_ai_unit_type(),
+                        5  => self.skirmish_settings.cols -= MAP_SIZE_CHANGE,
+                        6  => self.skirmish_settings.rows -= MAP_SIZE_CHANGE,
+                        7  => self.skirmish_settings.player_units -= 1,
+                        8  => self.skirmish_settings.ai_units -= 1,
+                        9  => self.skirmish_settings.change_player_unit_type(),
+                        10 => self.skirmish_settings.change_ai_unit_type(),
                         _ => {}
                     }
                     self.refresh_skirmish();
@@ -195,12 +213,12 @@ impl MainMenu {
             VirtualKeyCode::Right | VirtualKeyCode::D => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
-                        4 => self.skirmish_settings.cols += MAP_SIZE_CHANGE,
-                        5 => self.skirmish_settings.rows += MAP_SIZE_CHANGE,
-                        6 => self.skirmish_settings.player_units += 1,
-                        7 => self.skirmish_settings.ai_units += 1,
-                        8 => self.skirmish_settings.change_player_unit_type(),
-                        9 => self.skirmish_settings.change_ai_unit_type(),
+                        5  => self.skirmish_settings.cols += MAP_SIZE_CHANGE,
+                        6  => self.skirmish_settings.rows += MAP_SIZE_CHANGE,
+                        7  => self.skirmish_settings.player_units += 1,
+                        8  => self.skirmish_settings.ai_units += 1,
+                        9  => self.skirmish_settings.change_player_unit_type(),
+                        10 => self.skirmish_settings.change_ai_unit_type(),
                         _ => {}
                     }
                     self.refresh_skirmish();
@@ -215,7 +233,6 @@ impl MainMenu {
                 }
                 _ => {}
             },
-            VirtualKeyCode::Escape => return Some(MenuCallback::Quit),
             _ => {}
         }
 
