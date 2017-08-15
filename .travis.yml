@@ -32,8 +32,10 @@ addons:
       - gcc
       - binutils-dev
       - libiberty-dev
-      # Install ALSA on Linux
+      # ALSA
       - libasound2-dev
+      # Off-Screen shader testing
+      - libosmesa6
 
 # The script itself
 script:

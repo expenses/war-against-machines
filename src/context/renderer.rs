@@ -195,6 +195,8 @@ impl Renderer {
 }
 
 #[test]
+// Disable this test on windows
+#[cfg(not(windows))]
 fn compile_shaders() {
     use std::os::raw::c_void;
 
