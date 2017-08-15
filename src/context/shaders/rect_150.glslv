@@ -26,7 +26,10 @@ void main() {
     out_uv = (in_uv * prop_src.zw + prop_src.xy) / constant_tileset;
 
     // Calculate the rotation matrix
-    mat2 rotation = mat2(cos(prop_rotation), -sin(prop_rotation), sin(prop_rotation), cos(prop_rotation));
+    mat2 rotation = mat2(
+        cos(prop_rotation), -sin(prop_rotation),
+        sin(prop_rotation), cos(prop_rotation)
+    );
 
     // Get the output position
     vec2 pos = (in_pos * rotation * prop_src.zw * prop_scale + prop_dest * 2) / global_resolution;

@@ -10,7 +10,7 @@ use gfx_window_glutin;
 use gfx_device_gl;
 use glutin;
 use glutin::{GlContext, EventsLoop};
-use image;
+use image::{load_from_memory_with_format, ImageFormat};
 
 // A square of vertices
 const SQUARE: &[Vertex] = &[
@@ -34,7 +34,7 @@ type Texture = ShaderResourceView<Resources, [f32; 4]>;
 
 // Load a texture from memory and return it and its dimensions
 fn load_texture(factory: &mut Factory, bytes: &[u8]) -> ([f32; 2], Texture) {
-    let img = image::load_from_memory(bytes).unwrap().to_rgba();
+    let img = load_from_memory_with_format(bytes, ImageFormat::PNG).unwrap().to_rgba();
     let (width, height) = img.dimensions();
     let kind = Kind::D2(width as u16, height as u16, AaMode::Single);
     let texture = factory.create_texture_immutable_u8::<ColorFormat>(kind, &[&img]).unwrap().1;
@@ -106,10 +106,7 @@ impl Renderer {
         let (window, device, mut factory, colour, depth) =
             gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, event_loop);
 
-        // Create a encoder to abstract the command buffer
-        let encoder = factory.create_command_buffer().into();
-
-        // Create the pipeline, loading in the shaders
+        // Create the Pipeline State Object, loading in the shaders
         let pso = factory.create_pipeline_simple(
             include_bytes!("shaders/rect_150.glslv"),
             include_bytes!("shaders/rect_150.glslf"),
@@ -134,6 +131,9 @@ impl Renderer {
             out: colour
         };
 
+        // Create a encoder to abstract the command buffer
+        let encoder = factory.create_command_buffer().into();
+
         // Create the renderer!
         let mut renderer = Renderer {
             encoder, data, pso, slice, window, device, depth
@@ -142,13 +142,17 @@ impl Renderer {
         // Set the constants buffer
         renderer.encoder.update_constant_buffer(
             &renderer.data.constants,
-            &Constants {tileset: tileset_size}
+            &Constants {
+                tileset: tileset_size
+            }
         );
 
         // Set the global buffer
         renderer.encoder.update_constant_buffer(
             &renderer.data.global,
-            &Global {resolution: [width as f32, height as f32]}
+            &Global {
+                resolution: [width as f32, height as f32]
+            }
         );
 
         renderer
@@ -157,7 +161,9 @@ impl Renderer {
     // Resize the renderer window
     pub fn resize(&mut self, width: u32, height: u32) {
         // Update the global buffer
-        self.encoder.update_constant_buffer(&self.data.global, &Global {resolution: [width as f32, height as f32]});
+        self.encoder.update_constant_buffer(&self.data.global, &Global {
+            resolution: [width as f32, height as f32]
+        });
         // Resize the gl context
         self.window.resize(width, height);
         // Update the view
@@ -186,4 +192,32 @@ impl Renderer {
     pub fn clear(&mut self, colour: [f32; 4]) {
         self.encoder.clear(&self.data.out, colour);
     }
+}
+
+#[test]
+fn compile_shaders() {
+    use std::os::raw::c_void;
+
+    // Create the headless context and make it the current one
+
+    let headless = glutin::HeadlessRendererBuilder::new(640, 480)
+        .build()
+        .unwrap();
+
+    unsafe {
+        headless.make_current().unwrap();
+    };
+
+    // Get the factory
+
+    let (_, mut factory) = gfx_device_gl::create(
+        |s| headless.get_proc_address(s) as *const c_void
+    );
+
+    // Attempt to create the shader set
+
+    factory.create_shader_set(
+        include_bytes!("shaders/rect_150.glslv"),
+        include_bytes!("shaders/rect_150.glslf")
+    ).unwrap_or_else(|error| panic!("{}", error));
 }

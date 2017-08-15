@@ -17,10 +17,8 @@ void main() {
     // Get the colour of the texel
     vec4 colour = texture(sampler, out_uv);
 
-    // Get the amount to mix (interpolate) the colours by
-    float mix_amount = prop_overlay_colour.a;
     // Mix the colours!
-    vec3 mixed_colour = colour.rgb * (1 - mix_amount) + prop_overlay_colour.rgb * mix_amount;
+    vec3 mixed_colour = mix(colour.rgb, prop_overlay_colour.rgb, prop_overlay_colour.a);
 
     // Return the mixed colour (with the alpha unchanged)
     target = vec4(mixed_colour, colour.a);
