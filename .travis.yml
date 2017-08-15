@@ -35,6 +35,7 @@ addons:
       # ALSA
       - libasound2-dev
       # Off-Screen shader testing
+      - libosmesa6
       - libosmesa6-dev
 
 # The script itself
