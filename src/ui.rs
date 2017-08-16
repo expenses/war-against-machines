@@ -16,13 +16,13 @@ pub enum Vertical {
 
 impl Vertical {
     // Get the x position on the screen for an item of a certain width and alignment
-    fn get_x(&self, mut x: f32, width: f32, screen_width: f32, scale: f32) -> f32 {
-        x *= scale;
+    fn get_x(&self, mut x: f32, width: f32, ctx: &Context) -> f32 {
+        x *= ctx.settings.ui_scale();
 
         match *self {
-            Vertical::Left => x - (screen_width - width) / 2.0,
+            Vertical::Left => x - (ctx.width - width) / 2.0,
             Vertical::Middle => x,
-            Vertical::Right => x + (screen_width - width) / 2.0
+            Vertical::Right => x + (ctx.width - width) / 2.0
         }
     }
 }
@@ -37,13 +37,13 @@ pub enum Horizontal {
 
 impl Horizontal{
     // Get the y position on the screen for an item of a certain height and alignment
-    fn get_y(&self, mut y: f32, height: f32, screen_height: f32, scale: f32) -> f32 {
-        y *= scale;
+    fn get_y(&self, mut y: f32, height: f32, ctx: &Context) -> f32 {
+        y *= ctx.settings.ui_scale();
 
         match *self {
-            Horizontal::Top => (screen_height - height) / 2.0 - y,
+            Horizontal::Top => (ctx.height - height) / 2.0 - y,
             Horizontal::Middle => y,
-            Horizontal::Bottom => -(screen_height - height) / 2.0 - y
+            Horizontal::Bottom => -(ctx.height - height) / 2.0 - y
         }
     }
 }
@@ -79,21 +79,17 @@ impl Button {
 
     // Draw the button at its location and scale
     fn draw(&self, ctx: &mut Context) {
+        let x = self.v_align.get_x(self.x, self.width(ctx), ctx);
+        let y = self.h_align.get_y(self.y, self.height(ctx), ctx);
+
         let ui_scale = ctx.settings.ui_scale();
-
-        let x = self.v_align.get_x(self.x, self.width(ctx), ctx.width, ui_scale);
-        let y = self.h_align.get_y(self.y, self.height(ctx), ctx.height, ui_scale);
-
-
-        ctx.render(&self.image, [x, y], ui_scale)
+        ctx.render(&self.image, [x, y], ui_scale);
     }
 
     // Calculate if the button was pressed
     pub fn clicked(&self, ctx: &Context, x: f32, y: f32) -> bool {
-        let ui_scale = ctx.settings.ui_scale();
-
-        let pos_x = self.v_align.get_x(self.x, self.width(ctx), ctx.width, ui_scale);
-        let pos_y = self.h_align.get_y(self.y, self.height(ctx), ctx.height, ui_scale);
+        let pos_x = self.v_align.get_x(self.x, self.width(ctx), ctx);
+        let pos_y = self.h_align.get_y(self.y, self.height(ctx), ctx);
 
         x >= pos_x - self.width(ctx) / 2.0 && x <= pos_x + self.width(ctx) / 2.0 &&
         y >= pos_y - self.width(ctx) / 2.0 && y <= pos_y + self.height(ctx) / 2.0
@@ -126,13 +122,11 @@ impl TextDisplay {
 
     // Draw the text display on the screen
     fn draw(&self, ctx: &mut Context) {
-        let ui_scale = ctx.settings.ui_scale();
-
         let height = ctx.settings.font_height() * self.text.lines().count() as f32;
-        let mut y = self.h_align.get_y(self.y, height, ctx.height, ui_scale) + height / 2.0;
+        let mut y = self.h_align.get_y(self.y, height, ctx) + height / 2.0;
         
         for line in self.text.lines() {
-            let x = self.v_align.get_x(self.x, ctx.settings.font_width(line), ctx.width, ui_scale);
+            let x = self.v_align.get_x(self.x, ctx.settings.font_width(line), ctx);
             ctx.render_text(line, x, y, WHITE);
             y -= ctx.settings.font_height();
         }
@@ -221,12 +215,10 @@ impl Menu {
 
     // Draw the items in the menu
     pub fn render(&self, ctx: &mut Context) {
-        let ui_scale = ctx.settings.ui_scale();
-
         // Get the height of the rendered text
         let height = ctx.settings.font_height() * self.list.len() as f32;
         // Get a starting y value
-        let mut y = self.h_align.get_y(self.y, height, ctx.height, ui_scale) + height / 2.0;
+        let mut y = self.h_align.get_y(self.y, height, ctx) + height / 2.0;
 
         // Enumerate through the items
         for (i, &(ref item, enabled)) in self.list.iter().enumerate() {
@@ -238,7 +230,7 @@ impl Menu {
             if self.selected && i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx.width, ui_scale);
+            let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx);
             ctx.render_text(&string, x, y, colour);
             // Decrease the y value
             y -= ctx.settings.font_height();

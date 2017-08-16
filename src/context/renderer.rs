@@ -195,8 +195,9 @@ impl Renderer {
 }
 
 #[test]
-// Disable this test on windows
-#[cfg(not(windows))]
+// Getting an off-screen OpenGL context is tricky on windows and linux
+// so only enable this test on OSX
+#[cfg(target_os = "macos")]
 fn compile_shaders() {
     use std::os::raw::c_void;
 
