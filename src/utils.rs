@@ -29,7 +29,12 @@ pub fn clamp_float(value: f32, lower: usize, upper: usize) -> usize {
     clamp!(value, lower, upper)
 }
 
-// Calculate the distance between two points on the map
+// Calculate the direction between two points
+pub fn direction(a_x: f32, a_y: f32, b_x: f32, b_y: f32) -> f32 {
+    (b_y - a_y).atan2(b_x - a_x)
+}
+
+// Calculate the distance between two points
 pub fn distance(a_x: usize, a_y: usize, b_x: usize, b_y: usize) -> f32 {
     (a_x as f32 - b_x as f32).hypot(a_y as f32 - b_y as f32)
 }
@@ -51,16 +56,26 @@ pub fn chance_to_hit(a_x: usize, a_y: usize, b_x: usize, b_y: usize) -> f32 {
 }
 
 // Convert a rotation for drawing on the map
-pub fn convert_rotation(rotation: f32) -> f32 {
+pub fn convert_rotation(mut rotation: f32) -> f32 {
     // Rotate by 45'
-    let rotation = rotation + 45.0_f32.to_radians();
+    rotation += 45.0_f32.to_radians();
 
     // Convert to cartesian form
-    let (x, y) = (rotation.cos(), rotation.sin());
+    let (x, mut y) = (rotation.cos(), rotation.sin());
 
     // Scale the y values by 0.5
-    let y = y * 0.5;
+    y *= 0.5;
 
     // Convert back into polar form but flipped
     -y.atan2(x)
+}
+
+#[test]
+fn test_rotation() {
+    // As the map is isometric, a shot fired from (0, 0) to (10, 10)
+    // should be travelling directly down (-90')
+    assert_eq!(convert_rotation(direction(0.0, 0.0, 10.0, 10.0)).to_degrees(), -90.0);
+ 
+    // A shot fired from (0, 10) to (10, 0) should go going directly left
+    assert_eq!(convert_rotation(direction(0.0, 10.0, 10.0, 0.0)), 0.0);
 }

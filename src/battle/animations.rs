@@ -9,6 +9,7 @@ use super::units::Unit;
 use resources::{Image, SoundEffect};
 use weapons::WeaponType;
 use context::Context;
+use utils::direction;
 
 const MARGIN: f32 = 5.0;
 // Bullets travel 30 tiles a second
@@ -94,7 +95,7 @@ impl Bullet {
         let target_y = target.y as f32;
 
         // Calculate the direction of the bullet
-        let mut direction = (target_y - y).atan2(target_x - x);
+        let mut direction = direction(x, y, target_x, target_y);
 
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {

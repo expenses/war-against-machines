@@ -421,7 +421,7 @@ impl Battle {
                             if ai_unit.side == UnitSide::AI {
                                 self.path = None;
                                 
-                                self.command_queue.push(Box::new(FireCommand::new(selected_id, ai_unit.id)));
+                                self.command_queue.push(FireCommand::new(selected_id, ai_unit.id));
                             }
                         }
                         _ => if let Some(unit) = self.map.units.get(selected_id) {
@@ -448,7 +448,7 @@ impl Battle {
 
                             // If the paths are the same and the player unit can move to the destination, get rid of the path
                             self.path = if same_path {
-                                self.command_queue.push(Box::new(WalkCommand::new(unit, &self.map, points)));
+                                self.command_queue.push(WalkCommand::new(unit, &self.map, points));
                                 None
                             } else {
                                 Some(points)

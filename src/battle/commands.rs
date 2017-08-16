@@ -1,5 +1,9 @@
 // The commands that can be issued to units
 
+// `Command::new` functions return a `Command` instead
+// of `Self` for convenience, so turn the clippy lint off
+#![cfg_attr(feature = "cargo-clippy", allow(new_ret_no_self))]
+
 use rand;
 
 use super::map::Map;
@@ -8,40 +12,47 @@ use super::paths::PathPoint;
 use super::animations::{Walk, Bullet, Animation, Animations};
 use ui::TextDisplay;
 
-// Whether to keep the command in the queue and an optional followup command
-type CommandStatus = (bool, Option<Box<Command>>);
+// Process a simple command and return the default values
+macro_rules! process {
+    ($command: expr, $map: expr) => ({
+        $command.process($map);
+        (false, None)
+    })
+}
 
-pub trait Command {
-    // Process a command
-    fn process(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) -> CommandStatus;
+#[derive(Debug, PartialEq)]
+pub enum Command {
+    Finished(FinishedCommand),
+    Fire(FireCommand),
+    Walk(WalkCommand),
+    UseItem(UseItemCommand),
+    Damage(DamageCommand)
 }
 
 // Finish a units moves for a turn by setting them to 0
+#[derive(Debug, PartialEq)]
 pub struct FinishedCommand {
     unit_id: u8
 }
 
 impl FinishedCommand {
     // Create a new finished command
-    pub fn new(unit_id: u8) -> FinishedCommand {
-        FinishedCommand {
+    pub fn new(unit_id: u8) -> Command {
+        Command::Finished(FinishedCommand {
             unit_id
-        }
+        })
     }
-}
 
-impl Command for FinishedCommand {
-     // Process the command, setting the units moves to 0 if it exists
-    fn process(&mut self, map: &mut Map, _: &mut Animations, _: &mut TextDisplay) -> CommandStatus {
+    // Process the command, setting the units moves to 0 if it exists
+    fn process(&self, map: &mut Map) {
         if let Some(unit) = map.units.get_mut(self.unit_id) {
             unit.moves = 0;
         }
-
-        (false, None)
     }
 }
 
 // Get one unit to fire on another
+#[derive(Debug, PartialEq)]
 pub struct FireCommand {
     unit_id: u8,
     target_id: u8,
@@ -49,21 +60,19 @@ pub struct FireCommand {
 
 impl FireCommand {
     // Create a new fire command
-    pub fn new(unit_id: u8, target_id: u8) -> FireCommand {
-        FireCommand {
+    pub fn new(unit_id: u8, target_id: u8) -> Command {
+        Command::Fire(FireCommand {
             unit_id, target_id,
-        }
+        })
     }
-}
 
-impl Command for FireCommand {
     // Process the fire command, checking if the firing unit has the moves to fire,
     // if it hits, and adding the bullet to Animations
-    fn process(&mut self, map: &mut Map, animations: &mut Animations, _: &mut TextDisplay) -> CommandStatus {
+    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Option<Command> {
         // Get the target position
         let (target_x, target_y) = match map.units.get(self.target_id) {
             Some(target) => (target.x, target.y),
-            _ => return (false, None)
+            _ => return None
         };
 
         // Fire the unit's weapon and get if the bullet will hit and the damage it will do
@@ -74,9 +83,9 @@ impl Command for FireCommand {
                     unit.weapon.tag.damage()
                 )
             } else {
-                return (false, None);
+                return None;
             },   
-            _ => return (false, None)
+            _ => return None
         };
 
         // Push a bullet to the animation queue
@@ -88,14 +97,15 @@ impl Command for FireCommand {
 
         // If the bullet will hit, return a followup damage command
         if will_hit {
-            (false, Some(Box::new(DamageCommand::new(self.target_id, damage))))
+            Some(DamageCommand::new(self.target_id, damage))
         } else {
-            (false, None)
+            None
         }
     }
 }
 
 // Move a unit along a path, checking if it spots an enemy unit along the way
+#[derive(Debug, PartialEq)]
 pub struct WalkCommand {
     unit_id: u8,
     visible_enemies: usize,
@@ -104,20 +114,18 @@ pub struct WalkCommand {
 
 impl WalkCommand {
     // Create a new walk command
-    pub fn new(unit: &Unit, map: &Map, path: Vec<PathPoint>) -> WalkCommand {
-        WalkCommand {
+    pub fn new(unit: &Unit, map: &Map, path: Vec<PathPoint>) -> Command {
+        Command::Walk(WalkCommand {
             path,
             unit_id: unit.id,
             // Calculate the number of visible enemy units
             visible_enemies: map.visible(unit.side.enemies())
-        }
+        })
     }
-}
-
-impl Command for WalkCommand {
+    
     // Process the walk command, moving the unit one tile along the path and checking
     // if it spots an enemy unit
-    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> CommandStatus {
+    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> bool {
         if let Some(point) = self.path.first() {
             let moves = match map.units.get(self.unit_id) {
                 Some(unit) => {
@@ -128,17 +136,17 @@ impl Command for WalkCommand {
                             log.append("Enemy spotted!");
                         }
 
-                        return (false, None);
+                        return false;
                     }
 
                     unit.moves
                 },
-                _ => return (false, None)
+                _ => return false
             };
 
             // If the move costs too much or if the tile is taken, end the walk
             if moves < point.cost || map.taken(point.x, point.y) {
-                return (false, None);
+                return false;
             } else {
                 // Move the unit
                 if let Some(unit) = map.units.get_mut(self.unit_id) {
@@ -157,70 +165,64 @@ impl Command for WalkCommand {
         // Remove the point from the path
         self.path.remove(0);
         // Return whether there are still path points to process
-        (!self.path.is_empty(), None)
+        !self.path.is_empty()
     }
 }
 
 // Get a unit to use an item
+#[derive(Debug, PartialEq)]
 pub struct UseItemCommand {
     id: u8,
     item: usize
 }
 
 impl UseItemCommand {
-    pub fn new(id: u8, item: usize) -> UseItemCommand {
-        UseItemCommand {
+    pub fn new(id: u8, item: usize) -> Command {
+        Command::UseItem(UseItemCommand {
             id, item
-        }
+        })
     }
-}
-
-impl Command for UseItemCommand {
-    fn process(&mut self, map: &mut Map, _: &mut Animations, _: &mut TextDisplay) -> CommandStatus {
+    
+    fn process(&mut self, map: &mut Map) {
         if let Some(unit) = map.units.get_mut(self.id) {
             unit.use_item(self.item);
         }
-
-        (false, None)
     }
 }
 
 // Damage a unit
-struct DamageCommand {
+#[derive(Debug, PartialEq)]
+pub struct DamageCommand {
     id: u8,
     damage: i16
 }
 
 impl DamageCommand {
-    fn new(id: u8, damage: i16) -> DamageCommand {
-        DamageCommand {
+    fn new(id: u8, damage: i16) -> Command {
+        Command::Damage(DamageCommand {
             id, damage
-        }
+        })
     }
-}
-
-impl Command for DamageCommand {
-    fn process(&mut self, map: &mut Map, _: &mut Animations, _: &mut TextDisplay) -> CommandStatus {
+    
+    fn process(&mut self, map: &mut Map) {
         // Deal damage to the unit and get whether it is lethal
         let lethal = match map.units.get_mut(self.id) {
             Some(target) => {
                 target.health -= self.damage;
                 target.health <= 0
             },
-            _ => return (false, None)
+            _ => return
         };
 
         // If the damage is lethal, kill the unit
         if lethal {
             map.units.kill(&mut map.tiles, self.id);
         }
-
-        (false, None)
     }
 }
 
 // The queue of commands
-pub type CommandQueue = Vec<Box<Command>>;
+pub type CommandQueue = Vec<Command>;
 
 pub trait UpdateCommands {
     // Update the first command
@@ -230,11 +232,14 @@ pub trait UpdateCommands {
 impl UpdateCommands for CommandQueue {
     // Update the first item of the command queue
     fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
-        // Get the keep and optional followup command
-        let (keep, followup) = match self.first_mut() {
-            Some(ref mut command) => command.process(map, animations, log),
-            _ => (true, None)
-        };
+        // Get whether to keep the command and an optional followup
+        let (keep, followup) = self.first_mut().map(|command| match *command {
+            Command::Fire(ref mut command) => (false, command.process(map, animations)),
+            Command::Walk(ref mut command) => (command.process(map, animations, log), None),
+            Command::Finished(ref mut command) => process!(command, map),
+            Command::UseItem(ref mut command) => process!(command, map),
+            Command::Damage(ref mut command) => process!(command, map)
+        }).unwrap_or((true, None));
 
         // If there was a followup command, insert it
         if let Some(command) = followup {

@@ -78,7 +78,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
         // If the unit has a consumable item and can use it, add a use item command
         for (index, item) in unit.inventory.iter().enumerate() {
             if unit.can_heal_from(item) || unit.can_reload_from(item) {
-                command_queue.push(Box::new(UseItemCommand::new(unit.id, index)));
+                command_queue.push(UseItemCommand::new(unit.id, index));
                 return true;
             }
         }
@@ -103,19 +103,19 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 
         // If the move doesn't have a cost or a target, queue the 'finished' command to set the units moves to 0
         if ai_move.cost == 0 && ai_move.target_id.is_none() {
-            command_queue.push(Box::new(FinishedCommand::new(unit.id)));
+            command_queue.push(FinishedCommand::new(unit.id));
             return true;
         }
 
         // If the move has a path, queue the 'walk' command to walk along it
         if !ai_move.path.is_empty() {
-            command_queue.push(Box::new(WalkCommand::new(unit, map, ai_move.path)));
+            command_queue.push(WalkCommand::new(unit, map, ai_move.path));
         }
 
         // If the move has a target, fire at the target as many times as possible
         if let Some(target_id) = ai_move.target_id {
             for _ in 0 .. unit.weapon.times_can_fire(unit.moves - ai_move.cost) {
-                command_queue.push(Box::new(FireCommand::new(unit.id, target_id)));
+                command_queue.push(FireCommand::new(unit.id, target_id));
             }
         }
 
@@ -262,4 +262,20 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     }
     
     score
+}
+
+#[test]
+fn test_basic_ai() {
+    use super::units::UnitType;
+
+    let mut map = Map::new(5, 5);
+    map.units.add(UnitType::Squaddie, UnitSide::AI, 0, 0);
+    map.units.add(UnitType::Squaddie, UnitSide::Player, 4, 4);
+    map.tiles.update_visibility(&map.units);
+
+    let mut command_queue = CommandQueue::new();
+
+    // On a 5x5 map, the first move that an ai unit should make is to fire onto the player unit
+    assert!(make_move(&map, &mut command_queue));
+    assert_eq!(command_queue.first(), Some(&FireCommand::new(0, 1)));
 }
