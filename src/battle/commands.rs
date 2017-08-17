@@ -55,52 +55,45 @@ impl FinishedCommand {
 #[derive(Debug, PartialEq)]
 pub struct FireCommand {
     unit_id: u8,
-    target_id: u8,
+    x: usize,
+    y: usize
 }
 
 impl FireCommand {
     // Create a new fire command
-    pub fn new(unit_id: u8, target_id: u8) -> Command {
+    pub fn new(unit_id: u8, x: usize, y: usize) -> Command {
         Command::Fire(FireCommand {
-            unit_id, target_id,
+            unit_id, x, y
         })
     }
 
     // Process the fire command, checking if the firing unit has the moves to fire,
     // if it hits, and adding the bullet to Animations
     fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Option<Command> {
-        // Get the target position
-        let (target_x, target_y) = match map.units.get(self.target_id) {
-            Some(target) => (target.x, target.y),
-            _ => return None
-        };
-
         // Fire the unit's weapon and get if the bullet will hit and the damage it will do
-        let (will_hit, damage) = match map.units.get_mut(self.unit_id) {
+        let (mut will_hit, damage) = match map.units.get_mut(self.unit_id) {
             Some(unit) => if unit.fire_weapon() {
-                (
-                    unit.chance_to_hit(target_x, target_y) > rand::random::<f32>(),
-                    unit.weapon.tag.damage()
-                )
+                (unit.chance_to_hit(self.x, self.y) > rand::random::<f32>(), unit.weapon.tag.damage())
             } else {
                 return None;
             },   
             _ => return None
         };
 
+        // If the bullet will hit at enemy, return a followup damage command
+        let follow_up = if let Some(unit) = map.units.at(self.x, self.y) {
+            if will_hit { Some(DamageCommand::new(unit.id, damage)) } else { None }
+        } else {
+            will_hit = false;
+            None
+        };
+
         // Push a bullet to the animation queue
         if let Some(unit) = map.units.get(self.unit_id) {
-            if let Some(target) = map.units.get(self.target_id) {
-                animations.push(Animation::Bullet(Bullet::new(unit, target, will_hit)));
-            }
+            animations.push(Animation::Bullet(Bullet::new(unit, self.x, self.y, will_hit, map)));
         }
 
-        // If the bullet will hit, return a followup damage command
-        if will_hit {
-            Some(DamageCommand::new(self.target_id, damage))
-        } else {
-            None
-        }
+        follow_up
     }
 }
 
@@ -232,6 +225,11 @@ pub trait UpdateCommands {
 impl UpdateCommands for CommandQueue {
     // Update the first item of the command queue
     fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
+        // The command queue will only update if there are no animations
+        if !animations.is_empty() {
+            return;
+        }
+
         // Get whether to keep the command and an optional followup
         let (keep, followup) = self.first_mut().map(|command| match *command {
             Command::Fire(ref mut command) => (false, command.process(map, animations)),

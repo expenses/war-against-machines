@@ -15,6 +15,10 @@ convert_colour:
 	rustc resources/convert_colour.rs -o target/release/convert_colour
 	target/release/convert_colour
 
+# Test shaders
+shaders:
+	cargo test compile_shaders
+
 # Optimise the resource images
 optimise:
 	optipng `find resources/images`

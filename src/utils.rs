@@ -1,15 +1,5 @@
 // Various utility functions
 
-// Ensure that a value is between lower and an upper value
-macro_rules! clamp {
-    ($value:expr, $lower:expr, $upper:expr) => ({
-        // Calculate the smaller value
-        let min = if $upper > $value {$value} else {$upper};
-        // Calculate the bigger value
-        if min > $lower {min} else {$lower}
-    })
-}
-
 // Return a vec or a default if the vec is empty
 macro_rules! vec_or_default {
     ($vec:expr, $default:expr) => (
@@ -21,12 +11,20 @@ macro_rules! vec_or_default {
     )
 }
 
+// Ensure that a value is between lower and an upper value
+pub fn clamp<T: PartialOrd>(value: T, lower: T, upper: T) -> T {
+    // Calculate the smaller value
+    let min = if upper > value {value} else {upper};
+    // Calculate the bigger value
+    if min > lower {min} else {lower}
+}
+
 // Ensure that a floating point value is between lower and upper value (as usize)
 pub fn clamp_float(value: f32, lower: usize, upper: usize) -> usize {
     let value = value.round();
     let value = if value < 0.0 { 0 } else { value as usize };
 
-    clamp!(value, lower, upper)
+    clamp(value, lower, upper)
 }
 
 // Calculate the direction between two points

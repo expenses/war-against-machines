@@ -30,7 +30,7 @@ fn point(x: usize, y: usize) -> Point {
 }
 
 // The visibility of the tile
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum Visibility {
     Visible,
     Foggy,

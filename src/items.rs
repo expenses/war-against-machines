@@ -7,7 +7,7 @@ use resources::Image;
 use weapons::WeaponType;
 
 // The type of an item
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum Item {
     Scrap,
     Bandages,

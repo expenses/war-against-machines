@@ -1,7 +1,6 @@
 // A drawer struct for drawing the map and battle items
 
 use super::Battle;
-use super::units::UnitSide;
 use super::tiles::{Visibility, Obstacle};
 use super::animations::Animation;
 use resources::Image;
@@ -129,7 +128,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             }
 
             // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
-            if !battle.cursor_on_ai_unit() || battle.selected.is_none() {
+            if !battle.cursor_active() || battle.selected.is_none() {
                 if let Some((cursor_x, cursor_y)) = battle.cursor {
                     if cursor_x == x && cursor_y == y {
                         // Determine the cursor type
@@ -244,34 +243,19 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     }
 
     // Draw the firing crosshair if the cursor is on an ai unit and a unit is selected
-    if battle.cursor_on_ai_unit() && battle.selected.is_some() {
-        if let Some((x, y)) = battle.cursor {
-            if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
-                // Draw the crosshair
-                ctx.render(&Image::CursorCrosshair, dest, camera.zoom);
+    if battle.cursor_active() {
+        if let Some(firing) = battle.selected() {
+            if let Some((x, y)) = battle.cursor {
+                if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
+                    // Draw the crosshair
+                    ctx.render(&Image::CursorCrosshair, dest, camera.zoom);
 
-                // Draw the chance-to-hit if a player unit is selected and an ai unit is at the cursor position
-                if let Some((firing, target)) = battle.selected().and_then(|firing|
-                    map.units.at(x, y).map(|target|
-                        (firing, target)
-                    )
-                ) {
-                    if firing.side == UnitSide::Player && target.side == UnitSide::AI {
-                        // Get the chance to hit
-                        let hit_chance = firing.chance_to_hit(target.x, target.y);
-
-                        let colour = if firing.weapon.can_fire() {
-                            colours::WHITE
-                        } else {
-                            colours::RED
-                        };
-
-                        // Render it!
-                        ctx.render_text(
-                            &format!("{:0.3}%", hit_chance * 100.0),
-                            dest[0], dest[1] + TILE_HEIGHT * camera.zoom, colour
-                        );                            
-                    }
+                    // Draw the chance-to-hit
+                    ctx.render_text(
+                        &format!("{:0.3}%", firing.chance_to_hit(x, y) * 100.0),
+                        dest[0], dest[1] + TILE_HEIGHT * camera.zoom,
+                        if firing.weapon.can_fire() {colours::WHITE} else {colours::RED}
+                    );
                 }
             }
         }

@@ -25,16 +25,23 @@ impl WallType {
             WallType::Ruin2 => Image::Ruin2Top
         }
     }
+    
+    // How much damage the wall can take before it breaks
+    pub fn health(&self) -> i16 {
+        50
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Wall {
     pub tag: WallType,
+    health: i16
 }
 
 impl Wall {
     pub fn new(tag: WallType) -> Wall {
         Wall {
+            health: tag.health(),
             tag
         }
     }

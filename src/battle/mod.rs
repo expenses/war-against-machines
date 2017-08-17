@@ -26,7 +26,7 @@ use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
 use settings::SkirmishSettings;
 
 // Whose turn is it
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq)]
 enum Controller {
     Player,
     AI
@@ -41,6 +41,30 @@ impl fmt::Display for Controller {
     }
 }
 
+struct Keys {
+    up: bool,
+    left: bool,
+    right: bool,
+    down: bool,
+    zoom_out: bool,
+    zoom_in: bool,
+    force_fire: bool
+}
+
+impl Keys {
+    fn new() -> Keys {
+        Keys {
+            up: false,
+            left: false,
+            right: false,
+            down: false,
+            zoom_out: false,
+            zoom_in: false,
+            force_fire: false
+        }
+    }
+}
+
 // The main Battle struct the handles actions
 pub struct Battle {
     pub map: Map,
@@ -49,7 +73,7 @@ pub struct Battle {
     pub path: Option<Vec<PathPoint>>,
     pub animations: Animations,
     pub command_queue: CommandQueue,
-    keys: [bool; 6],
+    keys: Keys,
     ui: UI,
     inventory: UI,
     controller: Controller,
@@ -122,7 +146,7 @@ impl Battle {
         Battle {
             map: map,
             cursor: None,
-            keys: [false; 6],
+            keys: Keys::new(),
             selected: None,
             path: None,
             ui: ui,
@@ -237,12 +261,13 @@ impl Battle {
     
         // Respond to keys normally!
         match key {
-            VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys[0] = pressed,
-            VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys[1] = pressed,
-            VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys[2] = pressed,
-            VirtualKeyCode::Right | VirtualKeyCode::D => self.keys[3] = pressed,
-            VirtualKeyCode::O => self.keys[4] = pressed,
-            VirtualKeyCode::P => self.keys[5] = pressed,
+            VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys.up = pressed,
+            VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys.down = pressed,
+            VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys.left = pressed,
+            VirtualKeyCode::Right | VirtualKeyCode::D => self.keys.right = pressed,
+            VirtualKeyCode::O => self.keys.zoom_out = pressed,
+            VirtualKeyCode::P => self.keys.zoom_in = pressed,
+            VirtualKeyCode::LControl | VirtualKeyCode::RControl => self.keys.force_fire = pressed,
             VirtualKeyCode::I if pressed && self.selected.is_some() => self.inventory.toggle(),
             _ => {}
         }
@@ -253,49 +278,47 @@ impl Battle {
     // Update the battle
     pub fn update(&mut self, ctx: &Context, dt: f32) {
         // Change camera variables if a key is being pressed
-        if self.keys[0] { self.map.camera.y += CAMERA_SPEED * dt; }
-        if self.keys[1] { self.map.camera.y -= CAMERA_SPEED * dt; }
-        if self.keys[2] { self.map.camera.x -= CAMERA_SPEED * dt; }
-        if self.keys[3] { self.map.camera.x += CAMERA_SPEED * dt; }
-        if self.keys[4] { self.map.camera.zoom(-CAMERA_ZOOM_SPEED * dt); }
-        if self.keys[5] { self.map.camera.zoom(CAMERA_ZOOM_SPEED  * dt); }
+        if self.keys.up       { self.map.camera.y += CAMERA_SPEED * dt; }
+        if self.keys.down     { self.map.camera.y -= CAMERA_SPEED * dt; }
+        if self.keys.left     { self.map.camera.x -= CAMERA_SPEED * dt; }
+        if self.keys.right    { self.map.camera.x += CAMERA_SPEED * dt; }
+        if self.keys.zoom_out { self.map.camera.zoom(-CAMERA_ZOOM_SPEED * dt); }
+        if self.keys.zoom_in  { self.map.camera.zoom(CAMERA_ZOOM_SPEED  * dt); }
 
         // If the controller is the AI and the command queue and animations are empty, make a ai move
         // If that returns false, switch control back to the player
-        if self.controller == Controller::AI &&
-           self.command_queue.is_empty() &&
-           self.animations.is_empty() &&
-           !ai::make_move(&self.map, &mut self.command_queue) {
+        if self.controller == Controller::AI && self.command_queue.is_empty() && self.animations.is_empty() {
+            let more_moves = ai::make_move(&self.map, &mut self.command_queue);
             
-            self.controller = Controller::Player;
-            // Update the turn
-            self.map.turn += 1;
-            // Log to the text display
-            self.ui.text_display(1).append(&format!("Turn {} started", self.map.turn));
+            if !more_moves {
+                self.controller = Controller::Player;
+                // Update the turn
+                self.map.turn += 1;
+                // Log to the text display
+                self.ui.text_display(1).append(&format!("Turn {} started", self.map.turn));
 
-            // Get the number of alive units on both sides
-            let player_count = self.map.units.count(UnitSide::Player);
-            let ai_count = self.map.units.count(UnitSide::AI);
+                // Get the number of alive units on both sides
+                let player_count = self.map.units.count(UnitSide::Player);
+                let ai_count = self.map.units.count(UnitSide::AI);
 
-            // If one side has lost all their units, Set the score screen menu
-            if player_count == 0 || ai_count == 0 {
-                self.ui.menu(0).active = true;
-                self.ui.menu(0).selection = 3;
-                self.ui.menu(0).list = vec![
-                    item!("Skirmish Ended", false),
-                    item!("Units lost: {}", self.map.units.total_player_units - player_count, false),
-                    item!("Units killed: {}", self.map.units.total_ai_units - ai_count, false),
-                    item!("Close")
-                ];
+                // If one side has lost all their units, Set the score screen menu
+                if player_count == 0 || ai_count == 0 {
+                    self.ui.menu(0).active = true;
+                    self.ui.menu(0).selection = 3;
+                    self.ui.menu(0).list = vec![
+                        item!("Skirmish Ended", false),
+                        item!("Units lost: {}", self.map.units.total_player_units - player_count, false),
+                        item!("Units killed: {}", self.map.units.total_ai_units - ai_count, false),
+                        item!("Close")
+                    ];
+                }
             }
         }
-        
-        // Update the command queue if there are no animations in progress
-        if self.animations.is_empty() {
-            self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.text_display(1));
-        }
+
+        // Update the command queue (if there are no animations in progress)
+        self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.text_display(1));
         // Update the animations
-        self.animations.update(&mut self.map, ctx, dt);
+        self.animations.update(ctx, dt);
     }
 
     // Draw both the map and the UI
@@ -415,44 +438,37 @@ impl Battle {
                         return;
                     }
 
-                    match self.map.units.at(x, y) {
-                        // If an AI unit is under the cursor, push a fire command
-                        Some(ai_unit) => {
-                            if ai_unit.side == UnitSide::AI {
-                                self.path = None;
-                                
-                                self.command_queue.push(FireCommand::new(selected_id, ai_unit.id));
-                            }
+                    if self.keys.force_fire || self.map.units.on_side(x, y, UnitSide::AI) {
+                        self.path = None;
+                        self.command_queue.push(FireCommand::new(selected_id, x, y));
+                    } else if let Some(unit) = self.map.units.get(selected_id) {
+                        // return if the target location is taken
+                        if self.map.taken(x, y) {
+                            self.path = None;
+                            return;
                         }
-                        _ => if let Some(unit) = self.map.units.get(selected_id) {
-                            // return if the target location is taken
-                            if self.map.taken(x, y) {
+
+                        // Pathfind to get the path points and the cost
+                        let points = match pathfind(unit, x, y, &self.map) {
+                            Some((points, _)) => points,
+                            _ => {
                                 self.path = None;
                                 return;
                             }
+                        };
 
-                            // Pathfind to get the path points and the cost
-                            let points = match pathfind(unit, x, y, &self.map) {
-                                Some((points, _)) => points,
-                                _ => {
-                                    self.path = None;
-                                    return;
-                                }
-                            };
+                        // Is the path is the same as existing one?
+                        let same_path = match self.path {
+                            Some(ref path) => path[path.len() - 1].at(x, y),
+                            _ => false
+                        };
 
-                            // Is the path is the same as existing one?
-                            let same_path = match self.path {
-                                Some(ref path) => path[path.len() - 1].at(x, y),
-                                _ => false
-                            };
-
-                            // If the paths are the same and the player unit can move to the destination, get rid of the path
-                            self.path = if same_path {
-                                self.command_queue.push(WalkCommand::new(unit, &self.map, points));
-                                None
-                            } else {
-                                Some(points)
-                            }
+                        // If the paths are the same and the player unit can move to the destination, get rid of the path
+                        self.path = if same_path {
+                            self.command_queue.push(WalkCommand::new(unit, &self.map, points));
+                            None
+                        } else {
+                            Some(points)
                         }
                     }
                 }                                  
@@ -467,11 +483,9 @@ impl Battle {
     }
 
     // Work out if the cursor is on an ai unit
-    pub fn cursor_on_ai_unit(&self) -> bool {
-        self.cursor
-            .and_then(|(x, y)| self.map.units.at(x, y))
-            .map(|unit| unit.side == UnitSide::AI)
-            .unwrap_or(false)
+    pub fn cursor_active(&self) -> bool {
+        self.keys.force_fire ||
+        self.cursor.map(|(x, y)| self.map.units.on_side(x, y, UnitSide::AI)).unwrap_or(false)
     }
 
     // End the current turn

@@ -7,7 +7,6 @@ use context::Context;
 use colours::{WHITE, GREY};
 
 // The vertical alignment of an item
-#[derive(Clone, Copy)]
 pub enum Vertical {
     Left,
     Middle,
@@ -28,7 +27,6 @@ impl Vertical {
 }
 
 // The horizontal alignment of an item
-#[derive(Clone, Copy)]
 pub enum Horizontal {
     Top,
     Middle,

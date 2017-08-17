@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 
 use battle::units::UnitType;
 use resources::{FONT_HEIGHT, CHARACTER_GAP, ImageSource};
+use utils::clamp;
 
 use toml;
 
@@ -57,8 +58,8 @@ impl Settings {
 
     // Make sure the volume isn't too high
     pub fn clamp(&mut self) {
-        self.volume = clamp!(self.volume, 0, DEFAULT_VOLUME);
-        self.ui_scale = clamp!(self.ui_scale, 1, MAX_UI_SCALE);
+        self.volume = clamp(self.volume, 0, DEFAULT_VOLUME);
+        self.ui_scale = clamp(self.ui_scale, 1, MAX_UI_SCALE);
     }
 
     // Get the height that a string would be rendered at
@@ -105,10 +106,10 @@ impl Default for SkirmishSettings {
 impl SkirmishSettings {
     // Ensure that the settings are between their min and max values
     pub fn clamp(&mut self) {
-        self.cols = clamp!(self.cols, MIN_MAP_SIZE, MAX_MAP_SIZE);
-        self.rows = clamp!(self.rows, MIN_MAP_SIZE, MAX_MAP_SIZE);
-        self.player_units = clamp!(self.player_units, 1, self.cols);
-        self.ai_units = clamp!(self.ai_units, 1, self.cols);
+        self.cols = clamp(self.cols, MIN_MAP_SIZE, MAX_MAP_SIZE);
+        self.rows = clamp(self.rows, MIN_MAP_SIZE, MAX_MAP_SIZE);
+        self.player_units = clamp(self.player_units, 1, self.cols);
+        self.ai_units = clamp(self.ai_units, 1, self.cols);
     }
 
     // Switch the player unit type

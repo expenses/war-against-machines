@@ -81,7 +81,7 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
 }
 
 // The type of a unit
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum UnitType {
     Squaddie,
     Machine
@@ -131,7 +131,7 @@ impl fmt::Display for UnitType {
 }
 
 // Which side the unit is on
-#[derive(Eq, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Serialize, Deserialize, Debug)]
 pub enum UnitSide {
     Player,
     AI
@@ -396,6 +396,11 @@ impl Units {
     // Count the number of units on a particular side
     pub fn count(&self, side: UnitSide) -> u8 {
         self.iter().filter(|unit| unit.side == side).count() as u8
+    }
+
+    // Is a unit on a particular side at (x, y)?
+    pub fn on_side(&self, x: usize, y: usize, side: UnitSide) -> bool {
+        self.at(x, y).map(|unit| unit.side == side).unwrap_or(false)
     }
 
     // Convert a unit ID to that unit's index in the vec
