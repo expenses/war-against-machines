@@ -6,10 +6,10 @@ use line_drawing::Bresenham;
 
 use std::ops::Add;
 
-use super::units::{UnitSide, Units};
+use super::units::{UnitSide, Units, WALK_LATERAL_COST, WALK_DIAGONAL_COST};
 use super::walls::{Walls, WallType};
 use items::Item;
-use utils::distance_under;
+use utils::{distance_under, min};
 use resources::Image;
 use colours;
 
@@ -32,7 +32,7 @@ fn point(x: usize, y: usize) -> Point {
 // The visibility of the tile
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum Visibility {
-    Visible,
+    Visible(u8),
     Foggy,
     Invisible
 }
@@ -40,10 +40,21 @@ pub enum Visibility {
 impl Visibility {
     // Get the corresponding colour for a visibility
     pub fn colour(&self) -> [f32; 4] {
-        if let Visibility::Foggy = *self {
+        if let Visibility::Visible(distance) = *self {
+            [0.0, 0.0, 0.0, f32::from(distance) / 20.0]
+        } else if let Visibility::Foggy = *self {
             colours::FOGGY
         } else {
             colours::ALPHA
+        }
+    }
+
+    // Is the visibility visible
+    pub fn is_visible(&self) -> bool {
+        if let Visibility::Visible(_) = *self {
+            true
+        } else {
+            false
         }
     }
 }
@@ -53,8 +64,20 @@ impl Add for Visibility {
 
     // Get the highest of two visibilities
     fn add(self, other: Visibility) -> Visibility {
-        if self == Visibility::Visible || other == Visibility::Visible {
-            Visibility::Visible
+        if self.is_visible() || other.is_visible() {
+            // Work out the visible distance
+
+            let mut distance = u8::max_value();
+
+            if let Visibility::Visible(dist) = self {
+                distance = dist;
+            }
+
+            if let Visibility::Visible(dist) = other {
+                distance = min(distance, dist);
+            }
+
+            Visibility::Visible(distance)
         } else if self == Visibility::Foggy || other == Visibility::Foggy {
             Visibility::Foggy
         } else {
@@ -280,15 +303,15 @@ impl Tiles {
                 
                 // If the tile is visible set the visibility to visible, or if it was visible make it foggy
                 
-                if player_visible {
-                    tile.player_visibility = Visibility::Visible;
-                } else if tile.player_visibility == Visibility::Visible {
+                if let Some(distance) = player_visible {
+                    tile.player_visibility = Visibility::Visible(distance);
+                } else if tile.player_visibility.is_visible() {
                     tile.player_visibility = Visibility::Foggy;
                 }
                 
-                if ai_visible {
-                    tile.ai_visibility = Visibility::Visible;
-                } else if tile.ai_visibility == Visibility::Visible {
+                if let Some(distance) = ai_visible {
+                    tile.ai_visibility = Visibility::Visible(distance);
+                } else if tile.ai_visibility.is_visible() {
                     tile.ai_visibility = Visibility::Foggy;
                 }
             }
@@ -305,47 +328,54 @@ impl Tiles {
         self.at_mut(x, y).items.append(items);
     }
 
-    pub fn line_of_sight(&self, start: Point, end: Point) -> Option<(Point, Point)> {
-        // Sort the points so that line-of-sight is symmetrical
-        let (sorted_start, sorted_end) = sort(start, end);
+    // Would a unit with a particular sight range be able to see from one tile to another
+    // Return the number of tiles away a point is, or none if visibility is blocked
+    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32) -> Option<u8> {
+        if distance_under(a_x, a_y, b_x, b_y, sight) {
+            // Sort the points so that line-of-sight is symmetrical
+            let (start, end) = sort(point(a_x, a_y), point(b_x, b_y));
 
-        // Get the points for the whole line
-        // Iterate over it in windows of 2
-        let mut iterator = Bresenham::new(sorted_start, sorted_end).steps()            
-            .filter(|&(a, b)| {
+            let mut distance = 0;
+
+            for (a, b) in Bresenham::new(start, end).steps() {
+                // Increase the distance
+                distance += if a.0 == b.0 || a.1 == b.1 {
+                    WALK_LATERAL_COST
+                } else {
+                    WALK_DIAGONAL_COST
+                } as u8;
+
                 let (a_x, a_y, b_x, b_y) = (a.0 as usize, a.1 as usize, b.0 as usize, b.1 as usize);
-                
-                // Filter out the sections that are clear
-                ! match (b.0 - a.0, b.1 - a.1) {
+                    
+                // Determine if the step is clear
+                let clear = match (b.0 - a.0, b.1 - a.1) {
                     (0, 1) => self.vertical_clear(b_x, b_y),
                     (1, 0) => self.horizontal_clear(b_x, b_y),
                     (-1, 0) => self.horizontal_clear(a_x, a_y),
                     (-1, 1) => self.diagonal_clear(a_x, b_y, false),
                     (1, 1) => self.diagonal_clear(b_x, b_y, true),
                     _ => unreachable!()
-                }
-            });
+                };
 
-        // If the points weren't sorted, return the first wall (or none)
-        // If they were, return the last wall (or none)
-        if sorted_start == start {
-            iterator.nth(0)
+                // Return if the step is taken
+                if !clear {
+                    return None;
+                }
+            }
+
+            Some(distance)
         } else {
-            iterator.last()
+            None
         }
     }
 
     // Is a tile visible by any unit on a particular side
-    fn tile_visible(&self, units: &Units, side: UnitSide, x: usize, y: usize) -> bool {
+    fn tile_visible(&self, units: &Units, side: UnitSide, x: usize, y: usize) -> Option<u8> {
         units.iter()
             .filter(|unit| unit.side == side)
-            .any(|unit| self.visible(unit.x, unit.y, x, y, unit.tag.sight()))
-    }
-
-    // Would a unit with a particular sight range be able to see from one tile to another
-    pub fn visible(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32) -> bool {
-        distance_under(a_x, a_y, b_x, b_y, sight) &&
-        self.line_of_sight(point(a_x, a_y), point(b_x, b_y)).is_none()
+            .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight()))
+            // Get the minimum distance or none
+            .fold(None, |sum, dist| dist.map(|dist| sum.map(|sum| min(sum, dist)).unwrap_or(dist)).or(sum))
     }
 
     // Is the wall space between two horizontal tiles empty
@@ -412,8 +442,8 @@ fn unit_visibility() {
     units.add(UnitType::Squaddie, UnitSide::Player, 0, 0);
     tiles.update_visibility(&units);
 
-    // A tile a unit is standing on should be visible
-    assert_eq!(tiles.at(0, 0).player_visibility, Visibility::Visible);
+    // A tile a unit is standing on should be visible with a distance of 0
+    assert_eq!(tiles.at(0, 0).player_visibility, Visibility::Visible(0));
     // A far away tile should be invisible
     assert_eq!(tiles.at(29, 29).player_visibility, Visibility::Invisible);
 
@@ -435,10 +465,10 @@ fn unit_visibility() {
         for y in 0 .. tiles.rows {
             let visibility = tiles.at(x, y).player_visibility;
 
-            if !(x == 29 && y == 0) {
-                assert_ne!(visibility, Visibility::Visible);
+            if x == 29 && y == 0 {
+                assert_eq!(visibility, Visibility::Visible(0));
             } else {
-                assert_eq!(visibility, Visibility::Visible);
+                assert_ne!(visibility, Visibility::Visible(0));
             }
         }
     }

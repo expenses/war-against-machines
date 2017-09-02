@@ -11,12 +11,22 @@ macro_rules! vec_or_default {
     )
 }
 
+// Min using partialord
+pub fn min<T: PartialOrd>(a: T, b: T) -> T {
+    if a < b { a } else { b }
+}
+
+// Max using partialord
+pub fn max<T: PartialOrd>(a: T, b: T) -> T {
+    if a > b { a } else { b }
+}
+
 // Ensure that a value is between lower and an upper value
 pub fn clamp<T: PartialOrd>(value: T, lower: T, upper: T) -> T {
     // Calculate the smaller value
-    let min = if upper > value {value} else {upper};
+    let min = min(upper, value);
     // Calculate the bigger value
-    if min > lower {min} else {lower}
+    max(min, lower)
 }
 
 // Ensure that a floating point value is between lower and upper value (as usize)

@@ -132,10 +132,16 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 if let Some((cursor_x, cursor_y)) = battle.cursor {
                     if cursor_x == x && cursor_y == y {
                         // Determine the cursor type
-                        let colour = if !tile.obstacle.is_empty() {
+                        // Grey if the tile is foggy
+                        let colour = if !tile.player_visibility.is_visible() {
+                            colours::GREY
+                        // Red if the tile has an obstacle
+                        } else if !tile.obstacle.is_empty() {
                             colours::RED
+                        // Orange if it has a unit
                         } else if battle.map.units.at(x, y).is_some() {
                             colours::ORANGE
+                        // Yellow by default
                         } else {
                             colours::YELLOW
                         };
@@ -146,14 +152,14 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             }
 
             // Draw items that should only be shown on visible tiles
-            if tile.player_visibility == Visibility::Visible {
+            if tile.player_visibility.is_visible() {
                 // Draw the tile decoration
                 if let Some(ref decoration) = tile.decoration {
                     ctx.render_with_overlay(decoration, dest, camera.zoom, overlay);
                 }
 
                 for item in &tile.items {
-                    ctx.render(&item.image(), dest, camera.zoom);
+                    ctx.render_with_overlay(&item.image(), dest, camera.zoom, overlay);
                 }
 
                 // Draw a unit at the position
@@ -165,7 +171,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                         }
                     }
 
-                    ctx.render(&unit.tag.image(), dest, camera.zoom);
+                    ctx.render_with_overlay(&unit.tag.image(), dest, camera.zoom, overlay);
                 }
             }
 
@@ -270,7 +276,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
         let visible = map.tiles.at(
             clamp_float(bullet.x, 0, map.tiles.cols - 1),
             clamp_float(bullet.y, 0, map.tiles.rows - 1)
-        ).player_visibility == Visibility::Visible;
+        ).player_visibility.is_visible();
 
         // If the bullet is visable and on screen, draw it with the right rotation
         if visible {

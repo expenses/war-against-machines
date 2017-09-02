@@ -223,7 +223,7 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<&'a Unit> {
     map.units.iter()
         // Filter to visible player units
         .filter(|target| target.side == UnitSide::Player &&
-                         map.tiles.at(target.x, target.y).ai_visibility == Visibility::Visible)
+                         map.tiles.at(target.x, target.y).ai_visibility.is_visible())
         // Minimize distance
         .ord_subset_min_by_key(|target| distance(unit.x, unit.y, target.x, target.y))
 }
@@ -251,11 +251,11 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     for tile_x in 0 .. map.tiles.cols {
         for tile_y in 0 .. map.tiles.rows {
             // If the tile would be visible, add the score
-            if map.tiles.visible(x, y, tile_x, tile_y, unit.tag.sight()) {
+            if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight()).is_some() {
                 score += match map.tiles.at(tile_x, tile_y).ai_visibility {
                     Visibility::Invisible => 1.0,
                     Visibility::Foggy => 0.1,
-                    Visibility::Visible => 0.0
+                    Visibility::Visible(_) => 0.0
                 };
             }
         }

@@ -2,7 +2,6 @@
 
 in vec2 in_pos;
 in vec2 in_uv;
-in vec2 in_scale;
 out vec2 out_uv;
 
 layout (std140) uniform Properties {

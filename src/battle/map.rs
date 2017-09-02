@@ -2,7 +2,7 @@
 // This struct contains all the stuff that is saved/loaded
 
 use super::units::{UnitSide, Units};
-use super::tiles::{Visibility, Tiles};
+use super::tiles::Tiles;
 use super::drawer::Camera;
 
 use std::fs::{File, create_dir_all};
@@ -46,7 +46,7 @@ impl Map {
             .filter(|unit| unit.side == side && match side {
                 UnitSide::Player => self.tiles.at(unit.x, unit.y).ai_visibility,
                 UnitSide::AI => self.tiles.at(unit.x, unit.y).player_visibility
-            } == Visibility::Visible)
+            }.is_visible())
             .count()
     }
 
@@ -85,8 +85,12 @@ impl Map {
 
 #[test]
 fn load_save() {
+    use super::units::UnitType;
+
     // Test saving and loading a map
-    let map = Map::new(20, 20);
+    let mut map = Map::new(20, 20);
+    map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0);
+    map.tiles.update_visibility(&map.units);
 
     assert_eq!(map.save(Some("test".into())), Some(PathBuf::from("savegames/skirmishes/test.sav")));
     Map::load("test.sav").unwrap();
