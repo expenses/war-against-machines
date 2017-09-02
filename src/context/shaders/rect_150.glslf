@@ -14,10 +14,10 @@ layout (std140) uniform Properties {
 };
 
 void main() {
-    // Get the colour of the texel
+    // Get the colour from the texture
     vec4 colour = texture(sampler, out_uv);
 
-    // Mix the colours!
+    // Mix it with the overlay colour
     vec3 mixed_colour = mix(colour.rgb, prop_overlay_colour.rgb, prop_overlay_colour.a);
 
     // Return the mixed colour (with the alpha unchanged)

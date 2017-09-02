@@ -135,6 +135,6 @@ impl Context {
         let decoder = Decoder::new(cursor).unwrap();
         // Play it!
         let endpoint = rodio::get_default_endpoint().unwrap();        
-        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(self.settings.volume as f32 / 100.0));
+        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(f32::from(self.settings.volume) / 100.0));
     }
 }

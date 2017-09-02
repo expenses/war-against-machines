@@ -217,7 +217,13 @@ fn compile_shaders() {
         |s| headless.get_proc_address(s) as *const c_void
     );
 
-    // Attempt to create the shader set
+    // Test creating the PSO
+
+    factory.create_pipeline_simple(
+        include_bytes!("shaders/rect_150.glslv"),
+        include_bytes!("shaders/rect_150.glslf"),
+        pipe::new()
+    ).unwrap_or_else(|error| panic!("{}", error));
 
     factory.create_shader_set(
         include_bytes!("shaders/rect_150.glslv"),

@@ -1,5 +1,8 @@
 // Unit and game animations
 
+// Turn off clippy warning for floating point comparisons because I'm lazy
+#![cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
+
 use rand;
 use rand::distributions::{IndependentSample, Range};
 use odds::vec::VecExt;

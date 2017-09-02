@@ -2,7 +2,7 @@
 
 use rand;
 use rand::Rng;
-use bresenham::Bresenham;
+use line_drawing::Bresenham;
 
 use std::ops::Add;
 
@@ -305,18 +305,13 @@ impl Tiles {
         self.at_mut(x, y).items.append(items);
     }
 
-
-    pub fn first_wall_between(&self, start: Point, end: Point) -> Option<(Point, Point)> {
+    pub fn line_of_sight(&self, start: Point, end: Point) -> Option<(Point, Point)> {
         // Sort the points so that line-of-sight is symmetrical
         let (sorted_start, sorted_end) = sort(start, end);
 
         // Get the points for the whole line
-        let mut points: Vec<_> = Bresenham::new(sorted_start, sorted_end).collect();
-        points.push(sorted_end);
-
         // Iterate over it in windows of 2
-        let mut iterator = points.windows(2)            
-            .map(|slice| (slice[0], slice[1]))
+        let mut iterator = Bresenham::new(sorted_start, sorted_end).steps()            
             .filter(|&(a, b)| {
                 let (a_x, a_y, b_x, b_y) = (a.0 as usize, a.1 as usize, b.0 as usize, b.1 as usize);
                 
@@ -327,8 +322,7 @@ impl Tiles {
                     (-1, 0) => self.horizontal_clear(a_x, a_y),
                     (-1, 1) => self.diagonal_clear(a_x, b_y, false),
                     (1, 1) => self.diagonal_clear(b_x, b_y, true),
-                    // The different should never be any of the above, so panic
-                    _ => panic!()
+                    _ => unreachable!()
                 }
             });
 
@@ -348,10 +342,10 @@ impl Tiles {
             .any(|unit| self.visible(unit.x, unit.y, x, y, unit.tag.sight()))
     }
 
-    // would a unit with a particular sight range be able to see from one tile to another
+    // Would a unit with a particular sight range be able to see from one tile to another
     pub fn visible(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32) -> bool {
         distance_under(a_x, a_y, b_x, b_y, sight) &&
-        self.first_wall_between(point(a_x, a_y), point(b_x, b_y)).is_none()
+        self.line_of_sight(point(a_x, a_y), point(b_x, b_y)).is_none()
     }
 
     // Is the wall space between two horizontal tiles empty

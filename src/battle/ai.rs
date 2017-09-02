@@ -239,7 +239,7 @@ fn damage_score(x: usize, y: usize, walk_cost: u16, unit: &Unit, target: &Unit) 
     let chance_to_hit = chance_to_hit(x, y, target.x, target.y);
 
     // Return chance to hit * times the weapon can be fired
-    chance_to_hit * unit.weapon.times_can_fire(unit.moves - walk_cost) as f32
+    chance_to_hit * f32::from(unit.weapon.times_can_fire(unit.moves - walk_cost))
 }
 
 // Calculate the search score for a tile.

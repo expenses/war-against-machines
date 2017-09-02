@@ -53,7 +53,7 @@ impl Settings {
     }
 
     pub fn ui_scale(&self) -> f32 {
-        self.ui_scale as f32
+        f32::from(self.ui_scale)
     }
 
     // Make sure the volume isn't too high

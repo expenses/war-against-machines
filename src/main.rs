@@ -2,7 +2,7 @@ extern crate rand;
 extern crate pathfinding;
 extern crate ord_subset;
 extern crate odds;
-extern crate bresenham;
+extern crate line_drawing;
 extern crate toml;
 #[macro_use]
 extern crate serde_derive;

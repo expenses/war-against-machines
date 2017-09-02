@@ -101,7 +101,7 @@ impl Weapon {
     }
 
     pub fn times_can_fire(&self, moves: u16) -> u16 {
-        min(moves / self.tag.cost(), self.ammo as u16)
+        min(moves / self.tag.cost(), u16::from(self.ammo))
     }
 
     pub fn can_reload(&self, ammo: u8) -> bool {
