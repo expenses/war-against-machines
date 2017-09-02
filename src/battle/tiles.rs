@@ -13,6 +13,9 @@ use utils::{distance_under, min};
 use resources::Image;
 use colours;
 
+const MIN_PIT_SIZE: usize = 2;
+const MAX_PIT_SIZE: usize = 5;
+
 // A point for line-of-sight
 type Point = (isize, isize);
 
@@ -212,7 +215,10 @@ impl Tiles {
         }
 
         // Generate a randomly sized pit
-        self.add_pit(rng.gen_range(2, 5), rng.gen_range(2, 5));
+        self.add_pit(
+            rng.gen_range(MIN_PIT_SIZE, MAX_PIT_SIZE + 1),
+            rng.gen_range(MIN_PIT_SIZE, MAX_PIT_SIZE + 1)
+        );
 
         // Add in the walls
         for x in 0 .. self.cols {
@@ -235,28 +241,32 @@ impl Tiles {
 
     // Add a left wall if possible
     pub fn add_left_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if x < self.rows && y < self.rows && (self.not_pit(x, y) || self.not_pit(x - 1, y)) {
+        if x < self.cols && y < self.rows && (self.not_pit(x, y) || self.not_pit(x - 1, y)) {
             self.at_mut(x, y).walls.set_left(tag);
         }
     }
 
     // Add a top wall if possible
     pub fn add_top_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if x < self.rows && y < self.rows && (self.not_pit(x, y) || self.not_pit(x, y - 1)) {
+        if x < self.cols && y < self.rows && (self.not_pit(x, y) || self.not_pit(x, y - 1)) {
             self.at_mut(x, y).walls.set_top(tag);
         }
     }
 
     // Check if a position is in-bounds and not a pit
     fn not_pit(&self, x: usize, y: usize) -> bool {
-        x < self.rows && y < self.cols && !self.at(x, y).obstacle.is_pit()
+        x < self.cols && y < self.rows && !self.at(x, y).obstacle.is_pit()
     }
 
     fn add_pit(&mut self, width: usize, height: usize) {
         // Generate pit position and size
         let mut rng = rand::thread_rng();
-        let pit_x = rng.gen_range(1, self.cols - width  - 1);
-        let pit_y = rng.gen_range(1, self.rows - height - 1);
+
+        let max_x = self.cols - width  - 1;
+        let max_y = self.rows - height - 1;
+
+        let pit_x = if max_x > 1 { rng.gen_range(1, max_x) } else { 1 };
+        let pit_y = if max_y > 1 { rng.gen_range(1, max_y) } else { 1 };
 
         // Add pit corners
         self.at_mut(pit_x,             pit_y             ).set_pit(Image::PitTop);
@@ -283,13 +293,13 @@ impl Tiles {
 
     // Get a reference to a tile
     pub fn at(&self, x: usize, y: usize) -> &Tile {
-        assert!(x < self.rows && y < self.cols, "Tile at ({}, {}) is out of bounds", x, y);
+        assert!(x < self.cols && y < self.rows, "Tile at ({}, {}) is out of bounds", x, y);
         &self.tiles[x * self.rows + y]
     }
 
     // Get a mutable reference to a tile
     pub fn at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
-        assert!(x < self.rows && y < self.cols, "Tile at ({}, {}) is out of bounds", x, y);
+        assert!(x < self.cols && y < self.rows, "Tile at ({}, {}) is out of bounds", x, y);
         &mut self.tiles[x * self.rows + y]
     }
 
@@ -491,4 +501,15 @@ fn walk_on_tile() {
     tile.decoration = Some(Image::Skeleton);
     tile.walk_on();
     assert_eq!(tile.decoration, Some(Image::SkeletonCracked));
+}
+
+#[test]
+fn map_generation() {
+    let units = Units::new();
+
+    // Test generating maps at various sizes
+    Tiles::new(10, 10).generate(&units);
+    Tiles::new(30, 30).generate(&units);
+    Tiles::new(10, 30).generate(&units);
+    Tiles::new(30, 10).generate(&units);
 }
