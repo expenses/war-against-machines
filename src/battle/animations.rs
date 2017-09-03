@@ -66,7 +66,7 @@ impl Walk {
     }
 
     // Move the animation a step, and return if its still going
-    fn step(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
         if self.status.at_start() {
             ctx.play_sound(SoundEffect::Walk);
         }
@@ -149,7 +149,7 @@ impl Bullet {
     }
 
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if self.status.at_start() {
             ctx.play_sound(self.weapon_type.fire_sound());
@@ -188,12 +188,12 @@ pub type Animations = Vec<Animation>;
 
 // A trait for updating the animations
 pub trait UpdateAnimations {
-    fn update(&mut self, ctx: &Context, dt: f32);
+    fn update(&mut self, ctx: &mut Context, dt: f32);
 }
 
 impl UpdateAnimations for Animations {
     // Update all of the animations, keeping only those that are still going
-    fn update(&mut self, ctx: &Context, dt: f32) {
+    fn update(&mut self, ctx: &mut Context, dt: f32) {
         self.retain_mut(|animation| match *animation {
             Animation::Walk(ref mut walk) => walk.step(ctx, dt),
             Animation::Bullet(ref mut bullet) => bullet.step(ctx, dt)

@@ -276,7 +276,7 @@ impl Battle {
     }
 
     // Update the battle
-    pub fn update(&mut self, ctx: &Context, dt: f32) {
+    pub fn update(&mut self, ctx: &mut Context, dt: f32) {
         // Change camera variables if a key is being pressed
         if self.keys.up       { self.map.camera.y += CAMERA_SPEED * dt; }
         if self.keys.down     { self.map.camera.y -= CAMERA_SPEED * dt; }

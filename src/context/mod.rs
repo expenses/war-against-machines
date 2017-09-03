@@ -1,45 +1,31 @@
 use glutin::EventsLoop;
-use rodio;
-use rodio::{Decoder, Source};
-
-use std::rc::Rc;
-use std::io::Cursor;
 
 mod renderer;
+mod audio;
 
 use colours;
 use settings::Settings;
 use resources::{ImageSource, Image, SoundEffect, CHARACTER_GAP};
 use self::renderer::{Renderer, Properties}; 
-
-// Use reference-counting to avoid cloning the source each time
-type Audio = Rc<Vec<u8>>;
-
-// Load a piece of audio
-fn load_audio(bytes: &[u8]) -> Audio {
-    Rc::new(bytes.to_vec())
-}
+use self::audio::Player;
 
 pub struct Context {
     pub settings: Settings,
     pub width: f32,
     pub height: f32,
     renderer: Renderer,
-    audio: [Audio; 3]
+    player: Player
 }
 
 impl Context {
     // Create a new context
     pub fn new(event_loop: &EventsLoop, settings: Settings, title: String, width: u32, height: u32, tileset: &[u8], audio: [&[u8]; 3]) -> Context {
-        let renderer = Renderer::new(event_loop, tileset, title, width, height);
-
-        // Create the context!
         Context {
-            renderer,
+            renderer: Renderer::new(event_loop, tileset, title, width, height),
             settings,
             width: width as f32,
             height: height as f32,
-            audio: [load_audio(audio[0]), load_audio(audio[1]), load_audio(audio[2])]
+            player: Player::new(audio)
         }
     }
 
@@ -121,20 +107,15 @@ impl Context {
     }
 
     // Play a sound effect
-    pub fn play_sound(&self, sound: SoundEffect) {
-        // Get the sound effect
-        let sound = match sound {
-            SoundEffect::Walk => self.audio[0].as_ref(),
-            SoundEffect::RegularShot => self.audio[1].as_ref(),
-            SoundEffect::PlasmaShot => self.audio[2].as_ref()
+    pub fn play_sound(&mut self, sound: SoundEffect) {
+        // Get the corresponding sound index
+        let index = match sound {
+            SoundEffect::Walk => 0,
+            SoundEffect::RegularShot => 1,
+            SoundEffect::PlasmaShot => 2
         };
 
-        // Clone the reference and wrap it in a cursor
-        let cursor = Cursor::new(sound.clone());
-        // Decode the audio
-        let decoder = Decoder::new(cursor).unwrap();
-        // Play it!
-        let endpoint = rodio::get_default_endpoint().unwrap();        
-        rodio::play_raw(&endpoint, decoder.convert_samples().amplify(f32::from(self.settings.volume) / 100.0));
+        // Play it
+        self.player.play(index, f32::from(self.settings.volume) / 100.0);
     }
 }
