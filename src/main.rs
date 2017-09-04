@@ -40,8 +40,6 @@ use battle::Battle;
 use battle::map::Map;
 
 const TITLE: &str = "War Against Machines";
-const WINDOW_WIDTH: u32 = 960;
-const WINDOW_HEIGHT: u32 = 540;
 
 // Which mode the game is in
 enum Mode {
@@ -167,9 +165,7 @@ fn main() {
     // Generate the event loop and the context
     let mut events_loop = glutin::EventsLoop::new();
     let ctx = Context::new(
-        &events_loop,
-        Settings::load(),
-        TITLE.into(), WINDOW_WIDTH, WINDOW_HEIGHT,
+        &events_loop, Settings::load(), TITLE.into(),
         bytes!("tileset.png"),
         [
             bytes!("audio/walk.ogg"),

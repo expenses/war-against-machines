@@ -17,7 +17,10 @@ const MAX_UI_SCALE: u8 = 4;
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
     pub volume: u8,
-    pub ui_scale: u8
+    pub ui_scale: u8,
+    pub window_width: u32,
+    pub window_height: u32,
+    pub fullscreen: bool
 }
 
 // The default settings
@@ -25,7 +28,10 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             volume: DEFAULT_VOLUME,
-            ui_scale: DEFAULT_UI_SCALE
+            ui_scale: DEFAULT_UI_SCALE,
+            window_width: 960,
+            window_height: 540,
+            fullscreen: false
         }
     }
 }

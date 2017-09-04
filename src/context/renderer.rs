@@ -12,6 +12,8 @@ use glutin;
 use glutin::{GlContext, EventsLoop};
 use image::{load_from_memory_with_format, ImageFormat};
 
+use settings::Settings;
+
 // A square of vertices
 const SQUARE: &[Vertex] = &[
     Vertex { pos: [1.0, -1.0],  uv: [1.0, 1.0]},
@@ -91,11 +93,19 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(event_loop: &EventsLoop, tileset: &[u8], title: String, width: u32, height: u32) -> Renderer {
+    pub fn new(event_loop: &EventsLoop, tileset: &[u8], title: String, settings: &Settings) -> Renderer {
+        // Get the with and the height of the window from settings
+        let (width, height) = (settings.window_width, settings.window_height);
+
         // Build the window
-        let builder = glutin::WindowBuilder::new()
+        let mut builder = glutin::WindowBuilder::new()
             .with_title(title)
             .with_dimensions(width, height);
+
+        // Set the window to be fullscreen if that's set in settings
+        if settings.fullscreen {
+            builder = builder.with_fullscreen(glutin::get_primary_monitor());
+        }
 
         // Create the GL context
         let context = glutin::ContextBuilder::new()
@@ -223,10 +233,5 @@ fn compile_shaders() {
         include_bytes!("shaders/rect_150.glslv"),
         include_bytes!("shaders/rect_150.glslf"),
         pipe::new()
-    ).unwrap_or_else(|error| panic!("{}", error));
-
-    factory.create_shader_set(
-        include_bytes!("shaders/rect_150.glslv"),
-        include_bytes!("shaders/rect_150.glslf")
     ).unwrap_or_else(|error| panic!("{}", error));
 }
