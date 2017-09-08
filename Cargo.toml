@@ -10,9 +10,9 @@ authors = ["Expenses <expenses@airmail.cc>"]
 rand = "*"
 ## Unit pathfinding
 pathfinding = "*"
-## For the ability to use 'min_by_key' with f32s
+## To use `Ord` functions like `min_by_key` with `f32`s
 ord_subset = "*"
-## For 'retain_mut'
+## For `retain_mut`
 odds = "*"
 ## Line drawing for line-of-sight
 line_drawing = "*"

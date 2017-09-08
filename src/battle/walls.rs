@@ -2,6 +2,12 @@ use resources::Image;
 
 // Walls in-between tiles
 
+#[derive(Debug, PartialEq)]
+pub enum WallSide {
+    Left,
+    Top
+}
+
 // The type of wall
 #[derive(Serialize, Deserialize)]
 pub enum WallType {

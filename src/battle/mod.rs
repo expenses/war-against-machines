@@ -392,8 +392,8 @@ impl Battle {
 
         // Set cursor position if it is on the map and visible
         self.cursor = if x < self.map.tiles.cols &&
-                                  y < self.map.tiles.rows &&
-                                  self.map.tiles.at(x, y).visible() {
+                         y < self.map.tiles.rows &&
+                         self.map.tiles.at(x, y).visible() {
             Some((x, y))
         } else {
             None

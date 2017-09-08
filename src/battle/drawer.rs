@@ -256,11 +256,19 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
                     // Draw the crosshair
                     ctx.render(&Image::CursorCrosshair, dest, camera.zoom);
 
+                    let colour = if !firing.weapon.can_fire() {
+                        colours::RED
+                    } else if map.tiles.line_of_fire(firing.x, firing.y, x, y).is_some() {
+                        colours::ORANGE
+                    } else {
+                        colours::WHITE
+                    };
+
                     // Draw the chance-to-hit
                     ctx.render_text(
                         &format!("{:0.3}%", firing.chance_to_hit(x, y) * 100.0),
                         dest[0], dest[1] + TILE_HEIGHT * camera.zoom,
-                        if firing.weapon.can_fire() {colours::WHITE} else {colours::RED}
+                        colour
                     );
                 }
             }
