@@ -1,19 +1,14 @@
-# Don't worry about the target being up to date or whatever
-.PHONY: tileset
 
-# Build the tileset file and then run it
-tileset:
-	# Build the tileset binary, linking to the release deps
-	rustc -L target/release/deps -O resources/tileset.rs -o target/release/tileset
-	# Run it
-	target/release/tileset resources/images resources/tileset.png
-	# Optimise the tileset with optipng
-	optipng resources/tileset.png
+# Build the tileset
+tileset: resources/tileset.png
 
 # Run the colour conversion script
-convert_colour:
-	rustc resources/convert_colour.rs -o target/release/convert_colour
-	target/release/convert_colour
+convert_colour: target/release/convert_colour
+	$^
+
+# Check the build on both stable and nightly (with clippy)
+check:
+	cargo +stable check && cargo +nightly clippy
 
 # Test shaders
 shaders:
@@ -21,8 +16,15 @@ shaders:
 
 # Optimise the resource images
 optimise:
-	optipng `find resources/images`
+	optipng `find resources/images -name "*.png"`
 
-# Check the build on both stable and nightly (with clippy)
-check:
-	rustup run stable cargo check && cargo clippy
+# Compile Rust source code
+target/release/%: make/%.rs
+	rustc -L target/release/deps -O $^ -o $@
+
+# Build the tileset
+resources/tileset.png: target/release/tileset resources/images
+	# Run the tileset script
+	$^ $@
+	# Optimise the tileset image
+	optipng $@
