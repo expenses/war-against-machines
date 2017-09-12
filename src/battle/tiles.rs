@@ -4,12 +4,14 @@ use rand;
 use rand::Rng;
 use line_drawing::Bresenham;
 
-use super::units::{UnitSide, Units, WALK_LATERAL_COST, WALK_DIAGONAL_COST};
+use super::units::{UnitSide, Units, WALK_LATERAL_COST, WALK_DIAGONAL_COST, UNIT_SIGHT};
 use super::walls::{Walls, WallType, WallSide};
 use items::Item;
-use utils::{distance_under, min};
+use utils::{distance_under, min, lerp};
 use resources::Image;
-use colours;
+
+const DAY_DARKNESS_RATE: f32 = 0.025;
+const NIGHT_DARKNESS_RATE: f32 = 0.05;
 
 use std::mem::swap;
 
@@ -48,14 +50,21 @@ pub enum Visibility {
 
 impl Visibility {
     // Get the corresponding colour for a visibility
-    pub fn colour(&self) -> [f32; 4] {
-        if let Visibility::Visible(distance) = *self {
-            [0.0, 0.0, 0.0, f32::from(distance) / 20.0]
+    pub fn colour(&self, light: f32) -> [f32; 4] {
+        // Get the rate at which tiles get darker
+        let rate = lerp(NIGHT_DARKNESS_RATE, DAY_DARKNESS_RATE, light);
+
+        // Use the distance if the tile is visible
+        let alpha = if let Visibility::Visible(distance) = *self {
+            f32::from(distance) * rate
+        // Or use the maximum darkness + 0.1
         } else if let Visibility::Foggy = *self {
-            colours::FOGGY
+            rate * (UNIT_SIGHT * f32::from(WALK_LATERAL_COST)) + 0.1
         } else {
-            colours::ALPHA
-        }
+            0.0
+        };
+
+        [0.0, 0.0, 0.0, alpha]
     }
 
     // Is the visibility visible

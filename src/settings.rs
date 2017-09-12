@@ -153,7 +153,8 @@ pub struct SkirmishSettings {
     pub player_units: usize,
     pub ai_units: usize,
     pub player_unit_type: UnitType,
-    pub ai_unit_type: UnitType
+    pub ai_unit_type: UnitType,
+    pub light: f32
 }
 
 // The default skirmish settings
@@ -165,7 +166,8 @@ impl Default for SkirmishSettings {
             player_units: 6,
             ai_units: 4,
             player_unit_type: UnitType::Squaddie,
-            ai_unit_type: UnitType::Machine
+            ai_unit_type: UnitType::Machine,
+            light: 1.0
         }
     }
 }
@@ -177,6 +179,7 @@ impl SkirmishSettings {
         self.rows = clamp(self.rows, MIN_MAP_SIZE, MAX_MAP_SIZE);
         self.player_units = clamp(self.player_units, 1, self.cols);
         self.ai_units = clamp(self.ai_units, 1, self.cols);
+        self.light = clamp(self.light, 0.0, 1.0);
     }
 
     // Switch the player unit type

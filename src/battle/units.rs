@@ -19,6 +19,8 @@ pub const WALK_DIAGONAL_COST: u16 = 3;
 // The cost for a unit to pick up / drop / use an item
 pub const ITEM_COST: u16 = 5;
 
+pub const UNIT_SIGHT: f32 = 7.5;
+
 // A list of first names to pick from
 const FIRST_NAMES: &[&str] = &[
     "David",
@@ -117,7 +119,7 @@ impl UnitType {
     }
 
     pub fn sight(&self) -> f32 {
-        7.5
+        UNIT_SIGHT
     }
 }
 

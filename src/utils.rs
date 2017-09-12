@@ -21,6 +21,11 @@ pub fn max<T: PartialOrd>(a: T, b: T) -> T {
     if a > b { a } else { b }
 }
 
+// Linearly-interpolate between two values
+pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
+
 // Ensure that a value is between lower and an upper value
 pub fn clamp<T: PartialOrd>(value: T, lower: T, upper: T) -> T {
     // Calculate the smaller value

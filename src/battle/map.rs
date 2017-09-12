@@ -20,13 +20,15 @@ pub struct Map {
     pub units: Units,
     pub tiles: Tiles,
     pub camera: Camera,
-    pub turn: u8
+    pub turn: u8,
+    pub light: f32
 }
 
 impl Map {
     // Create a new map
-    pub fn new(cols: usize, rows: usize) -> Map {
+    pub fn new(cols: usize, rows: usize, light: f32) -> Map {
         Map {
+            light, 
             units: Units::new(),
             tiles: Tiles::new(cols, rows),
             camera: Camera::new(),

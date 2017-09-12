@@ -12,8 +12,17 @@ use ui::{Menu, Vertical, Horizontal};
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
 const VOLUME_CHANGE: u8 = 5;
+const LIGHT_LEVEL_CHANGE: f32 = 0.2;
+
+const MAIN: usize = 0;
+const SKIRMISH: usize = 1;
+const SETTINGS: usize = 2;
+const SKIRMISH_SAVES: usize = 3;
 
 macro_rules! item {
+    () => (
+        (String::new(), true)
+    );
     ($item: expr) => (
         ($item.to_string(), true)
     );
@@ -39,11 +48,6 @@ pub enum MenuCallback {
     Quit
 }
 
-const MAIN: usize = 0;
-const SKIRMISH: usize = 1;
-const SETTINGS: usize = 2;
-const SKIRMISH_SAVES: usize = 3;
-
 // The main menu struct
 pub struct MainMenu {
     pub skirmish_settings: SkirmishSettings,
@@ -53,10 +57,10 @@ pub struct MainMenu {
 
 impl MainMenu {
     // Create a new Menu
-    pub fn new(settings: &Settings) -> MainMenu {
+    pub fn new(settings: &mut Settings) -> MainMenu {
         let skirmish_settings = SkirmishSettings::default();
 
-        MainMenu {
+        let mut menu = MainMenu {
             submenu: MAIN,
             submenus: [
                 menu!(
@@ -70,23 +74,29 @@ impl MainMenu {
                     item!("New Skirmish"),
                     item!("Load Skirmish"),
                     item!("--Settings--", false),
-                    item!("Cols: {}", skirmish_settings.cols, true),
-                    item!("Rows: {}", skirmish_settings.rows, true),
-                    item!("Player units: {}", skirmish_settings.player_units, true),
-                    item!("AI units: {}", skirmish_settings.ai_units, true),
-                    item!("Player unit type: {}", skirmish_settings.player_unit_type, true),
-                    item!("AI unit type: {}", skirmish_settings.ai_unit_type, true)
+                    item!(),
+                    item!(),
+                    item!(),
+                    item!(),
+                    item!(),
+                    item!(),
+                    item!()
                 ),
                 menu!(
                     item!("Back"),
-                    item!("Volume: {}", settings.volume, true),
-                    item!("UI Scale: {}", settings.ui_scale, true),
+                    item!(),
+                    item!(),
                     item!("Reset")
                 ),
                 menu!()
             ],
             skirmish_settings
-        }
+        };
+
+        menu.refresh_skirmish();
+        menu.refresh_settings(settings);
+
+        menu
     }
 
     // Draw the menu
@@ -110,6 +120,7 @@ impl MainMenu {
         skirmish_submenu.list[8]  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
         skirmish_submenu.list[9]  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
         skirmish_submenu.list[10] = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
+        skirmish_submenu.list[11] = item!("Light level: {:.1}", self.skirmish_settings.light, true)
     }
 
     // refresh the settings submenu
@@ -191,6 +202,7 @@ impl MainMenu {
                         8  => self.skirmish_settings.ai_units -= 1,
                         9  => self.skirmish_settings.change_player_unit_type(),
                         10 => self.skirmish_settings.change_ai_unit_type(),
+                        11 => self.skirmish_settings.light -= LIGHT_LEVEL_CHANGE,
                         _ => {}
                     }
                     self.refresh_skirmish();
@@ -217,6 +229,7 @@ impl MainMenu {
                         8  => self.skirmish_settings.ai_units += 1,
                         9  => self.skirmish_settings.change_player_unit_type(),
                         10 => self.skirmish_settings.change_ai_unit_type(),
+                        11 => self.skirmish_settings.light += LIGHT_LEVEL_CHANGE,
                         _ => {}
                     }
                     self.refresh_skirmish();

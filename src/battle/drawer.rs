@@ -95,7 +95,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     // If the tile is on the screen, draw it
     if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
         // Get the colour overlay
-        let overlay = tile.player_visibility.colour();
+        let overlay = tile.player_visibility.colour(battle.map.light);
 
         // Draw the tile base if visible
         if tile.visible() {
@@ -107,7 +107,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             let visibility = tiles.left_wall_visibility(x, y);
 
             if visibility != Visibility::Invisible {
-                ctx.render_with_overlay(&wall.tag.left_image(), dest, camera.zoom, visibility.colour());
+                ctx.render_with_overlay(&wall.tag.left_image(), dest, camera.zoom, visibility.colour(battle.map.light));
             }
         }
 
@@ -116,7 +116,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             let visibility = tiles.top_wall_visibility(x, y);
 
             if visibility != Visibility::Invisible {
-                ctx.render_with_overlay(&wall.tag.top_image(), dest, camera.zoom, visibility.colour());
+                ctx.render_with_overlay(&wall.tag.top_image(), dest, camera.zoom, visibility.colour(battle.map.light));
             }
         }
 

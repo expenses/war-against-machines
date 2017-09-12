@@ -58,10 +58,10 @@ struct App {
 
 impl App {
     // Create a new state, starting on the menu
-    fn new(ctx: Context) -> App {
+    fn new(mut ctx: Context) -> App {
         App {
             mode: Mode::Menu,
-            menu: MainMenu::new(&ctx.settings),
+            menu: MainMenu::new(&mut ctx.settings),
             skirmish: None,
             mouse: (0.0, 0.0),
             ctx

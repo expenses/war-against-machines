@@ -124,7 +124,7 @@ impl Battle {
 
         // Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
         let map = map.unwrap_or_else(|| {
-            let mut map = Map::new(skirmish_settings.cols, skirmish_settings.rows);
+            let mut map = Map::new(skirmish_settings.cols, skirmish_settings.rows, skirmish_settings.light);
 
             // Add player units
             for x in 0 .. skirmish_settings.player_units {
