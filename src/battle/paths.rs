@@ -123,7 +123,7 @@ fn pathfinding() {
 
     let size = 30;
     let unit = Unit::new(UnitType::Squaddie, UnitSide::Player, 0, 0, 0);
-    let mut map = Map::new(size, size);
+    let mut map = Map::new(size, size, 0.5);
 
     // A path between (0, 0) and (29, 29) should be a straight diagonal
 

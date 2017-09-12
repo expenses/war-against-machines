@@ -204,7 +204,7 @@ impl UpdateAnimations for Animations {
 // test extrapolation
 #[test]
 fn extrapolation_tests() {
-    let map = Map::new(20, 10);
+    let map = Map::new(20, 10, 1.0);
 
     // Lateral directions
     assert_eq!(extrapolate(1.0, 1.0, 2.0, 1.0, &map), (25.0, 1.0));

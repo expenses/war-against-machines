@@ -90,7 +90,7 @@ fn load_save() {
     let mut output = PathBuf::from(&settings.savegames);
     output.push("test.sav");
 
-    let mut map = Map::new(20, 20);
+    let mut map = Map::new(20, 20, 0.5);
     map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0);
     map.tiles.update_visibility(&map.units);
 

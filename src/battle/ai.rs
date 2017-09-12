@@ -268,13 +268,12 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
 fn test_basic_ai() {
     use super::units::UnitType;
     use super::animations::Animations;
-    use super::commands::UpdateCommands;
     use ui::{TextDisplay, Vertical, Horizontal};
 
     let mut animations = Animations::new();
     let mut command_queue = CommandQueue::new();
     let mut log = TextDisplay::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, true);
-    let mut map = Map::new(5, 5);
+    let mut map = Map::new(5, 5, 0.0);
     map.units.add(UnitType::Squaddie, UnitSide::AI, 0, 0);
     map.units.add(UnitType::Squaddie, UnitSide::Player, 4, 4);
     map.tiles.update_visibility(&map.units);
@@ -282,7 +281,7 @@ fn test_basic_ai() {
 
     // On a 5x5 map, the first move that an ai unit should make is to fire onto the player unit
     assert!(make_move(&map, &mut command_queue));
-    assert_eq!(command_queue.first(), Some(&FireCommand::new(0, 4, 4)));
+    assert_eq!(command_queue.commands.first(), Some(&FireCommand::new(0, 4, 4)));
 
     // After updating the command queue, there should be a bullet in animations
 

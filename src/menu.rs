@@ -250,14 +250,3 @@ impl MainMenu {
         None
     }
 }
-
-#[test]
-fn test_menu_lengths() {
-    let main_menu = MainMenu::new(&Settings::default());
-
-    assert_eq!(main_menu.submenus.len(), 4);
-    assert_eq!(main_menu.submenus[0].len(), 3);
-    assert_eq!(main_menu.submenus[1].len(), 11);
-    assert_eq!(main_menu.submenus[2].len(), 4);
-    assert_eq!(main_menu.submenus[3].len(), 0);
-}
