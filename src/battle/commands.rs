@@ -12,12 +12,22 @@ use super::paths::PathPoint;
 use super::animations::{Walk, Bullet, Animation, Animations};
 use ui::TextDisplay;
 
-// Process a simple command and return the default values
-macro_rules! process {
-    ($command: expr, $map: expr) => ({
-        $command.process($map);
-        (false, None)
-    })
+// A response returned by a command
+struct Response {
+    keep: bool,
+    wait: bool,
+    follow_up: Option<Command>
+}
+
+// The default response
+impl Default for Response {
+    fn default() -> Response {
+        Response {
+            keep: false,
+            wait: false,
+            follow_up: None
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -44,10 +54,12 @@ impl FinishedCommand {
     }
 
     // Process the command, setting the units moves to 0 if it exists
-    fn process(&self, map: &mut Map) {
+    fn process(&self, map: &mut Map) -> Response {
         if let Some(unit) = map.units.get_mut(self.unit_id) {
             unit.moves = 0;
         }
+
+        Response::default()
     }
 }
 
@@ -69,19 +81,21 @@ impl FireCommand {
 
     // Process the fire command, checking if the firing unit has the moves to fire,
     // if it hits, and adding the bullet to Animations
-    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Option<Command> {
+    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Response {
+        let mut response = Response::default();
+
         // Fire the unit's weapon and get if the bullet will hit and the damage it will do
         let (mut will_hit, damage) = match map.units.get_mut(self.unit_id) {
             Some(unit) => if unit.fire_weapon() {
                 (unit.chance_to_hit(self.x, self.y) > rand::random::<f32>(), unit.weapon.tag.damage())
             } else {
-                return None;
+                return response;
             },   
-            _ => return None
+            _ => return response
         };
 
         // If the bullet will hit at enemy, return a followup damage command
-        let follow_up = if let Some(unit) = map.units.at(self.x, self.y) {
+        response.follow_up = if let Some(unit) = map.units.at(self.x, self.y) {
             if will_hit { Some(DamageCommand::new(unit.id, damage)) } else { None }
         } else {
             will_hit = false;
@@ -91,9 +105,10 @@ impl FireCommand {
         // Push a bullet to the animation queue
         if let Some(unit) = map.units.get(self.unit_id) {
             animations.push(Animation::Bullet(Bullet::new(unit, self.x, self.y, will_hit, map)));
+            response.wait = true;
         }
 
-        follow_up
+        response
     }
 }
 
@@ -118,7 +133,9 @@ impl WalkCommand {
     
     // Process the walk command, moving the unit one tile along the path and checking
     // if it spots an enemy unit
-    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> bool {
+    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> Response {
+        let mut response = Response::default();
+
         if let Some(point) = self.path.first() {
             let moves = match map.units.get(self.unit_id) {
                 Some(unit) => {
@@ -129,17 +146,17 @@ impl WalkCommand {
                             log.append("Enemy spotted!");
                         }
 
-                        return false;
+                        return response;
                     }
 
                     unit.moves
                 },
-                _ => return false
+                _ => return response
             };
 
             // If the move costs too much or if the tile is taken, end the walk
             if moves < point.cost || map.taken(point.x, point.y) {
-                return false;
+                return response;
             } else {
                 // Move the unit
                 if let Some(unit) = map.units.get_mut(self.unit_id) {
@@ -152,13 +169,16 @@ impl WalkCommand {
 
                 // Add a walk to the animation queue (so that there is a delay and a footstep sound)
                 animation_queue.push(Animation::Walk(Walk::new()));
+                response.wait = true;
             }
         }
 
         // Remove the point from the path
         self.path.remove(0);
         // Return whether there are still path points to process
-        !self.path.is_empty()
+        response.keep = !self.path.is_empty();
+
+        response
     }
 }
 
@@ -176,10 +196,12 @@ impl UseItemCommand {
         })
     }
     
-    fn process(&mut self, map: &mut Map) {
+    fn process(&mut self, map: &mut Map) -> Response {
         if let Some(unit) = map.units.get_mut(self.id) {
             unit.use_item(self.item);
         }
+
+        Response::default()
     }
 }
 
@@ -197,56 +219,72 @@ impl DamageCommand {
         })
     }
     
-    fn process(&mut self, map: &mut Map) {
+    fn process(&mut self, map: &mut Map) -> Response {
+        let response = Response::default();
+
         // Deal damage to the unit and get whether it is lethal
         let lethal = match map.units.get_mut(self.id) {
             Some(target) => {
                 target.health -= self.damage;
                 target.health <= 0
             },
-            _ => return
+            _ => return response
         };
 
         // If the damage is lethal, kill the unit
         if lethal {
             map.units.kill(&mut map.tiles, self.id);
         }
+
+        response
     }
 }
 
-// The queue of commands
-pub type CommandQueue = Vec<Command>;
-
-pub trait UpdateCommands {
-    // Update the first command
-    fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay);
+pub struct CommandQueue {
+    commands: Vec<Command>,
+    wait_for_animations: bool
 }
 
-impl UpdateCommands for CommandQueue {
-    // Update the first item of the command queue
-    fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
-        // The command queue will only update if there are no animations
-        if !animations.is_empty() {
-            return;
+impl CommandQueue {
+    pub fn new() -> CommandQueue {
+        CommandQueue {
+            commands: Vec::new(),
+            wait_for_animations: false
         }
+    }
 
-        // Get whether to keep the command and an optional followup
-        let (keep, followup) = self.first_mut().map(|command| match *command {
-            Command::Fire(ref mut command) => (false, command.process(map, animations)),
-            Command::Walk(ref mut command) => (command.process(map, animations, log), None),
-            Command::Finished(ref mut command) => process!(command, map),
-            Command::UseItem(ref mut command) => process!(command, map),
-            Command::Damage(ref mut command) => process!(command, map)
-        }).unwrap_or((true, None));
+    // Push a new command onto the queue
+    pub fn push(&mut self, command: Command) {
+        self.commands.push(command);
+    }
 
-        // If there was a followup command, insert it
-        if let Some(command) = followup {
-            self.insert(1, command);
+    pub fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
+        while !self.is_empty() && (!self.wait_for_animations || animations.is_empty()) {
+            // Get the command response
+            if let Some(response) = self.commands.first_mut().map(|command| match *command {
+                Command::Fire(ref mut command) => command.process(map, animations),
+                Command::Walk(ref mut command) => command.process(map, animations, log),
+                Command::Finished(ref mut command) => command.process(map),
+                Command::UseItem(ref mut command) => command.process(map),
+                Command::Damage(ref mut command) => command.process(map)
+            }) {
+                // If there was a followup command, insert it
+                if let Some(command) = response.follow_up {
+                    self.commands.insert(1, command);
+                }
+
+                // Remove the command if it's not wanted
+                if !response.keep {
+                    self.commands.remove(0);
+                }
+
+                self.wait_for_animations = response.wait;
+            }
         }
+    }
 
-        // Remove the command if it's not wanted
-        if !keep {
-            self.remove(0);
-        }
+    // Is the queue empty
+    pub fn is_empty(&self) -> bool {
+        self.commands.is_empty()
     }
 }

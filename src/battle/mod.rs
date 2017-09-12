@@ -17,7 +17,7 @@ use std::fmt;
 use self::drawer::{draw_battle, tile_under_cursor, CAMERA_SPEED, CAMERA_ZOOM_SPEED};
 use self::paths::{pathfind, PathPoint};
 use self::animations::{Animations, UpdateAnimations};
-use self::commands::{CommandQueue, UpdateCommands, FireCommand, WalkCommand};
+use self::commands::{CommandQueue, FireCommand, WalkCommand};
 use self::units::{Unit, UnitSide};
 use self::map::Map;
 use resources::{ImageSource, Image};
@@ -448,28 +448,23 @@ impl Battle {
                             return;
                         }
 
-                        // Pathfind to get the path points and the cost
-                        let points = match pathfind(unit, x, y, &self.map) {
-                            Some((points, _)) => points,
-                            _ => {
-                                self.path = None;
-                                return;
-                            }
-                        };
-
-                        // Is the path is the same as existing one?
+                        // Is the path is the same as the existing one?
                         let same_path = match self.path {
                             Some(ref path) => path[path.len() - 1].at(x, y),
                             _ => false
                         };
 
-                        // If the paths are the same and the player unit can move to the destination, get rid of the path
+                        // If the paths are the same, issue a walk command
                         self.path = if same_path {
-                            self.command_queue.push(WalkCommand::new(unit, &self.map, points));
+                            if let Some(ref path) = self.path {
+                                self.command_queue.push(WalkCommand::new(unit, &self.map, path.clone()));
+                            }
+
                             None
+                        // Otherwise update the path
                         } else {
-                            Some(points)
-                        }
+                            pathfind(unit, x, y, &self.map).map(|(path, _)| path)
+                        };
                     }
                 }                                  
             },
