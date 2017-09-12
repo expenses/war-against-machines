@@ -89,7 +89,7 @@ impl App {
                         self.skirmish = Some(Battle::new(&self.menu.skirmish_settings, None));
                     },
                     // Load a saved skirmish
-                    MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename) {
+                    MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename, &self.ctx.settings) {
                         self.skirmish = Some(Battle::new(&self.menu.skirmish_settings, Some(map)));
                         self.mode = Mode::Skirmish;
                     },
@@ -99,9 +99,11 @@ impl App {
                 }  
             },
             // If the skirmish returns false for a key press, switch to the menu
-            Mode::Skirmish => if let Some(false) = self.skirmish.as_mut().map(|skirmish| skirmish.handle_key(key, true)) {
-                self.mode = Mode::Menu;
-                self.menu.refresh(self.skirmish.is_some());
+            Mode::Skirmish => if let Some(ref mut skirmish) = self.skirmish {
+                if !skirmish.handle_key(&self.ctx.settings, key, true) {
+                    self.mode = Mode::Menu;
+                    self.menu.refresh(true);
+                }
             }
         }
 
@@ -112,7 +114,7 @@ impl App {
     fn handle_key_release(&mut self, key: VirtualKeyCode) {
         if let Mode::Skirmish = self.mode {
             if let Some(ref mut skirmish) = self.skirmish {
-                skirmish.handle_key(key, false);
+                skirmish.handle_key(&self.ctx.settings, key, false);
             }
         }
     }

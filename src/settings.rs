@@ -6,6 +6,10 @@ use resources::{FONT_HEIGHT, CHARACTER_GAP, ImageSource};
 use utils::clamp;
 
 use toml;
+use toml::Value;
+
+use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 const FILENAME: &str = "settings.toml";
 const MIN_MAP_SIZE: usize = 10;
@@ -14,13 +18,25 @@ const DEFAULT_VOLUME: u8 = 100;
 const DEFAULT_UI_SCALE: u8 = 2;
 const MAX_UI_SCALE: u8 = 4;
 
-#[derive(Serialize, Deserialize)]
+type Table = BTreeMap<String, Value>;
+
+// Extract the table out of a toml value
+fn to_table(value: Value) -> Option<Table> {
+    if let Value::Table(table) = value {
+        Some(table)
+    } else {
+        None
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Settings {
     pub volume: u8,
     pub ui_scale: u8,
     pub window_width: u32,
     pub window_height: u32,
-    pub fullscreen: bool
+    pub fullscreen: bool,
+    pub savegames: String
 }
 
 // The default settings
@@ -31,7 +47,8 @@ impl Default for Settings {
             ui_scale: DEFAULT_UI_SCALE,
             window_width: 960,
             window_height: 540,
-            fullscreen: false
+            fullscreen: false,
+            savegames: "savegames".into()
         }
     }
 }
@@ -39,23 +56,61 @@ impl Default for Settings {
 impl Settings {
     // Load the settings or use the defaults
     pub fn load() -> Settings {
-        let mut string = String::new();
+        let mut buffer = String::new();
+        let mut settings = Settings::default();
 
-        let mut settings: Settings = File::open(FILENAME).ok()
-            .and_then(|mut file| file.read_to_string(&mut string).ok())
-            .and_then(|_| toml::from_str(&string).ok())
-            .unwrap_or_default();
+        // If the settings were able to be loaded and parsed into a toml table
+        if let Some(loaded) = File::open(FILENAME).ok()
+            .and_then(|mut file| file.read_to_string(&mut buffer).ok())
+            .and_then(|_| buffer.parse::<Value>().ok())
+            .and_then(to_table) {
+
+            let mut settings_table = settings.to_table();
+
+            // Change the default settings to the new keys
+            for (key, value) in loaded {
+                match settings_table.entry(key) {
+                    Entry::Occupied(mut entry) => {
+                        entry.insert(value);
+                    },
+                    Entry::Vacant(entry) => eprintln!("Warning: '{}' key '{}' does not exist.", FILENAME, entry.key())
+                }
+            }
+
+            // Deserialize the settings again
+            if let Ok(settings_struct) = Value::Table(settings_table).try_into() {
+                settings = settings_struct;
+            }
+        } else {
+            eprintln!("Warning: '{}' failed to load.", FILENAME);
+        }
 
         settings.clamp();
-
         settings
     }
 
     // Save the settings
     pub fn save(&self) {
-        let mut file = File::create(FILENAME).unwrap();
-        let buffer = toml::to_vec(self).unwrap();
-        file.write_all(&buffer).unwrap();
+        if let Ok(mut file) = File::create(FILENAME) {
+            let default = Settings::default().to_table();
+            let mut settings = self.to_table();
+    
+            // Remove the settings that are the default
+            for (key, value) in default {
+                if settings[&key] == value {
+                    settings.remove(&key);
+                }
+            }
+
+            // Save the rest
+            if let Ok(buffer) = toml::to_vec(&Value::from(settings)) {
+                if file.write_all(&buffer).is_err() {
+                    println!("Warnings: Failed to write to '{}'", FILENAME);
+                }
+            }
+        } else {
+            println!("Warning: Failed to open '{}'", FILENAME);
+        }
     }
 
     pub fn ui_scale(&self) -> f32 {
@@ -82,6 +137,12 @@ impl Settings {
     pub fn reset(&mut self) {
         self.volume = DEFAULT_VOLUME;
         self.ui_scale = DEFAULT_UI_SCALE;
+    }
+
+    // Convert the settings into a B-Tree map of key-value pairs
+    fn to_table(&self) -> Table {
+        // This should never fail
+        Value::try_from(&self).ok().and_then(to_table).unwrap()
     }
 }
 

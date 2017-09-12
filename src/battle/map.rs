@@ -4,6 +4,7 @@
 use super::units::{UnitSide, Units};
 use super::tiles::Tiles;
 use super::drawer::Camera;
+use settings::Settings;
 
 use std::fs::{File, create_dir_all};
 use std::path::{Path, PathBuf};
@@ -12,8 +13,6 @@ use bincode;
 
 const SIZE_LIMIT: bincode::Infinite = bincode::Infinite;
 const EXTENSION: &str = ".sav";
-const SAVES: &str = "savegames/skirmishes";
-const AUTOSAVE: &str = "autosave.sav";
 
 // The Map struct
 #[derive(Serialize, Deserialize)]
@@ -51,22 +50,18 @@ impl Map {
     }
 
     // Load a skirmish if possible
-    pub fn load(filename: &str) -> Option<Map> {
-        let path = Path::new(SAVES).join(filename);
+    pub fn load(filename: &str, settings: &Settings) -> Option<Map> {
+        let path = Path::new(&settings.savegames).join(filename);
 
         File::open(path).ok()
             .and_then(|mut file| bincode::deserialize_from(&mut file, SIZE_LIMIT).ok())
     }
 
     // Save the skirmish
-    pub fn save(&self, filename: Option<String>) -> Option<PathBuf> {
-        // Push the extension onto the filename if it is given or use the default filename
-        let filename = filename.map(|mut filename| {
-            filename.push_str(EXTENSION);
-            filename
-        }).unwrap_or_else(|| AUTOSAVE.into());
+    pub fn save(&self, mut filename: String, settings: &Settings) -> Option<PathBuf> {
+        filename.push_str(EXTENSION);
         
-        let directory = Path::new(SAVES);
+        let directory = Path::new(&settings.savegames);
 
         // Don't save invisible files and return if the directory fails to be created
         if filename.starts_with('.') || (!directory.exists() && create_dir_all(&directory).is_err()) {
@@ -88,10 +83,15 @@ fn load_save() {
     use super::units::UnitType;
 
     // Test saving and loading a map
+
+    let settings = Settings::default();
+    let mut output = PathBuf::from(&settings.savegames);
+    output.push("test.sav");
+
     let mut map = Map::new(20, 20);
     map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0);
     map.tiles.update_visibility(&map.units);
 
-    assert_eq!(map.save(Some("test".into())), Some(PathBuf::from("savegames/skirmishes/test.sav")));
-    Map::load("test.sav").unwrap();
+    assert_eq!(map.save("test".into(), &settings), Some(output));
+    Map::load("test.sav", &settings).unwrap();
 }

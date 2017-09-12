@@ -122,8 +122,8 @@ impl MainMenu {
     }
 
     // refresh the saves submenu
-    fn refresh_skirmish_saves(&mut self) {
-        let mut files: Vec<(String, bool)> = read_dir("savegames/skirmishes").unwrap()
+    fn refresh_skirmish_saves(&mut self, settings: &Settings) {
+        let mut files: Vec<(String, bool)> = read_dir(&settings.savegames).unwrap()
             .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))
             .filter(|entry| !entry.starts_with('.'))
             .map(|entry| item!(entry))
@@ -159,7 +159,7 @@ impl MainMenu {
                     2 => return Some(MenuCallback::NewSkirmish),
                     3 => {
                         self.submenu = SKIRMISH_SAVES;
-                        self.refresh_skirmish_saves();
+                        self.refresh_skirmish_saves(settings);
                     }
                     _ => {}
                 },
@@ -176,7 +176,7 @@ impl MainMenu {
                 },
                 SKIRMISH_SAVES => match self.submenus[SKIRMISH_SAVES].selection {
                     0 => self.submenu = SKIRMISH,
-                    1 => self.refresh_skirmish_saves(),
+                    1 => self.refresh_skirmish_saves(settings),
                     _ => return Some(MenuCallback::LoadSkirmish(self.submenus[SKIRMISH_SAVES].selected()))
                 },
                 _ => {}

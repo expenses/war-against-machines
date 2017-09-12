@@ -23,7 +23,7 @@ use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
 use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
-use settings::SkirmishSettings;
+use settings::{Settings, SkirmishSettings};
 
 // Whose turn is it
 #[derive(Debug, PartialEq)]
@@ -158,7 +158,7 @@ impl Battle {
     }
 
     // Handle keypresses
-    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
+    pub fn handle_key(&mut self, settings: &Settings, key: VirtualKeyCode, pressed: bool) -> bool {
         // Respond to key presses on the score screen            
         if self.ui.menu(0).active {
             if pressed {
@@ -180,7 +180,7 @@ impl Battle {
             if key == VirtualKeyCode::Return {
                 let filename = self.ui.text_input(0).text();
 
-                if let Some(save) = self.map.save(Some(filename)) {
+                if let Some(save) = self.map.save(filename, settings) {
                     self.ui.text_display(1).append(&format!("Saved to '{}'", save.display()));
                 } else {
                     self.ui.text_display(1).append("Failed to save game");
