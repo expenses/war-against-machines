@@ -139,18 +139,11 @@ fn maximize_tile_search(unit: &Unit, map: &Map) -> AIMove {
     // Create a new AIMove
     let mut ai_move = AIMove::from(unit, 0.0);
 
-    // Loop through the tiles
-    for x in 0 .. map.tiles.cols {
-        for y in 0 .. map.tiles.rows {
-            // Skip the unreachable tiles
-            if unreachable(unit, map, x, y) {
-                continue;
-            }
-
-            // If there is a path to the tile, check its movement score
-            if let Some((path, cost)) = pathfind(unit, x, y, map) {
-                ai_move.compare(unit, AIMove::new(x, y, path, cost, None, search_score(x, y, map, unit)));
-            }
+    // Loop through the reachable tiles
+    for (x, y) in map.tiles.iter().filter(|&(x, y)| reachable(unit, map, x, y)) {
+        // If there is a path to the tile, check its movement score
+        if let Some((path, cost)) = pathfind(unit, x, y, map) {
+            ai_move.compare(unit, AIMove::new(x, y, path, cost, None, search_score(x, y, map, unit)));
         }
     }
 
@@ -163,19 +156,12 @@ fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
     let mut ai_move = AIMove::fire_from_pos(unit, map);
 
     // Loop through the tiles
-    for x in 0 .. map.tiles.cols {
-        for y in 0 .. map.tiles.rows {
-            // Skip the unreachable tiles
-            if unreachable(unit, map, x, y) {
-                continue;
-            }
-
-            // If a path to the tile has been found and there is a closest target, check its damage score
-            if let Some((path, cost)) = pathfind(unit, x, y, map) {
-                if let Some(target) = closest_target(unit, map) {
-                    let new = AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target));
-                    ai_move.compare(unit, new);
-                }
+    for (x, y) in map.tiles.iter().filter(|&(x, y)| reachable(unit, map, x, y)) {
+        // If a path to the tile has been found and there is a closest target, check its damage score
+        if let Some((path, cost)) = pathfind(unit, x, y, map) {
+            if let Some(target) = closest_target(unit, map) {
+                let new = AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target));
+                ai_move.compare(unit, new);
             }
         }
     }
@@ -190,20 +176,13 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
     // Create a new AIMove of the chance to hit the target
     let mut ai_move = AIMove::from(unit, chance_to_hit(unit.x, unit.y, target.x, target.y));
 
-    // Loop through the tiles
-    for x in 0 .. map.tiles.cols {
-        for y in 0 .. map.tiles.rows {
-            // Skip the unreachable tiles
-            if unreachable(unit, map, x, y) {
-                continue;
-            }
-
-            // If a path to the tile has been found and there is a closest target, check its chance to hit
-            if let Some((path, cost)) = pathfind(unit, x, y, map) {
-                if let Some(target) = closest_target(unit, map) {
-                    let new = AIMove::new(x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y));
-                    ai_move.compare(unit, new);
-                }
+    // Loop through the reachable tiles
+    for (x, y) in map.tiles.iter().filter(|&(x, y)| reachable(unit, map, x, y)) {
+        // If a path to the tile has been found and there is a closest target, check its chance to hit
+        if let Some((path, cost)) = pathfind(unit, x, y, map) {
+            if let Some(target) = closest_target(unit, map) {
+                let new = AIMove::new(x, y, path, cost, None, chance_to_hit(x, y, target.x, target.y));
+                ai_move.compare(unit, new);
             }
         }
     }
@@ -212,10 +191,10 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
 }
 
 // If the tile is invisible or cannot be reached by the unit walking in a lateral direction
-fn unreachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
-    map.tiles.at(x, y).ai_visibility == Visibility::Invisible ||
-    (unit.x as i32 - x as i32).abs() as u16 * WALK_LATERAL_COST > unit.moves ||
-    (unit.y as i32 - y as i32).abs() as u16 * WALK_LATERAL_COST > unit.moves
+fn reachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
+    map.tiles.at(x, y).ai_visibility != Visibility::Invisible &&
+    (unit.x as i32 - x as i32).abs() as u16 * WALK_LATERAL_COST <= unit.moves &&
+    (unit.y as i32 - y as i32).abs() as u16 * WALK_LATERAL_COST <= unit.moves
 }
 
 // Find the closest target unit to a unit on the map, if any
@@ -247,17 +226,15 @@ fn damage_score(x: usize, y: usize, walk_cost: u16, unit: &Unit, target: &Unit) 
 fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     let mut score = 0.0;
 
-    // Loop though the tiles
-    for tile_x in 0 .. map.tiles.cols {
-        for tile_y in 0 .. map.tiles.rows {
-            // If the tile would be visible, add the score
-            if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight()).is_some() {
-                score += match map.tiles.at(tile_x, tile_y).ai_visibility {
-                    Visibility::Invisible => 1.0,
-                    Visibility::Foggy => 0.1,
-                    Visibility::Visible(_) => 0.0
-                };
-            }
+    // Loop though the reachable tiles
+    for (tile_x, tile_y) in map.tiles.iter() {
+        // If the tile would be visible, add the score
+        if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight()).is_some() {    
+            score += match map.tiles.at(tile_x, tile_y).ai_visibility {
+                Visibility::Invisible => 1.0,
+                Visibility::Foggy => 0.1,
+                Visibility::Visible(_) => 0.0
+            };
         }
     }
     

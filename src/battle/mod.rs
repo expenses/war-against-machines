@@ -9,6 +9,7 @@ mod animations;
 mod ai;
 mod commands;
 mod walls;
+mod iter_2d;
 
 use glutin::{VirtualKeyCode, MouseButton};
 

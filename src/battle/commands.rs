@@ -241,7 +241,7 @@ impl DamageCommand {
 }
 
 pub struct CommandQueue {
-    commands: Vec<Command>,
+    pub commands: Vec<Command>,
     wait_for_animations: bool
 }
 

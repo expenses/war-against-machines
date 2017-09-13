@@ -70,17 +70,10 @@ fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32;
 
     // Check if the tile is onscreen
     if x > -max_x - x_size && y > -max_y - y_size * 2.0 &&
-        x < max_x  + x_size && y < max_y  + y_size * 2.0 {    
+       x < max_x  + x_size && y < max_y + y_size  * 2.0 {    
         Some([x, y])
     } else {
         None
-    }
-}
-
-// If a tile is visible, draw an image
-fn draw_if_visible(image: &Image, x: usize, y: usize, ctx: &mut Context, camera: &Camera) {
-    if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
-        ctx.render(image, dest, camera.zoom);
     }
 }
 
@@ -183,31 +176,38 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     }
 }
 
-// Draw the whole battle
-pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
+pub fn draw_map(ctx: &mut Context, battle: &Battle) {
     let map = &battle.map;
-    let camera = &battle.map.camera;
-    
+    let camera = &map.camera;
+    let rows = map.tiles.rows;
+    let cols = map.tiles.cols;
+
     // Draw all the tiles
-    for x in 0 .. map.tiles.cols {
-        for y in 0 .. map.tiles.rows {
-            draw_tile(x, y, ctx, battle);
-        }
+    for (x, y) in map.tiles.iter() {
+        draw_tile(x, y, ctx, battle);
     }
 
     // Draw the edge edges if visible
 
-    for x in 0 .. map.tiles.cols {
-        if map.tiles.at(x, map.tiles.rows - 1).visible() {
-            draw_if_visible(&Image::LeftEdge, x + 1, map.tiles.rows, ctx, camera);
+    for x in (0 .. cols).filter(|x| map.tiles.at(*x, rows - 1).visible()) {
+        if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, rows as f32) {
+            ctx.render(&Image::LeftEdge, dest, camera.zoom);
         }
     }
 
-    for y in 0 .. map.tiles.rows {
-        if map.tiles.at(map.tiles.cols - 1, y).visible() {
-            draw_if_visible(&Image::RightEdge, map.tiles.cols, y + 1, ctx, camera);
+    for y in (0 .. rows).filter(|y| map.tiles.at(cols - 1, *y).visible()) {
+        if let Some(dest) = draw_location(ctx, camera, cols as f32, (y + 1) as f32) {
+            ctx.render(&Image::RightEdge, dest, camera.zoom);
         }
     }
+}
+
+// Draw the whole battle
+pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
+    let map = &battle.map;
+    let camera = &map.camera;
+    
+    draw_map(ctx, battle);
 
     // Draw the path if there is one
     if let Some(ref points) = battle.path {

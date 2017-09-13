@@ -6,14 +6,15 @@ use line_drawing::Bresenham;
 
 use super::units::{UnitSide, Units, WALK_LATERAL_COST, WALK_DIAGONAL_COST, UNIT_SIGHT};
 use super::walls::{Walls, WallType, WallSide};
+use super::iter_2d::Iter2D;
 use items::Item;
 use utils::{distance_under, min, lerp};
 use resources::Image;
 
+use std::mem::swap;
+
 const DAY_DARKNESS_RATE: f32 = 0.025;
 const NIGHT_DARKNESS_RATE: f32 = 0.05;
-
-use std::mem::swap;
 
 const MIN_PIT_SIZE: usize = 2;
 const MAX_PIT_SIZE: usize = 5;
@@ -201,25 +202,23 @@ impl Tiles {
         let mut rng = rand::thread_rng();
         let objects = &[Image::ObjectRebar, Image::ObjectRubble];
 
-        for x in 0 .. self.cols {
-            for y in 0 .. self.rows {
-                let tile = self.at_mut(x, y);
+        for (x, y) in self.iter() {
+            let tile = self.at_mut(x, y);
 
-                let unit = units.at(x, y).is_some();
+            let unit = units.at(x, y).is_some();
 
-                // Add in decorations
-                if rng.gen::<f32>() < 0.05 {
-                    tile.decoration = Some(if rng.gen::<bool>() {
-                        if unit { Image::SkeletonCracked } else { Image::Skeleton }
-                    } else {
-                        Image::Rubble
-                    });
-                }
+            // Add in decorations
+            if rng.gen::<f32>() < 0.05 {
+                tile.decoration = Some(if rng.gen::<bool>() {
+                    if unit { Image::SkeletonCracked } else { Image::Skeleton }
+                } else {
+                    Image::Rubble
+                });
+            }
 
-                // Add in objects
-                if !unit && rng.gen::<f32>() < 0.05 {
-                    tile.obstacle = Obstacle::Object(*rng.choose(objects).unwrap());
-                }
+            // Add in objects
+            if !unit && rng.gen::<f32>() < 0.05 {
+                tile.obstacle = Obstacle::Object(*rng.choose(objects).unwrap());
             }
         }
 
@@ -230,16 +229,14 @@ impl Tiles {
         );
 
         // Add in the walls
-        for x in 0 .. self.cols {
-            for y in 0 .. self.rows {
-                if rng.gen::<f32>() < 0.1 {
-                    if rng.gen::<bool>() {
-                        self.add_left_wall(x, y, WallType::Ruin1);
-                        self.add_top_wall(x, y + 1, WallType::Ruin1);
-                    } else {
-                        self.add_left_wall(x + 1, y, WallType::Ruin2);
-                        self.add_top_wall(x, y + 1, WallType::Ruin2);
-                    }
+        for (x, y) in self.iter() {
+            if rng.gen::<f32>() < 0.1 {
+                if rng.gen::<bool>() {
+                    self.add_left_wall(x, y, WallType::Ruin1);
+                    self.add_top_wall(x, y + 1, WallType::Ruin1);
+                } else {
+                    self.add_left_wall(x + 1, y, WallType::Ruin2);
+                    self.add_top_wall(x, y + 1, WallType::Ruin2);
                 }
             }
         }
@@ -314,25 +311,23 @@ impl Tiles {
 
     // Update the visibility of the map
     pub fn update_visibility(&mut self, units: &Units) {
-        for x in 0 .. self.cols {
-            for y in 0 .. self.rows {
-                let player_visible = self.tile_visible(units, UnitSide::Player, x, y);
-                let ai_visible = self.tile_visible(units, UnitSide::AI, x, y);
-                let tile = self.at_mut(x, y);
-                
-                // If the tile is visible set the visibility to visible, or if it was visible make it foggy
-                
-                if let Some(distance) = player_visible {
-                    tile.player_visibility = Visibility::Visible(distance);
-                } else if tile.player_visibility.is_visible() {
-                    tile.player_visibility = Visibility::Foggy;
-                }
-                
-                if let Some(distance) = ai_visible {
-                    tile.ai_visibility = Visibility::Visible(distance);
-                } else if tile.ai_visibility.is_visible() {
-                    tile.ai_visibility = Visibility::Foggy;
-                }
+        for (x, y) in self.iter() {
+            let player_visible = self.tile_visible(units, UnitSide::Player, x, y);
+            let ai_visible = self.tile_visible(units, UnitSide::AI, x, y);
+            let tile = self.at_mut(x, y);
+            
+            // If the tile is visible set the visibility to visible, or if it was visible make it foggy
+            
+            if let Some(distance) = player_visible {
+                tile.player_visibility = Visibility::Visible(distance);
+            } else if tile.player_visibility.is_visible() {
+                tile.player_visibility = Visibility::Foggy;
+            }
+            
+            if let Some(distance) = ai_visible {
+                tile.ai_visibility = Visibility::Visible(distance);
+            } else if tile.ai_visibility.is_visible() {
+                tile.ai_visibility = Visibility::Foggy;
             }
         }
     }
@@ -510,6 +505,11 @@ impl Tiles {
             visibility
         }
     }
+
+    // Iterate through the rows and columns
+    pub fn iter(&self) -> Iter2D {
+        Iter2D::new(self.cols, self.rows)
+    }
 }
 
 #[test]
@@ -540,15 +540,13 @@ fn unit_visibility() {
 
     tiles.update_visibility(&units);
 
-    for x in 0 .. tiles.cols {
-        for y in 0 .. tiles.rows {
-            let visibility = tiles.at(x, y).player_visibility;
+    for (x, y) in tiles.iter() {
+        let visibility = tiles.at(x, y).player_visibility;
 
-            if x == 29 && y == 0 {
-                assert_eq!(visibility, Visibility::Visible(0));
-            } else {
-                assert!(!visibility.is_visible());
-            }
+        if x == 29 && y == 0 {
+            assert_eq!(visibility, Visibility::Visible(0));
+        } else {
+            assert!(!visibility.is_visible());
         }
     }
 }
