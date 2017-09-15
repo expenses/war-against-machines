@@ -1,5 +1,7 @@
-# Turn off commit statuses
 coverage:
   status:
-    project: off
+    project:
+      default:
+        target: 0
+        threshold: 100
     patch: off
