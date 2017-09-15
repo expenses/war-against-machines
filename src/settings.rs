@@ -81,8 +81,6 @@ impl Settings {
             if let Ok(settings_struct) = Value::Table(settings_table).try_into() {
                 settings = settings_struct;
             }
-        } else {
-            eprintln!("Warning: '{}' failed to load.", FILENAME);
         }
 
         settings.clamp();
@@ -105,11 +103,11 @@ impl Settings {
             // Save the rest
             if let Ok(buffer) = toml::to_vec(&Value::from(settings)) {
                 if file.write_all(&buffer).is_err() {
-                    println!("Warnings: Failed to write to '{}'", FILENAME);
+                    eprintln!("Warnings: Failed to write to '{}'", FILENAME);
                 }
             }
         } else {
-            println!("Warning: Failed to open '{}'", FILENAME);
+            eprintln!("Warning: Failed to open '{}'", FILENAME);
         }
     }
 
