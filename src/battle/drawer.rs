@@ -2,9 +2,8 @@
 
 use super::Battle;
 use super::tiles::Obstacle;
-use super::animations::Animation;
 use resources::Image;
-use utils::{clamp_float, convert_rotation};
+use utils::convert_rotation;
 use context::Context;
 use colours;
 
@@ -284,24 +283,23 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
         }
     }
 
-    // Draw all the bullets in the animation queue
-    for bullet in battle.animations.iter().filter_map(|animation| match *animation {
-        Animation::Bullet(ref bullet) if bullet.status.in_progress() => Some(bullet),
-        _ => None
-    }) {
-        // Calculate if the nearest tile to the bullet is visible
-        let visible = map.tiles.at(
-            clamp_float(bullet.x, 0, map.tiles.cols - 1),
-            clamp_float(bullet.y, 0, map.tiles.rows - 1)
-        ).player_visibility.is_visible();
+    // Draw all the visible bullets in the animation queue
+    for bullet in battle.animations.iter().filter_map(|animation| animation.as_bullet()).filter(|bullet| bullet.visible(map)) {  
+        // If the bullet is on screen, draw it with the right rotation      
+        if let Some(dest) = draw_location(ctx, camera, bullet.x, bullet.y) {
+            ctx.render_with_rotation(
+                &bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction)
+            );
+        }
+    }
 
-        // If the bullet is visable and on screen, draw it with the right rotation
-        if visible {
-            if let Some(dest) = draw_location(ctx, camera, bullet.x, bullet.y) {
-                ctx.render_with_rotation(
-                    &bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction)
-                );
-            }
+    for thrown_item in battle.animations.iter().filter_map(|animation| animation.as_throw_item()).filter(|thrown_item| thrown_item.visible(map)) {
+        if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
+            ctx.render(
+                &thrown_item.image,
+                [dest[0], dest[1] + thrown_item.height * camera.zoom * TILE_HEIGHT],
+                camera.zoom
+            );
         }
     }
 }
