@@ -1,7 +1,7 @@
 // A drawer struct for drawing the map and battle items
 
 use super::Battle;
-use super::tiles::{Visibility, Obstacle};
+use super::tiles::Obstacle;
 use super::animations::Animation;
 use resources::Image;
 use utils::{clamp_float, convert_rotation};
@@ -99,7 +99,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         if let Some(ref wall) = tile.walls.left {
             let visibility = tiles.left_wall_visibility(x, y);
 
-            if visibility != Visibility::Invisible {
+            if !visibility.is_invisible() {
                 ctx.render_with_overlay(&wall.tag.left_image(), dest, camera.zoom, visibility.colour(battle.map.light));
             }
         }
@@ -108,7 +108,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         if let Some(ref wall) = tile.walls.top {
             let visibility = tiles.top_wall_visibility(x, y);
 
-            if visibility != Visibility::Invisible {
+            if !visibility.is_invisible() {
                 ctx.render_with_overlay(&wall.tag.top_image(), dest, camera.zoom, visibility.colour(battle.map.light));
             }
         }

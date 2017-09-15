@@ -3,6 +3,8 @@ extern crate pathfinding;
 extern crate ord_subset;
 extern crate odds;
 extern crate line_drawing;
+#[macro_use]
+extern crate derive_is_enum_variant;
 extern crate toml;
 #[macro_use]
 extern crate serde_derive;

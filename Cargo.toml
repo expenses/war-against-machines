@@ -16,6 +16,8 @@ ord_subset = "*"
 odds = "*"
 ## Line drawing for line-of-sight
 line_drawing = "*"
+## Deriving is_enum
+derive_is_enum_variant = "*"
 
 # Serialization/deserialization
 serde = "*"

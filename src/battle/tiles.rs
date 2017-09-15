@@ -42,7 +42,7 @@ fn from_point(point: Point) -> (usize, usize) {
 }
 
 // The visibility of the tile
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, is_enum_variant)]
 pub enum Visibility {
     Visible(u8),
     Foggy,
@@ -59,22 +59,13 @@ impl Visibility {
         let alpha = if let Visibility::Visible(distance) = *self {
             f32::from(distance) * rate
         // Or use the maximum darkness + 0.1
-        } else if let Visibility::Foggy = *self {
+        } else if self.is_foggy() {
             rate * (UNIT_SIGHT * f32::from(WALK_LATERAL_COST)) + 0.1
         } else {
             0.0
         };
 
         [0.0, 0.0, 0.0, alpha]
-    }
-
-    // Is the visibility visible
-    pub fn is_visible(&self) -> bool {
-        if let Visibility::Visible(_) = *self {
-            true
-        } else {
-            false
-        }
     }
 
     // Return the distance of the tile or the maximum value 
@@ -92,38 +83,18 @@ fn combine_visibilities(a: Visibility, b: Visibility) -> Visibility {
     if a.is_visible() || b.is_visible() {
         // Use the mimimum of the two distances
         Visibility::Visible(min(a.distance(), b.distance()))
-    } else if a == Visibility::Foggy || b == Visibility::Foggy {
+    } else if a.is_foggy() || b.is_foggy() {
         Visibility::Foggy
     } else {
         Visibility::Invisible
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, is_enum_variant)]
 pub enum Obstacle {
     Object(Image),
     Pit(Image),
     Empty
-}
-
-impl Obstacle {
-    // Is the obstacle spot empty
-    pub fn is_empty(&self) -> bool {
-        if let Obstacle::Empty = *self {
-            true
-        } else {
-            false
-        }
-    }
-
-    // Is the obstacle a pit
-    pub fn is_pit(&self) -> bool {
-        if let Obstacle::Pit(_) = *self {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 // A tile in the map
@@ -160,7 +131,7 @@ impl Tile {
 
     // return if the tile is visible to the player
     pub fn visible(&self) -> bool {
-        self.player_visibility != Visibility::Invisible
+        !self.player_visibility.is_invisible()
     }
 
     // Actions that occur when the tile is walked on

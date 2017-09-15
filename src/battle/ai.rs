@@ -192,7 +192,7 @@ fn maximize_damage_next_turn(unit: &Unit, map: &Map) -> AIMove {
 
 // If the tile is invisible or cannot be reached by the unit walking in a lateral direction
 fn reachable(unit: &Unit, map: &Map, x: usize, y: usize) -> bool {
-    map.tiles.at(x, y).ai_visibility != Visibility::Invisible &&
+    !map.tiles.at(x, y).ai_visibility.is_invisible() &&
     (unit.x as i32 - x as i32).abs() as u16 * WALK_LATERAL_COST <= unit.moves &&
     (unit.y as i32 - y as i32).abs() as u16 * WALK_LATERAL_COST <= unit.moves
 }
