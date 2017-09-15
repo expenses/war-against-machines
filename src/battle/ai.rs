@@ -43,7 +43,7 @@ impl AIMove {
     fn fire_from_pos(unit: &Unit, map: &Map) -> AIMove {
         // Check if there is a closest unit and get it's ID and damage score
         let (target_id, score) = match closest_target(unit, map) {
-            Some(target) => (Some(target.id), damage_score(unit.x, unit.y, 0, unit, target)),
+            Some(target) => (Some(target.id), damage_score(unit.x, unit.y, 0, unit, target, map)),
             None => (None, 0.0)
         };
 
@@ -160,7 +160,7 @@ fn maximize_damage(unit: &Unit, map: &Map) -> AIMove {
         // If a path to the tile has been found and there is a closest target, check its damage score
         if let Some((path, cost)) = pathfind(unit, x, y, map) {
             if let Some(target) = closest_target(unit, map) {
-                let new = AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target));
+                let new = AIMove::new(x, y, path, cost, Some(target.id), damage_score(x, y, cost, unit, target, map));
                 ai_move.compare(unit, new);
             }
         }
@@ -208,9 +208,9 @@ fn closest_target<'a>(unit: &Unit, map: &'a Map) -> Option<&'a Unit> {
 }
 
 // Calculate the damage score for a tile
-fn damage_score(x: usize, y: usize, walk_cost: u16, unit: &Unit, target: &Unit) -> f32 {
-    // Return if the cost is too high
-    if walk_cost > unit.moves {
+fn damage_score(x: usize, y: usize, walk_cost: u16, unit: &Unit, target: &Unit, map: &Map) -> f32 {
+    // Return if the cost is too high or if line of fire is blocked
+    if walk_cost > unit.moves || map.tiles.line_of_fire(x, y, target.x, target.y).is_some() {
         return 0.0;
     }
 

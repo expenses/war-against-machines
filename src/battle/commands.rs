@@ -10,6 +10,7 @@ use super::map::Map;
 use super::units::{Unit, UnitSide};
 use super::paths::PathPoint;
 use super::animations::{Walk, Bullet, Animation, Animations};
+use super::walls::WallSide;
 use ui::TextDisplay;
 
 // A response returned by a command
@@ -36,7 +37,8 @@ pub enum Command {
     Fire(FireCommand),
     Walk(WalkCommand),
     UseItem(UseItemCommand),
-    Damage(DamageCommand)
+    Damage(DamageCommand),
+    DamageWall(DamageWallCommand)
 }
 
 // Finish a units moves for a turn by setting them to 0
@@ -85,20 +87,28 @@ impl FireCommand {
         let mut response = Response::default();
 
         // Fire the unit's weapon and get if the bullet will hit and the damage it will do
-        let (mut will_hit, damage) = match map.units.get_mut(self.unit_id) {
+        let (will_hit, damage, unit_x, unit_y) = match map.units.get_mut(self.unit_id) {
             Some(unit) => if unit.fire_weapon() {
-                (unit.chance_to_hit(self.x, self.y) > rand::random::<f32>(), unit.weapon.tag.damage())
+                (unit.chance_to_hit(self.x, self.y) > rand::random::<f32>(), unit.weapon.tag.damage(), unit.x, unit.y)
             } else {
                 return response;
             },   
             _ => return response
         };
 
-        // If the bullet will hit at enemy, return a followup damage command
-        response.follow_up = if let Some(unit) = map.units.at(self.x, self.y) {
-            if will_hit { Some(DamageCommand::new(unit.id, damage)) } else { None }
+        response.follow_up = if will_hit {
+            // If the bullet will hit a wall, return a damage wall command
+            if let Some(((x, y), side)) = map.tiles.line_of_fire(unit_x, unit_y, self.x, self.y) {
+                self.x = x as usize;
+                self.y = y as usize;
+                Some(DamageWallCommand::new(side, self.x, self.y, damage))
+            // If the bullet will hit at enemy, return a followup damage command
+            } else if let Some(unit) = map.units.at(self.x, self.y) {
+                Some(DamageCommand::new(unit.id, damage))
+            } else {
+                None
+            }
         } else {
-            will_hit = false;
             None
         };
 
@@ -196,7 +206,7 @@ impl UseItemCommand {
         })
     }
     
-    fn process(&mut self, map: &mut Map) -> Response {
+    fn process(&self, map: &mut Map) -> Response {
         if let Some(unit) = map.units.get_mut(self.id) {
             unit.use_item(self.item);
         }
@@ -219,7 +229,7 @@ impl DamageCommand {
         })
     }
     
-    fn process(&mut self, map: &mut Map) -> Response {
+    fn process(&self, map: &mut Map) -> Response {
         let response = Response::default();
 
         // Deal damage to the unit and get whether it is lethal
@@ -237,6 +247,51 @@ impl DamageCommand {
         }
 
         response
+    }
+}
+
+// Damage a wall
+#[derive(Debug, PartialEq)]
+pub struct DamageWallCommand {
+    side: WallSide,
+    x: usize,
+    y: usize,
+    damage: i16
+}
+
+impl DamageWallCommand {
+    fn new(side: WallSide, x: usize, y: usize, damage: i16) -> Command {
+        Command::DamageWall(DamageWallCommand {
+            side, x, y, damage
+        })
+    }
+
+    fn process(&self, map: &mut Map) -> Response {
+        if {
+            let walls = &mut map.tiles.at_mut(self.x, self.y).walls;
+
+            let destroyed = match self.side {
+                WallSide::Left => walls.left.as_mut(),
+                WallSide::Top => walls.top.as_mut()
+            }.map(|wall| {
+                wall.health -= self.damage;
+                wall.health <= 0
+            })
+            .unwrap_or(false);
+
+            if destroyed {
+                match self.side {
+                    WallSide::Left => walls.left = None,
+                    WallSide::Top => walls.top = None
+                }
+            }
+
+            destroyed
+        } {
+            map.tiles.update_visibility(&map.units);
+        }
+
+        Response::default()
     }
 }
 
@@ -266,7 +321,8 @@ impl CommandQueue {
                 Command::Walk(ref mut command) => command.process(map, animations, log),
                 Command::Finished(ref mut command) => command.process(map),
                 Command::UseItem(ref mut command) => command.process(map),
-                Command::Damage(ref mut command) => command.process(map)
+                Command::Damage(ref mut command) => command.process(map),
+                Command::DamageWall(ref mut command) => command.process(map)
             }) {
                 // If there was a followup command, insert it
                 if let Some(command) = response.follow_up {

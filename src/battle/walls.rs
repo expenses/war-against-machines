@@ -41,7 +41,7 @@ impl WallType {
 #[derive(Serialize, Deserialize)]
 pub struct Wall {
     pub tag: WallType,
-    health: i16
+    pub health: i16
 }
 
 impl Wall {

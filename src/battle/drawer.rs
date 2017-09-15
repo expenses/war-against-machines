@@ -113,37 +113,39 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             }
         }
 
-        // If the tile is visible, draw the rest
+        // If the tile is visible and has a pit on it, draw it
         if tile.visible() {
-            // If the tile has a pit on it, draw it
             if let Obstacle::Pit(ref image) = tile.obstacle {
                 ctx.render_with_overlay(image, dest, camera.zoom, overlay);
             }
+        }
 
-            // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
-            if !battle.cursor_active() || battle.selected.is_none() {
-                if let Some((cursor_x, cursor_y)) = battle.cursor {
-                    if cursor_x == x && cursor_y == y {
-                        // Determine the cursor type
-                        // Grey if the tile is foggy
-                        let colour = if !tile.player_visibility.is_visible() {
-                            colours::GREY
-                        // Red if the tile has an obstacle
-                        } else if !tile.obstacle.is_empty() {
-                            colours::RED
-                        // Orange if it has a unit
-                        } else if battle.map.units.at(x, y).is_some() {
-                            colours::ORANGE
-                        // Yellow by default
-                        } else {
-                            colours::YELLOW
-                        };
+        // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
+        if !battle.cursor_active() || battle.selected.is_none() {
+            if let Some((cursor_x, cursor_y)) = battle.cursor {
+                if cursor_x == x && cursor_y == y {
+                    // Determine the cursor type
+                    // Grey if the tile is not visible
+                    let colour = if !tile.player_visibility.is_visible() {
+                        colours::GREY
+                    // Red if the tile has an obstacle
+                    } else if !tile.obstacle.is_empty() {
+                        colours::RED
+                    // Orange if it has a unit
+                    } else if battle.map.units.at(x, y).is_some() {
+                        colours::ORANGE
+                    // Yellow by default
+                    } else {
+                        colours::YELLOW
+                    };
 
-                        ctx.render_with_overlay(&Image::Cursor, dest, camera.zoom, colour);
-                    }
+                    ctx.render_with_overlay(&Image::Cursor, dest, camera.zoom, colour);
                 }
             }
+        }
 
+        // Draw the rest
+        if tile.visible() {
             // Draw items that should only be shown on visible tiles
             if tile.player_visibility.is_visible() {
                 // Draw the tile decoration
@@ -151,6 +153,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                     ctx.render_with_overlay(decoration, dest, camera.zoom, overlay);
                 }
 
+                // Draw the tile items
                 for item in &tile.items {
                     ctx.render_with_overlay(&item.image(), dest, camera.zoom, overlay);
                 }
@@ -218,18 +221,20 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
             for point in points {
                 total_cost += point.cost;
 
-                if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
-                    // Render the path tile
+                if map.tiles.at(point.x, point.y).visible() {
+                    if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
+                        // Render the path tile
 
-                    let colour = if total_cost > unit.moves {
-                        colours::RED
-                    } else if total_cost + unit.weapon.tag.cost() > unit.moves {
-                        colours::ORANGE
-                    } else {
-                        colours::WHITE
-                    };
+                        let colour = if total_cost > unit.moves {
+                            colours::RED
+                        } else if total_cost + unit.weapon.tag.cost() > unit.moves {
+                            colours::ORANGE
+                        } else {
+                            colours::WHITE
+                        };
 
-                    ctx.render_with_overlay(&Image::Path, dest, camera.zoom, colour);
+                        ctx.render_with_overlay(&Image::Path, dest, camera.zoom, colour);
+                    }
                 }
             }
 
@@ -240,9 +245,11 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
             for point in points {
                 total_cost += point.cost;
 
-                if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
-                    // Render the path cost
-                    ctx.render_text(&total_cost.to_string(), dest[0], dest[1], colours::WHITE);
+                if map.tiles.at(point.x, point.y).visible() {
+                    if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
+                        // Render the path cost
+                        ctx.render_text(&total_cost.to_string(), dest[0], dest[1], colours::WHITE);
+                    }
                 }
             }
         }
@@ -256,7 +263,9 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
                     // Draw the crosshair
                     ctx.render(&Image::CursorCrosshair, dest, camera.zoom);
 
-                    let colour = if !firing.weapon.can_fire() {
+                    let colour = if !map.tiles.at(x, y).visible() {
+                        colours::GREY
+                    } else if !firing.weapon.can_fire() {
                         colours::RED
                     } else if map.tiles.line_of_fire(firing.x, firing.y, x, y).is_some() {
                         colours::ORANGE
