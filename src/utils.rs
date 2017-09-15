@@ -74,13 +74,10 @@ pub fn convert_rotation(mut rotation: f32) -> f32 {
     rotation += 45.0_f32.to_radians();
 
     // Convert to cartesian form
-    let (x, mut y) = (rotation.cos(), rotation.sin());
+    let (x, y) = (rotation.cos(), rotation.sin());
 
-    // Scale the y values by 0.5
-    y *= 0.5;
-
-    // Convert back into polar form but flipped
-    -y.atan2(x)
+    // Scale the y values by 0.5 and convert back into polar form
+    (y * 0.5).atan2(x)
 }
 
 #[test]

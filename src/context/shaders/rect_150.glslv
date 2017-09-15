@@ -24,10 +24,10 @@ void main() {
     // Scale and translate the UV for the source, and then scale down for the tileset
     out_uv = (in_uv * prop_src.zw + prop_src.xy) / constant_tileset;
 
-    // Calculate the rotation matrix
+    // Calculate the (clockwise) rotation matrix
     mat2 rotation = mat2(
-        cos(prop_rotation), -sin(prop_rotation),
-        sin(prop_rotation), cos(prop_rotation)
+        cos(prop_rotation), sin(prop_rotation),
+        -sin(prop_rotation), cos(prop_rotation)
     );
 
     // Get the output position
