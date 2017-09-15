@@ -42,7 +42,7 @@ fn from_point(point: Point) -> (usize, usize) {
 }
 
 // The visibility of the tile
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, is_enum_variant)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, is_enum_variant, PartialEq)]
 pub enum Visibility {
     Visible(u8),
     Foggy,
