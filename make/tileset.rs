@@ -18,7 +18,7 @@ const FILES: &[&[&str]] = &[
     &["decoration/left_edge.png", "decoration/right_edge.png", "decoration/skeleton.png", "decoration/skeleton_cracked.png", "decoration/rubble.png"],
     &["title.png"],
     &["button/end_turn.png", "button/inventory.png", "button/save_game.png"],
-    &["font.png"]
+    &["glyphs.png"]
 ];
 
 fn main() {
@@ -41,7 +41,7 @@ fn main() {
         // Loop through images
         for image in row.iter() {
             // Load the image
-            let image = image::open(path.join(image)).unwrap();
+            let image = image::open(path.join(image)).unwrap_or_else(|_| panic!("Image '{}' could not be opened", image));
             // Copy the image into the base at the right position
             base.copy_from(&image, x, y);
             

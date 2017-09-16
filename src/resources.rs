@@ -231,8 +231,8 @@ impl ImageSource for char {
             '!' => char_loc!(316, 1),
             '/' => char_loc!(318, 3),
             '\'' => char_loc!(322, 1),
-            ' ' => char_loc!(324, 4),
-            _ => char_loc!(329, 4),
+            ' ' => char_loc!(329, 4),
+            _ => char_loc!(324, 4),
         }
     }
 }
