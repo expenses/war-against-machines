@@ -181,9 +181,9 @@ impl Unit {
                     moves: tag.moves(),
                     health: tag.health(),
                     inventory: if let WeaponType::Rifle = weapon_type {
-                        vec![Item::RifleClip(capacity), Item::RifleClip(capacity), Item::Bandages]
+                        vec![Item::RifleClip(capacity), Item::RifleClip(capacity), Item::Bandages, Item::Grenade(false)]
                     } else {
-                        vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity), Item::Bandages]
+                        vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity), Item::Bandages, Item::Grenade(false)]
                     }
                 }
             },
@@ -299,6 +299,10 @@ impl Unit {
                 // Use other items
                 (Item::Bandages, _) if self.can_heal_from(item) => {
                     self.health += item.heal(self.tag);
+                    true
+                },
+                (Item::Grenade(primed), _) if !primed => {
+                    new_item = Some(Item::Grenade(true));
                     true
                 }
                 _ => false

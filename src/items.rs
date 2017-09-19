@@ -17,6 +17,7 @@ pub enum Item {
     RifleClip(u8),
     MachineGunClip(u8),
     PlasmaClip(u8),
+    Grenade(bool),
     SquaddieCorpse,
     MachineCorpse,
 }
@@ -32,6 +33,7 @@ impl fmt::Display for Item {
             Item::RifleClip(ammo)      => format!("Rifle Clip ({}/{})", ammo, self.capacity()),
             Item::MachineGunClip(ammo) => format!("Machine Gun Clip ({}/{})", ammo, self.capacity()),
             Item::PlasmaClip(ammo)     => format!("Plasma Clip ({}/{})", ammo, self.capacity()),
+            Item::Grenade(primed)      => format!("Grenade ({})", if primed {"Primed"} else {"Not primed"}),
             Item::SquaddieCorpse       => "Squaddie Corpse".into(),
             Item::MachineCorpse        => "Machine Corpse".into(),
         }, self.weight())
@@ -49,7 +51,7 @@ impl Item {
             Item::PlasmaRifle(_) => 5.5,
             Item::SquaddieCorpse => 60.0,
             Item::MachineCorpse  => 150.0,
-            Item::RifleClip(_) | Item::MachineGunClip(_) | Item::PlasmaClip(_) => 0.5,
+            _ => 0.5,
         }
     }
 
@@ -58,6 +60,7 @@ impl Item {
         match *self {
             Item::Scrap => Image::Scrap,
             Item::Bandages => Image::Bandages,
+            Item::Grenade(_) => Image::Grenade,
             Item::SquaddieCorpse => Image::SquaddieCorpse,
             Item::MachineCorpse => Image::MachineCorpse,
             Item::RifleClip(_) | Item::MachineGunClip(_) | Item::PlasmaClip(_) => Image::AmmoClip,
@@ -90,6 +93,14 @@ impl Item {
             (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
             (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => ammo,
             _ => 0
+        }
+    }
+
+    // Could the item explode when thrown/dropped?
+    pub fn as_explosive(&self) -> Option<(i16, f32)> {
+        match *self {
+            Item::Grenade(primed) if primed => Some((100, 25.5)),
+            _ => None
         }
     }
 }

@@ -79,6 +79,7 @@ pub enum Image {
     Weapon,
     AmmoClip,
     Bandages,
+    Grenade,
 
     Cursor,
     CursorCrosshair,
@@ -93,6 +94,9 @@ pub enum Image {
     Skeleton,
     SkeletonCracked,
     Rubble,
+    Crater,
+    Explosion,
+    Fire,
 
     Title
 }
@@ -134,6 +138,7 @@ impl ImageSource for Image {
             Image::Weapon => tiles!(3, 4, 1, 1),
             Image::AmmoClip => tiles!(4, 4, 1, 1),
             Image::Bandages => tiles!(5, 4, 1, 1),
+            Image::Grenade => tiles!(6, 4, 1, 1),
 
             Image::Cursor => tiles!(0, 5, 1, 1),
             Image::CursorCrosshair => tiles!(1, 5, 1, 1),
@@ -144,6 +149,9 @@ impl ImageSource for Image {
             Image::Skeleton => tiles!(2, 6, 1, 1),
             Image::SkeletonCracked => tiles!(3, 6, 1, 1),
             Image::Rubble => tiles!(4, 6, 1, 1),
+            Image::Crater => tiles!(5, 6, 1, 1),
+            Image::Explosion => tiles!(6, 6, 1, 1),
+            Image::Fire => tiles!(7, 6, 1, 1),
 
             Image::Title => tiles!(0, 7, 10, 1),
             

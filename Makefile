@@ -1,3 +1,5 @@
+images = $(shell find resources/images -name '*.png')
+optipng=optipng -quiet
 
 # Build the tileset
 tileset: resources/tileset.png
@@ -15,23 +17,20 @@ shaders:
 	cargo test compile_shaders
 
 # Optimise the resource images
-optimise: resources/images
+optimise: $(images)
+	@$(optipng) $^
 
 # Compile Rust source code
 target/release/%: make/%.rs
 	rustc -L target/release/deps -O $^ -o $@
 
-optipng=optipng -quiet
 
 # Build the tileset
-resources/tileset.png: target/release/tileset resources/images
+resources/tileset.png: target/release/tileset $(images) resources/images/glyphs.png
 	# Run the tileset script
-	$^ $@
+	$< resources/images $@
 	# Optimise the tileset image
-	$(optipng) $@
-
-resources/images: resources/images/glyphs.png
-	$(optipng) `find $@ -name "*.png"`
+	$(optipng) $@	
 
 # How many pixels at the top to crop
 top=5

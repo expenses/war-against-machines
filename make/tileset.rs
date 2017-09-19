@@ -13,9 +13,10 @@ const FILES: &[&[&str]] = &[
     &["object/rebar.png", "object/rubble.png", "pit/tl.png", "pit/tr.png", "pit/bl.png", "pit/br.png"],
     &["unit/squaddie.png", "unit/machine.png", "wall/ruin1_left.png", "wall/ruin1_top.png", "wall/ruin2_left.png", "wall/ruin2_top.png"],
     &["bullet/regular.png", "bullet/plasma.png"],
-    &["item/squaddie_corpse.png", "item/machine_corpse.png", "item/scrap.png", "item/weapon.png", "item/ammo_clip.png", "item/bandages.png"],
+    &["item/squaddie_corpse.png", "item/machine_corpse.png", "item/scrap.png", "item/weapon.png", "item/ammo_clip.png", "item/bandages.png", "item/grenade.png"],
     &["cursor/default.png", "cursor/crosshair.png", "path.png"],
-    &["decoration/left_edge.png", "decoration/right_edge.png", "decoration/skeleton.png", "decoration/skeleton_cracked.png", "decoration/rubble.png"],
+    &["decoration/left_edge.png", "decoration/right_edge.png", "decoration/skeleton.png", "decoration/skeleton_cracked.png", "decoration/rubble.png",
+      "decoration/crater.png", "decoration/explosion.png", "decoration/fire.png"],
     &["title.png"],
     &["button/end_turn.png", "button/inventory.png", "button/save_game.png"],
     &["glyphs.png"]

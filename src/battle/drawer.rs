@@ -191,15 +191,24 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 
     // Draw the edge edges if visible
 
-    for x in (0 .. cols).filter(|x| map.tiles.at(*x, rows - 1).visible()) {
-        if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, rows as f32) {
-            ctx.render(&Image::LeftEdge, dest, camera.zoom);
+    for x in 0 .. cols {
+        let tile = map.tiles.at(x, rows - 1);
+
+        if tile.visible() {
+            if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, rows as f32) {
+                ctx.render_with_overlay(&Image::LeftEdge, dest, camera.zoom, tile.player_visibility.colour(battle.map.light));
+            }
         }
+        
     }
 
-    for y in (0 .. rows).filter(|y| map.tiles.at(cols - 1, *y).visible()) {
-        if let Some(dest) = draw_location(ctx, camera, cols as f32, (y + 1) as f32) {
-            ctx.render(&Image::RightEdge, dest, camera.zoom);
+    for y in 0 .. rows {
+        let tile = map.tiles.at(cols - 1, y);
+
+        if tile.visible() {
+            if let Some(dest) = draw_location(ctx, camera, cols as f32, (y + 1) as f32) {
+                ctx.render_with_overlay(&Image::RightEdge, dest, camera.zoom, tile.player_visibility.colour(battle.map.light));
+            }
         }
     }
 }
