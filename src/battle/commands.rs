@@ -9,9 +9,14 @@ use rand;
 use super::map::Map;
 use super::units::{Unit, UnitSide};
 use super::paths::PathPoint;
-use super::animations::{Walk, Bullet, ThrowItem, Animations};
+use super::animations::{Walk, Bullet, ThrowItem, Explosion, Animations};
 use super::walls::WallSide;
+use items::Item;
+use resources::Image;
 use ui::TextDisplay;
+use utils::distance_under;
+
+use std::collections::HashSet;
 
 // A response returned by a command
 struct Response {
@@ -37,9 +42,10 @@ pub enum Command {
     Fire(FireCommand),
     Walk(WalkCommand),
     UseItem(UseItemCommand),
-    Damage(DamageCommand),
+    DamageTile(DamageTileCommand),
     DamageWall(DamageWallCommand),
-    ThrowItem(ThrowItemCommand)
+    ThrowItem(ThrowItemCommand),
+    Explosion(ExplosionCommand)
 }
 
 // Finish a units moves for a turn by setting them to 0
@@ -104,8 +110,8 @@ impl FireCommand {
                 self.y = y as usize;
                 response.follow_up.push(DamageWallCommand::new(side, self.x, self.y, damage));
             // If the bullet will hit at enemy, return a followup damage command
-            } else if let Some(unit) = map.units.at(self.x, self.y) {
-                response.follow_up.push(DamageCommand::new(unit.id, damage));
+            } else {
+                response.follow_up.push(DamageTileCommand::new(self.x, self.y, damage));
             }
         }
 
@@ -214,15 +220,16 @@ impl UseItemCommand {
 
 // Damage a unit
 #[derive(Debug, PartialEq)]
-pub struct DamageCommand {
-    id: u8,
+pub struct DamageTileCommand {
+    x: usize,
+    y: usize,
     damage: i16
 }
 
-impl DamageCommand {
-    fn new(id: u8, damage: i16) -> Command {
-        Command::Damage(DamageCommand {
-            id, damage
+impl DamageTileCommand {
+    fn new(x: usize, y: usize, damage: i16) -> Command {
+        Command::DamageTile(DamageTileCommand {
+            x, y, damage
         })
     }
     
@@ -230,17 +237,18 @@ impl DamageCommand {
         let response = Response::default();
 
         // Deal damage to the unit and get whether it is lethal
-        let lethal = match map.units.get_mut(self.id) {
-            Some(target) => {
-                target.health -= self.damage;
-                target.health <= 0
-            },
-            _ => return response
-        };
+        let info = map.units.at_mut(self.x, self.y).map(|unit| {
+            unit.health -= self.damage;
+            (unit.id, unit.health <= 0)
+        });
 
-        // If the damage is lethal, kill the unit
-        if lethal {
-            map.units.kill(&mut map.tiles, self.id);
+        if let Some((id, lethal)) = info {
+            // If the damage is lethal, kill the unit
+            if lethal {
+                map.units.kill(&mut map.tiles, id);
+            }
+        } else {
+            map.tiles.at_mut(self.x, self.y).decoration = Some(Image::Crater);
         }
 
         response
@@ -300,36 +308,84 @@ pub struct ThrowItemCommand {
     index: usize,
     x: usize,
     y: usize,
-    thrown: bool
+    item: Option<Item>,
 }
 
 impl ThrowItemCommand {
     pub fn new(id: u8, index: usize, x: usize, y: usize) -> Command {
         Command::ThrowItem(ThrowItemCommand {
             id, index, x, y,
-            thrown: false
+            item: None
         })
     }
 
     fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Response {
         let mut response = Response::default();
         
-        if let Some(unit) = map.units.get_mut(self.id) {
+        if let Some(item) = self.item {
+            if let Some((damage, radius)) = item.as_explosive() {
+                response.follow_up.push(ExplosionCommand::new(self.x, self.y, damage, radius, map));
+            } else {
+                map.tiles.drop(self.x, self.y, item);
+            }
+        } else if let Some(unit) = map.units.get_mut(self.id) {
             if let Some(item) = unit.inventory.get(self.index).cloned() {
-                if self.thrown {
-                    // If the item has ben thrown, drop it onto the grond and remove it from the units inventory
-                    map.tiles.drop(self.x, self.y, item);
-                    unit.inventory.remove(self.index);
-                } else {
-                    // Otherwise push an animation
-                    animations.push(ThrowItem::new(item.image(), unit.x, unit.y, self.x, self.y));
-                    response.wait = true;
-                    response.keep = true;
+                self.item = Some(item);
+                // Otherwise push an animation
+                unit.inventory.remove(self.index);
+                animations.push(ThrowItem::new(item.image(), unit.x, unit.y, self.x, self.y));
+                response.wait = true;
+                response.keep = true;
+            }
+        }
+
+        response
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ExplosionCommand {
+    x: usize,
+    y: usize,
+    damage: i16,
+    radius: f32,
+    tiles: HashSet<(usize, usize)>,
+    exploded: bool
+}
+
+impl ExplosionCommand {
+    fn new(x: usize, y: usize, damage: i16, radius: f32, map: &mut Map) -> Command {
+        Command::Explosion(ExplosionCommand {
+            x, y, damage, radius,
+            exploded: false,
+            tiles: map.tiles.iter().filter(|&(tile_x, tile_y)| distance_under(x, y, tile_x, tile_y, radius)).collect(),
+        })
+    }
+
+    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Response {
+        let mut response = Response::default();
+
+        if !self.exploded {
+            for &(x, y) in &self.tiles {
+                animations.push(Explosion::new(x, y, self.x, self.y));
+                response.keep = true;
+                response.wait = true;
+                self.exploded = true;
+            }
+        } else {
+            for &(x, y) in &self.tiles {
+                response.follow_up.push(DamageTileCommand::new(x, y, self.damage));
+
+                if !map.tiles.horizontal_clear(x, y) && (x == 0 || self.tiles.contains(&(x - 1, y))) {
+                    response.follow_up.push(DamageWallCommand::new(WallSide::Left, x, y, self.damage));
+                }
+
+                if !map.tiles.vertical_clear(x, y) && (y == 0 || self.tiles.contains(&(x, y - 1))) {
+                    response.follow_up.push(DamageWallCommand::new(WallSide::Top, x, y, self.damage));
                 }
             }
         }
 
-        self.thrown = true;
         response
     }
 }
@@ -360,9 +416,10 @@ impl CommandQueue {
                 Command::Walk(ref mut command) => command.process(map, animations, log),
                 Command::Finished(ref mut command) => command.process(map),
                 Command::UseItem(ref mut command) => command.process(map),
-                Command::Damage(ref mut command) => command.process(map),
+                Command::DamageTile(ref mut command) => command.process(map),
                 Command::DamageWall(ref mut command) => command.process(map),
-                Command::ThrowItem(ref mut command) => command.process(map, animations)
+                Command::ThrowItem(ref mut command) => command.process(map, animations),
+                Command::Explosion(ref mut command) => command.process(map, animations)
             }) {
                 // If there are follow-up commands, insert them after the first command
                 if !response.follow_up.is_empty() {

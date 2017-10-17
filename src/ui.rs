@@ -252,6 +252,18 @@ impl Menu {
         self.list[i].1
     }
 
+    // Fix the selection in anticipation of a size decrease
+    pub fn fit_selection(&mut self) {
+        let new_len = self.len() - 1;
+
+        if self.selection >= new_len {
+            self.selection = match new_len {
+                0 => 0,
+                _ => new_len - 1
+            }
+        }
+    }
+
     // Are any of the items in the list enabled?
     pub fn any_enabled(&self) -> bool {
         self.list.iter().any(|&(_, enabled)| enabled)

@@ -121,6 +121,11 @@ impl UnitType {
     pub fn sight(&self) -> f32 {
         UNIT_SIGHT
     }
+
+    // How far the unit can throw
+    pub fn throw_distance(&self) -> f32 {
+        self.sight() * 1.5
+    }
 }
 
 impl fmt::Display for UnitType {
@@ -394,9 +399,14 @@ impl Units {
             .and_then(move |id| self.units.get_mut(id))
     }
 
-    // Return the ID and reference to a unit at (x, y)
+    // Return a reference to a unit at (x, y)
     pub fn at(&self, x: usize, y: usize) -> Option<&Unit> {
         self.iter().find(|unit| unit.x == x && unit.y == y)
+    }
+
+    // Return a mutable reference to a unit at (x, y)
+    pub fn at_mut(&mut self, x: usize, y: usize) -> Option<&mut Unit> {
+        self.iter_mut().find(|unit| unit.x == x && unit.y == y)
     }
 
     // Count the number of units on a particular side

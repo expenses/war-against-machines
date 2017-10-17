@@ -104,7 +104,7 @@ impl Renderer {
 
         // Set the window to be fullscreen if that's set in settings
         if settings.fullscreen {
-            builder = builder.with_fullscreen(glutin::get_primary_monitor());
+            builder = builder.with_fullscreen(Some(event_loop.get_primary_monitor()));
         }
 
         // Create the GL context

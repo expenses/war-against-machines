@@ -26,8 +26,12 @@ const MIN_BULLET_TIME: f32 = 0.25;
 const WALK_TIME: f32 = 1.0 / 5.0;
 // Items can be thrown 7.5 tiles a second
 const THROW_ITEM_TIME: f32 = 7.5;
-// And reach a peak height of 3 tiles
-const THROW_ITEM_HEIGHT: f32 = 3.0;
+// And reach a peak height of 1 tile
+const THROW_ITEM_HEIGHT: f32 = 1.0;
+const THROW_MIN: f32 = 5.0;
+
+const EXPLOSION_DURATION: f32 = 0.25;
+const EXPLOSION_SPEED: f32 = 10.0;
 
 // Extrapolate two points on the map to get the point at which a bullet 
 // would go off the map
@@ -62,58 +66,27 @@ fn visible(x: f32, y: f32, map: &Map) -> bool {
     ).player_visibility.is_visible()
 }
 
-pub struct AnimationStatus {
-    status: f32,
-    finished: bool
-}
-
-impl AnimationStatus {
-    fn new() -> AnimationStatus {
-        AnimationStatus {
-            status: 0.0,
-            finished: false
-        }
-    }
-
-    fn increment(&mut self, value: f32) {
-        self.status += value;
-    }
-
-    fn past(&self, value: f32) -> bool {
-        self.status >= value
-    }
-
-    fn at_start(&self) -> bool {
-        self.status == 0.0
-    }
-
-    pub fn in_progress(&self) -> bool {
-        !self.at_start() && !self.finished
-    }
-}
-
 // A pretty simple walk animation
 pub struct Walk {
-    status: AnimationStatus
+    time: f32
 }
 
 impl Walk {
     // Create a new walk animation
     pub fn new() -> Animation {
         Animation::Walk(Walk {
-            status: AnimationStatus::new()
+            time: 0.0
         })
     }
 
     // Move the animation a step, and return if its still going
     fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
-        if self.status.at_start() {
+        if self.time == 0.0 {
             ctx.play_sound(SoundEffect::Walk);
         }
         
-        self.status.increment(dt);
-
-        !self.status.past(WALK_TIME)
+        self.time += dt;
+        self.time < WALK_TIME
     }
 }
 
@@ -122,7 +95,8 @@ pub struct Bullet {
     pub x: f32,
     pub y: f32,
     pub direction: f32,
-    pub status: AnimationStatus,
+    time: f32,
+    finished: bool,
     weapon_type: WeaponType,
     target_x: f32,
     target_y: f32,
@@ -154,7 +128,8 @@ impl Bullet {
            // Get the type of the firing weapon
            weapon_type: unit.weapon.tag,
            // The bullet hasn't started moving
-           status: AnimationStatus::new()
+           time: 0.0,
+           finished: false
         })
     }
     
@@ -171,15 +146,15 @@ impl Bullet {
     // Move the bullet a step and work out if its still going or not
     fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
         // If the bullet hasn't started moving, play its sound effect
-        if self.status.at_start() {
+        if self.time == 0.0 {
             ctx.play_sound(self.weapon_type.fire_sound());
         }
 
         // Increment the time
-        self.status.increment(dt);
+        self.time += dt;
 
         // If the bullet is still moving
-        if self.status.in_progress() {
+        if !self.finished {
             // Work out if the bullet started to the left/right and above/below the target
             let left = self.x < self.target_x;
             let above = self.y < self.target_y;
@@ -189,11 +164,11 @@ impl Bullet {
             self.y += self.direction.sin() * BULLET_SPEED * dt;
             
             // Set if the bullet is past the target
-            self.status.finished = left != (self.x < self.target_x) || above != (self.y < self.target_y);
+            self.finished = left != (self.x < self.target_x) || above != (self.y < self.target_y);
         }
 
-        // If the bullet hasn't finished or isn't past the minimum time
-        !(self.status.finished && self.status.past(MIN_BULLET_TIME))
+        // If the bullet hasn't finished or is under the minimum time
+        !self.finished || self.time < MIN_BULLET_TIME
     }
 }
 
@@ -216,7 +191,7 @@ impl ThrowItem {
             start_y: start_y as f32,
             end_x: end_x as f32,
             end_y: end_y as f32,
-            increment: THROW_ITEM_TIME / distance(start_x, start_y, end_x, end_y),
+            increment: THROW_ITEM_TIME / distance(start_x, start_y, end_x, end_y).min(THROW_MIN),
             progress: 0.0,
             height: 0.0
         })
@@ -245,28 +220,55 @@ impl ThrowItem {
     }
 }
 
+pub struct Explosion {
+    pub x: usize,
+    pub y: usize,
+    time: f32
+}
+
+impl Explosion {
+    pub fn new(x: usize, y: usize, center_x: usize, center_y: usize) -> Animation {
+        Animation::Explosion(Explosion {
+            x, y,
+            time: -distance(x, y, center_x, center_y) / EXPLOSION_SPEED
+        })
+    }
+
+    fn step(&mut self, dt: f32) -> bool {
+        self.time += dt;
+        self.time < EXPLOSION_DURATION
+    }
+}
+
 // An animation enum to hold the different types of animations
 pub enum Animation {
     Walk(Walk),
     Bullet(Bullet),
-    ThrowItem(ThrowItem)
+    ThrowItem(ThrowItem),
+    Explosion(Explosion)
 }
 
 impl Animation {
     // Attempt to get the inner bullet
     pub fn as_bullet(&self) -> Option<&Bullet> {
         match *self {
-            Animation::Bullet(ref bullet) if bullet.status.in_progress() => Some(bullet),
+            Animation::Bullet(ref bullet) if !bullet.finished => Some(bullet),
             _ => None
         }
     }
 
     // Attempt to get the inner thrown item
     pub fn as_throw_item(&self) -> Option<&ThrowItem> {
-        if let Animation::ThrowItem(ref throw_item) = *self {
-            Some(throw_item)
-        } else {
-            None
+        match *self {
+            Animation::ThrowItem(ref throw_item) => Some(throw_item),
+            _ => None
+        }
+    }
+
+    pub fn as_explosion(&self) -> Option<&Explosion> {
+        match *self {
+            Animation::Explosion(ref explosion) if explosion.time > 0.0 => Some(explosion),
+            _ => None
         }
     }
 }
@@ -285,7 +287,8 @@ impl UpdateAnimations for Animations {
         self.retain_mut(|animation| match *animation {
             Animation::Walk(ref mut animation) => animation.step(ctx, dt),
             Animation::Bullet(ref mut animation) => animation.step(ctx, dt),
-            Animation::ThrowItem(ref mut animation) => animation.step(dt)
+            Animation::ThrowItem(ref mut animation) => animation.step(dt),
+            Animation::Explosion(ref mut animation) => animation.step(dt),
         });
     }
 }

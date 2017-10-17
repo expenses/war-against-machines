@@ -18,12 +18,13 @@ use std::fmt;
 use self::drawer::{draw_battle, tile_under_cursor, CAMERA_SPEED, CAMERA_ZOOM_SPEED};
 use self::paths::{pathfind, PathPoint};
 use self::animations::{Animations, UpdateAnimations};
-use self::commands::{CommandQueue, FireCommand, WalkCommand};
+use self::commands::{CommandQueue, FireCommand, WalkCommand, ThrowItemCommand};
 use self::units::{Unit, UnitSide};
 use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
 use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
+use utils::distance_under;
 use settings::{Settings, SkirmishSettings};
 
 // Whose turn is it
@@ -225,13 +226,8 @@ impl Battle {
                             unit.pick_up_item(&mut self.map.tiles, index)
                         };
 
-                        let shortened_len = self.inventory.menu(active).len() - 1;
-
-                        if transferred && index >= shortened_len {
-                            self.inventory.menu(active).selection = match shortened_len {
-                                0 => 0,
-                                _ => shortened_len - 1
-                            }
+                        if transferred {
+                            self.inventory.menu(active).fit_selection();
                         }
                     }
                 },
@@ -242,13 +238,18 @@ impl Battle {
 
                         if let Some(unit) = self.map.units.get_mut(selected) {
                             if unit.use_item(index) {
-                                let new_len = self.inventory.menu(active).len() - 1;
-
-                                if index >= new_len {
-                                    self.inventory.menu(active).selection = match new_len {
-                                        0 => 0,
-                                        _ => new_len - 1
-                                    }
+                                self.inventory.menu(active).fit_selection();
+                            }
+                        }
+                    }
+                },
+                VirtualKeyCode::T => {
+                    if let Some((id, x, y, throw, empty)) = self.selected().map(|unit| (unit.id, unit.x, unit.y, unit.tag.throw_distance(), unit.inventory.is_empty())) {
+                        if !empty && active == 0 {
+                            if let Some((cursor_x, cursor_y)) = self.cursor {
+                                if distance_under(x, y, cursor_x, cursor_y, throw) {
+                                    self.command_queue.push(ThrowItemCommand::new(id, self.inventory.menu(active).selection, cursor_x, cursor_y));
+                                    self.inventory.menu(active).fit_selection();
                                 }
                             }
                         }
