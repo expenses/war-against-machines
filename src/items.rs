@@ -99,7 +99,7 @@ impl Item {
     // Could the item explode when thrown/dropped?
     pub fn as_explosive(&self) -> Option<(i16, f32)> {
         match *self {
-            Item::Grenade(primed) if primed => Some((100, 25.5)),
+            Item::Grenade(primed) if primed => Some((100, 2.5)),
             _ => None
         }
     }

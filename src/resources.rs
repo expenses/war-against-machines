@@ -95,8 +95,10 @@ pub enum Image {
     SkeletonCracked,
     Rubble,
     Crater,
-    Explosion,
     Fire,
+    Explosion1,
+    Explosion2,
+    Explosion3,
 
     Title
 }
@@ -150,8 +152,10 @@ impl ImageSource for Image {
             Image::SkeletonCracked => tiles!(3, 6, 1, 1),
             Image::Rubble => tiles!(4, 6, 1, 1),
             Image::Crater => tiles!(5, 6, 1, 1),
-            Image::Explosion => tiles!(6, 6, 1, 1),
-            Image::Fire => tiles!(7, 6, 1, 1),
+            Image::Fire => tiles!(6, 6, 1, 1),
+            Image::Explosion1 => tiles!(7, 6, 1, 1),
+            Image::Explosion2 => tiles!(8, 6, 1, 1),
+            Image::Explosion3 => tiles!(9, 6, 1, 1),
 
             Image::Title => tiles!(0, 7, 10, 1),
             

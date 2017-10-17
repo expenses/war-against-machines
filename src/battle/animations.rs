@@ -234,6 +234,19 @@ impl Explosion {
         })
     }
 
+    // Which explosion image to use
+    pub fn image(&self) -> Image {
+        let time_percentage = self.time / EXPLOSION_DURATION;
+
+        if time_percentage < (1.0 / 3.0) {
+            Image::Explosion1
+        } else if time_percentage < (2.0 / 3.0) {
+            Image::Explosion2
+        } else {
+            Image::Explosion3
+        }
+    }
+
     fn step(&mut self, dt: f32) -> bool {
         self.time += dt;
         self.time < EXPLOSION_DURATION

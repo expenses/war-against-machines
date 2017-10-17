@@ -175,8 +175,12 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 ctx.render_with_overlay(image, dest, camera.zoom, overlay);
             }
 
-            if battle.animations.iter().filter_map(|animation| animation.as_explosion()).any(|explosion| explosion.x == x && explosion.y == y) {
-                ctx.render(&Image::Fire, dest, camera.zoom);
+            // Draw explosions on the tile
+            for explosion in battle.animations.iter()
+                .filter_map(|animation| animation.as_explosion())
+                .filter(|explosion| explosion.x == x && explosion.y == y) {
+
+                ctx.render(&explosion.image(), dest, camera.zoom);
             }
         }
     }
