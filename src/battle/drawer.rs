@@ -176,12 +176,10 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             }
 
             // Draw explosions on the tile
-            for explosion in battle.animations.iter()
+            battle.animations.iter()
                 .filter_map(|animation| animation.as_explosion())
-                .filter(|explosion| explosion.x == x && explosion.y == y) {
-
-                ctx.render(&explosion.image(), dest, camera.zoom);
-            }
+                .filter(|explosion| explosion.x == x && explosion.y == y)
+                .for_each(|explosion| ctx.render(&explosion.image(), dest, camera.zoom));
         }
     }
 }
@@ -301,16 +299,24 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     }
 
     // Draw all the visible bullets in the animation queue
-    for bullet in battle.animations.iter().filter_map(|animation| animation.as_bullet()).filter(|bullet| bullet.visible(map)) {  
+    battle.animations.iter()
+        .filter_map(|animation| animation.as_bullet())
+        .filter(|bullet| bullet.visible(map))
+        .for_each(|bullet| {
+        
         // If the bullet is on screen, draw it with the right rotation      
         if let Some(dest) = draw_location(ctx, camera, bullet.x, bullet.y) {
             ctx.render_with_rotation(
                 &bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction)
             );
         }
-    }
+    });
 
-    for thrown_item in battle.animations.iter().filter_map(|animation| animation.as_throw_item()).filter(|thrown_item| thrown_item.visible(map)) {
+    battle.animations.iter()
+        .filter_map(|animation| animation.as_throw_item())
+        .filter(|thrown_item| thrown_item.visible(map))
+        .for_each(|bullet| {
+
         if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
             ctx.render(
                 &thrown_item.image,
@@ -318,7 +324,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
                 camera.zoom
             );
         }
-    }
+    });
 }
 
 // Work out which tile is under the cursor

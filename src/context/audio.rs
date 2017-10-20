@@ -27,13 +27,20 @@ impl Player {
         // Get the source
         let source = Decoder::new(Cursor::new(self.sources[index].as_ref().clone())).unwrap();
 
-        // Create a sink and append the source to it
+        // Try to find an empty sink and append the source to that
+        for mut sink in &mut self.sinks {
+            if sink.empty() {
+                sink.append(source);
+                sink.set_volume(volume);
+                return;
+            }
+        }
+
+        // Or create a new sink
         let mut sink = Sink::new(&self.endpoint);
         sink.append(source);
         sink.set_volume(volume);
 
-        // Clean up the used sinks
-        self.sinks.retain(|sink| !sink.empty());
         // Append the sink
         self.sinks.push(sink);
     }
