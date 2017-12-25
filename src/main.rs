@@ -15,6 +15,7 @@ extern crate gfx_device_gl;
 extern crate glutin;
 extern crate gfx_window_glutin;
 extern crate image;
+extern crate cpal;
 extern crate rodio;
 
 use std::time::Instant;
@@ -193,7 +194,7 @@ fn main() {
                 WindowEvent::KeyboardInput {
                     input: KeyboardInput {state: ElementState::Released, virtual_keycode: Some(key), ..}, ..
                 } => app.handle_key_release(key),
-                WindowEvent::MouseMoved {position: (x, y), ..} => app.handle_mouse_motion(x as f32, y as f32),
+                WindowEvent::CursorMoved {position: (x, y), ..} => app.handle_mouse_motion(x as f32, y as f32),
                 WindowEvent::MouseInput {state: ElementState::Pressed, button, ..} => app.handle_mouse_button(button),
                 WindowEvent::Resized(width, height) => app.resize(width, height),
                 _ => {},

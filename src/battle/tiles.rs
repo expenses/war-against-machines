@@ -283,8 +283,8 @@ impl Tiles {
     // Update the visibility of the map
     pub fn update_visibility(&mut self, units: &Units) {
         for (x, y) in self.iter() {
-            let player_visible = self.tile_visible(units, UnitSide::Player, x, y);
-            let ai_visible = self.tile_visible(units, UnitSide::AI, x, y);
+            let player_visible = self.tile_visible(units, &UnitSide::Player, x, y);
+            let ai_visible = self.tile_visible(units, &UnitSide::AI, x, y);
             let tile = self.at_mut(x, y);
             
             // If the tile is visible set the visibility to visible, or if it was visible make it foggy
@@ -415,9 +415,9 @@ impl Tiles {
     }
 
     // Is a tile visible by any unit on a particular side
-    fn tile_visible(&self, units: &Units, side: UnitSide, x: usize, y: usize) -> Option<u8> {
+    fn tile_visible(&self, units: &Units, side: &UnitSide, x: usize, y: usize) -> Option<u8> {
         units.iter()
-            .filter(|unit| unit.side == side)
+            .filter(|unit| unit.side == *side)
             .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight()))
             // Get the minimum distance or none
             .fold(None, |sum, dist| sum.and_then(|sum| dist.map(|dist| min(sum, dist))).or(sum).or(dist))

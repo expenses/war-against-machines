@@ -42,9 +42,9 @@ impl Map {
     }
 
     // Work out how many units of a particular side are visible to the other side
-    pub fn visible(&self, side: UnitSide) -> usize {
+    pub fn visible(&self, side: &UnitSide) -> usize {
         self.units.iter()
-            .filter(|unit| unit.side == side && match side {
+            .filter(|unit| unit.side == *side && match *side {
                 UnitSide::Player => self.tiles.at(unit.x, unit.y).ai_visibility,
                 UnitSide::AI => self.tiles.at(unit.x, unit.y).player_visibility
             }.is_visible())

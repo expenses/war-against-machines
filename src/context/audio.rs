@@ -1,6 +1,7 @@
 // Audio Playback
 
-use rodio::{Decoder, Sink, Endpoint, get_default_endpoint};
+use rodio::{Decoder, Sink, Endpoint};
+use cpal::default_endpoint;
 
 use std::rc::Rc;
 use std::io::Cursor;
@@ -18,7 +19,7 @@ impl Player {
             // Use reference-counting to avoid cloning the source each time
             sources: [Rc::new(sounds[0].to_vec()), Rc::new(sounds[1].to_vec()), Rc::new(sounds[2].to_vec())],
             sinks: Vec::new(),
-            endpoint: get_default_endpoint().unwrap()
+            endpoint: default_endpoint().unwrap()
         }
     }
 

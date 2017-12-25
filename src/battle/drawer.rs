@@ -315,7 +315,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     battle.animations.iter()
         .filter_map(|animation| animation.as_throw_item())
         .filter(|thrown_item| thrown_item.visible(map))
-        .for_each(|bullet| {
+        .for_each(|thrown_item| {
 
         if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
             ctx.render(

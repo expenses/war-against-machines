@@ -131,7 +131,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 fn next_unit(map: &Map) -> Option<&Unit> {
     map.units.iter()
         // Make sure that there is a player unit alive and find ai units with avaliable moves
-        .find(|unit| map.units.count(UnitSide::Player) > 0 && unit.side == UnitSide::AI && unit.moves > 0)
+        .find(|unit| map.units.count(&UnitSide::Player) > 0 && unit.side == UnitSide::AI && unit.moves > 0)
 }
 
 // Return an AIMove where the amount of tiles searched is maximized

@@ -82,7 +82,7 @@ impl Walk {
     // Move the animation a step, and return if its still going
     fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
         if self.time == 0.0 {
-            ctx.play_sound(SoundEffect::Walk);
+            ctx.play_sound(&SoundEffect::Walk);
         }
         
         self.time += dt;
@@ -147,7 +147,7 @@ impl Bullet {
     fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
         // If the bullet hasn't started moving, play its sound effect
         if self.time == 0.0 {
-            ctx.play_sound(self.weapon_type.fire_sound());
+            ctx.play_sound(&self.weapon_type.fire_sound());
         }
 
         // Increment the time

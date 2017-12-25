@@ -140,7 +140,7 @@ impl WalkCommand {
             path,
             id: unit.id,
             // Calculate the number of visible enemy units
-            visible_enemies: map.visible(unit.side.enemies())
+            visible_enemies: map.visible(&unit.side.enemies())
         })
     }
     
@@ -153,7 +153,7 @@ impl WalkCommand {
             let moves = match map.units.get(self.id) {
                 Some(unit) => {
                     // If there are more visible enemies than there were when the walk started, end it
-                    if map.visible(unit.side.enemies()) > self.visible_enemies {
+                    if map.visible(&unit.side.enemies()) > self.visible_enemies {
                         // Log a message to the player that an enemy was spotted
                         if unit.side == UnitSide::Player {
                             log.append("Enemy spotted!");

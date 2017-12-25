@@ -12,13 +12,10 @@ rand = "*"
 pathfinding = "*"
 ## To use `Ord` functions like `min_by_key` with `f32`s
 ord_subset = "*"
-## For `retain_mut`
-odds = "*"
 ## Line drawing for line-of-sight
 line_drawing = "*"
 ## Deriving is_enum
 derive_is_enum_variant = "*"
-
 # Serialization/deserialization
 serde = "*"
 serde_derive = "*"
@@ -31,6 +28,7 @@ bincode = "*"
 ## Loading images
 image = "*"
 ## Loading and playing sounds
+cpal = "*"
 rodio = "*"
 
 # Engine
@@ -40,3 +38,8 @@ gfx_device_gl = "*"
 gfx_window_glutin = "*"
 ## Windowing
 glutin = "*"
+
+## For `retain_mut`
+[dependencies.odds]
+version = "*"
+features = ["std-vec"]

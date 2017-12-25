@@ -300,8 +300,8 @@ impl Battle {
                 self.ui.text_display(1).append(&format!("Turn {} started", self.map.turn));
 
                 // Get the number of alive units on both sides
-                let player_count = self.map.units.count(UnitSide::Player);
-                let ai_count = self.map.units.count(UnitSide::AI);
+                let player_count = self.map.units.count(&UnitSide::Player);
+                let ai_count = self.map.units.count(&UnitSide::AI);
 
                 // If one side has lost all their units, Set the score screen menu
                 if player_count == 0 || ai_count == 0 {
@@ -438,7 +438,7 @@ impl Battle {
                         return;
                     }
 
-                    if self.keys.force_fire || self.map.units.on_side(x, y, UnitSide::AI) {
+                    if self.keys.force_fire || self.map.units.on_side(x, y, &UnitSide::AI) {
                         self.path = None;
                         self.command_queue.push(FireCommand::new(selected_id, x, y));
                     } else if let Some(unit) = self.map.units.get(selected_id) {
@@ -480,7 +480,7 @@ impl Battle {
     // Work out if the cursor is on an ai unit
     pub fn cursor_active(&self) -> bool {
         self.keys.force_fire ||
-        self.cursor.map(|(x, y)| self.map.units.on_side(x, y, UnitSide::AI)).unwrap_or(false)
+        self.cursor.map(|(x, y)| self.map.units.on_side(x, y, &UnitSide::AI)).unwrap_or(false)
     }
 
     // End the current turn

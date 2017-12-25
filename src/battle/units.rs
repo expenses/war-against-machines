@@ -410,13 +410,13 @@ impl Units {
     }
 
     // Count the number of units on a particular side
-    pub fn count(&self, side: UnitSide) -> u8 {
-        self.iter().filter(|unit| unit.side == side).count() as u8
+    pub fn count(&self, side: &UnitSide) -> u8 {
+        self.iter().filter(|unit| unit.side == *side).count() as u8
     }
 
     // Is a unit on a particular side at (x, y)?
-    pub fn on_side(&self, x: usize, y: usize, side: UnitSide) -> bool {
-        self.at(x, y).map(|unit| unit.side == side).unwrap_or(false)
+    pub fn on_side(&self, x: usize, y: usize, side: &UnitSide) -> bool {
+        self.at(x, y).map(|unit| unit.side == *side).unwrap_or(false)
     }
 
     // Convert a unit ID to that unit's index in the vec

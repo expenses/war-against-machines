@@ -107,9 +107,9 @@ impl Context {
     }
 
     // Play a sound effect
-    pub fn play_sound(&mut self, sound: SoundEffect) {
+    pub fn play_sound(&mut self, sound: &SoundEffect) {
         // Get the corresponding sound index
-        let index = match sound {
+        let index = match *sound {
             SoundEffect::Walk => 0,
             SoundEffect::RegularShot => 1,
             SoundEffect::PlasmaShot => 2
