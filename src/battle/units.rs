@@ -466,7 +466,7 @@ fn unit_actions() {
         units.add(UnitType::Machine, UnitSide::AI, i, i);
     }
 
-    assert_eq!(units.count(UnitSide::AI), 10);
+    assert_eq!(units.count(&UnitSide::AI), 10);
 
     // Iterating over the units should work as expected
 
@@ -517,7 +517,7 @@ fn unit_actions() {
 
     units.kill(&mut tiles, 0);
 
-    assert_eq!(units.count(UnitSide::AI), 9);
+    assert_eq!(units.count(&UnitSide::AI), 9);
 
     // And the tile under the unit should have items on it
 

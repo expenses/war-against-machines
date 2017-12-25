@@ -511,8 +511,8 @@ fn battle_operations() {
     assert_eq!(battle.map.tiles.rows, skirmish_settings.rows);
 
     // The unit counts are equal
-    assert_eq!(battle.map.units.count(UnitSide::Player) as usize, skirmish_settings.player_units);
-    assert_eq!(battle.map.units.count(UnitSide::AI) as usize, skirmish_settings.ai_units);
+    assert_eq!(battle.map.units.count(&UnitSide::Player) as usize, skirmish_settings.player_units);
+    assert_eq!(battle.map.units.count(&UnitSide::AI) as usize, skirmish_settings.ai_units);
 
     // The unit types are correct
 

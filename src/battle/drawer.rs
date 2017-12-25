@@ -2,6 +2,7 @@
 
 use super::Battle;
 use super::tiles::Obstacle;
+use super::animations::Animation;
 use resources::Image;
 use utils::convert_rotation;
 use context::Context;
@@ -300,7 +301,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
 
     // Draw all the visible bullets in the animation queue
     battle.animations.iter()
-        .filter_map(|animation| animation.as_bullet())
+        .filter_map(Animation::as_bullet)
         .filter(|bullet| bullet.visible(map))
         .for_each(|bullet| {
         
@@ -313,7 +314,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     });
 
     battle.animations.iter()
-        .filter_map(|animation| animation.as_throw_item())
+        .filter_map(Animation::as_throw_item)
         .filter(|thrown_item| thrown_item.visible(map))
         .for_each(|thrown_item| {
 
