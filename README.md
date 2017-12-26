@@ -6,15 +6,9 @@
 
 A (very WIP) turn-based strategy game set in the not-so-distant future.
 
-![A screenshot of the game taken 25/07/17](readme/sceenshot-25-07-17.png)
+![A screenshot of the game taken 25/07/17](readme/screenshot-26-12-17.png)
 
 Written in [Rust](https://www.rust-lang.org).
-
-## Download
-
-Releases can be found on the [releases page](https://github.com/expenses/war-against-machines/releases).
-
-Note that as these releases are built automatically, I may not have personally tested them.
 
 ## Building
 
