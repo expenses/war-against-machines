@@ -29,10 +29,17 @@ impl Context {
         }
     }
 
+    // Get the dpi ratio
+    pub fn dpi_ratio(&self) -> f32 {
+        self.renderer.dpi_ratio()
+    }
+
     // Resize the context
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.width = width as f32;
-        self.height = height as f32;
+        // Divide the width and height by the dpi so the size remains the same across resolutions
+        let dpi_ratio = self.dpi_ratio();
+        self.width = width as f32 / dpi_ratio;
+        self.height = height as f32 / dpi_ratio;
         // resize the renderer
         self.renderer.resize(width, height);
     }
@@ -60,7 +67,7 @@ impl Context {
                 dest: [x, y],
                 rotation: 0.0,
                 overlay_colour: colour,
-                scale: scale
+                scale
             });
 
             // Move to the start of the next character

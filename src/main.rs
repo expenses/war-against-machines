@@ -125,7 +125,10 @@ impl App {
     // Handle mouse movement
     fn handle_mouse_motion(&mut self, x: f32, y: f32) {
         // Convert the coordinates
-        let (x, y) = (x - self.ctx.width / 2.0, self.ctx.height / 2.0 - y);
+        let (x, y) = (
+            (x / self.ctx.dpi_ratio()) - self.ctx.width / 2.0,
+            self.ctx.height / 2.0 - (y / self.ctx.dpi_ratio())
+        );
 
         self.mouse = (x, y);
 

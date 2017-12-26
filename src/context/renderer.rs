@@ -55,6 +55,7 @@ gfx_defines! {
     // Constants for rendering
     constant Constants {
         tileset: [f32; 2] = "constant_tileset",
+        dpi_ratio: f32 = "constant_dpi_ratio",
     }
 
     // Global settings
@@ -149,23 +150,30 @@ impl Renderer {
             encoder, data, pso, slice, window, device, depth
         };
 
+        let dpi_ratio = renderer.dpi_ratio();
+
         // Set the constants buffer
         renderer.encoder.update_constant_buffer(
             &renderer.data.constants,
             &Constants {
-                tileset: tileset_size
+                tileset: tileset_size,
+                dpi_ratio
             }
         );
-
-        // Set the global buffer
+        
         renderer.encoder.update_constant_buffer(
             &renderer.data.global,
             &Global {
-                resolution: [width as f32, height as f32]
+                resolution: [width as f32 * dpi_ratio, height as f32 * dpi_ratio]
             }
         );
 
         renderer
+    }
+
+    // Get the dpi ratio from the window (1 = regular, 2 = high dpi)
+    pub fn dpi_ratio(&self) -> f32 {
+        self.window.hidpi_factor()
     }
 
     // Resize the renderer window

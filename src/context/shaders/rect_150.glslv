@@ -18,6 +18,7 @@ layout (std140) uniform Global {
 
 layout (std140) uniform Constants {
     vec2 constant_tileset;
+    float constant_dpi_ratio;
 };
 
 void main() {
@@ -30,8 +31,10 @@ void main() {
         -sin(prop_rotation), cos(prop_rotation)
     );
 
+    // Rotated and scale the position
+    vec2 scaled = in_pos * rotation * prop_src.zw * prop_scale * constant_dpi_ratio;
     // Get the output position
-    vec2 pos = (in_pos * rotation * prop_src.zw * prop_scale + prop_dest * 2) / global_resolution;
+    vec2 pos = (scaled + prop_dest * 2 * constant_dpi_ratio) / global_resolution;
 
     // Set the position
     gl_Position = vec4(pos, 0.0, 1.0);

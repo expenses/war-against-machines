@@ -29,7 +29,7 @@ impl Player {
         let source = Decoder::new(Cursor::new(self.sources[index].as_ref().clone())).unwrap();
 
         // Try to find an empty sink and append the source to that
-        for mut sink in &mut self.sinks {
+        for sink in &mut self.sinks {
             if sink.empty() {
                 sink.append(source);
                 sink.set_volume(volume);
