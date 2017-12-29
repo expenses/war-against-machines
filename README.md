@@ -45,5 +45,4 @@ In a battle:
 * `p` to zoom in
 * `e` to use items on the inventory screen
 * `escape` to quit
-* `lmb` to select the unit under the cursor
-* `rmb` to perfom commands such as moving and firing
+* `lmb` for performing actions (selecting/moving/firing)

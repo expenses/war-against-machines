@@ -32,9 +32,9 @@ void main() {
     );
 
     // Rotated and scale the position
-    vec2 scaled = in_pos * rotation * prop_src.zw * prop_scale * constant_dpi_ratio;
+    vec2 scaled = in_pos * rotation * prop_src.zw * prop_scale;
     // Get the output position
-    vec2 pos = (scaled + prop_dest * 2 * constant_dpi_ratio) / global_resolution;
+    vec2 pos = (scaled + prop_dest * 2) / global_resolution * constant_dpi_ratio;
 
     // Set the position
     gl_Position = vec4(pos, 0.0, 1.0);

@@ -121,7 +121,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         }
 
         // Draw the cursor if it isn't on an ai unit and or a unit isn't selected
-        if !battle.cursor_active() || battle.selected.is_none() {
+        if !battle.cursor_active() {
             if let Some((cursor_x, cursor_y)) = battle.cursor {
                 if cursor_x == x && cursor_y == y {
                     // Determine the cursor type
@@ -161,10 +161,8 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 // Draw a unit at the position
                 if let Some(unit) = battle.map.units.at(x, y) {
                     // Draw the cursor to show that the unit is selected
-                    if let Some(selected) = battle.selected {
-                        if selected == unit.id {
-                            ctx.render_with_overlay(&Image::Cursor, dest, camera.zoom, colours::ORANGE);
-                        }
+                    if battle.selected == unit.id {
+                        ctx.render_with_overlay(&Image::Cursor, dest, camera.zoom, colours::ORANGE);
                     }
 
                     ctx.render_with_overlay(&unit.tag.image(), dest, camera.zoom, overlay);

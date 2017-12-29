@@ -71,7 +71,7 @@ impl Keys {
 pub struct Battle {
     pub map: Map,
     pub cursor: Option<(usize, usize)>,
-    pub selected: Option<u8>,
+    pub selected: u8,
     pub path: Option<Vec<PathPoint>>,
     pub animations: Animations,
     pub command_queue: CommandQueue,
@@ -149,7 +149,7 @@ impl Battle {
             map: map,
             cursor: None,
             keys: Keys::new(),
-            selected: None,
+            selected: 0,
             path: None,
             ui: ui,
             inventory: inventory,
@@ -215,10 +215,10 @@ impl Battle {
                     self.inventory.menu(inactive).selected = true;
                 },
                 // Pick up / drop an item
-                VirtualKeyCode::Return => if let Some(selected) = self.selected {
+                VirtualKeyCode::Return => {
                     let index = self.inventory.menu(active).selection;
 
-                    if let Some(unit) = self.map.units.get_mut(selected) {
+                    if let Some(unit) = self.map.units.get_mut(self.selected) {
                         // Was the item transferred?
                         let transferred = if active == 0 {
                             unit.drop_item(&mut self.map.tiles, index)
@@ -232,11 +232,11 @@ impl Battle {
                     }
                 },
                 // Use an item
-                VirtualKeyCode::E => if let Some(selected) = self.selected {
+                VirtualKeyCode::E => {
                     if active == 0 {
                         let index = self.inventory.menu(active).selection;
 
-                        if let Some(unit) = self.map.units.get_mut(selected) {
+                        if let Some(unit) = self.map.units.get_mut(self.selected) {
                             if unit.use_item(index) {
                                 self.inventory.menu(active).fit_selection();
                             }
@@ -270,7 +270,7 @@ impl Battle {
             VirtualKeyCode::O => self.keys.zoom_out = pressed,
             VirtualKeyCode::P => self.keys.zoom_in = pressed,
             VirtualKeyCode::LControl | VirtualKeyCode::RControl => self.keys.force_fire = pressed,
-            VirtualKeyCode::I if pressed && self.selected.is_some() => self.inventory.toggle(),
+            VirtualKeyCode::I if pressed => self.inventory.toggle(),
             _ => {}
         }
 
@@ -400,6 +400,39 @@ impl Battle {
         }
     }
 
+    fn perform_actions(&mut self, x: usize, y: usize) {
+        match self.map.units.at(x, y) {
+            Some(unit) => {
+                self.path = None;
+
+                match unit.side {
+                    // Select a unit
+                    UnitSide::Player => self.selected = unit.id,
+                    // Fire on a unit
+                    UnitSide::AI => self.command_queue.push(FireCommand::new(self.selected, x, y))
+                }
+            },
+            // Force fire on a tile
+            None if self.keys.force_fire => self.command_queue.push(FireCommand::new(self.selected, x, y)),
+            // Move the current unit
+            None => if let Some(unit) = self.map.units.get(self.selected) {
+                // return if the target location is taken
+                if self.map.taken(x, y) {
+                    self.path = None;
+                    return;
+                }
+
+                self.path = match self.path {
+                    Some(ref path) if path[path.len() - 1].at(x, y) => {
+                        self.command_queue.push(WalkCommand::new(unit, &self.map, path.clone()));
+                        None
+                    },
+                    _ => pathfind(unit, x, y, &self.map).map(|(path, _)| path)
+                }
+            }
+        }
+    }
+
     // Respond to mouse presses
     pub fn mouse_button(&mut self, button: MouseButton, mouse: (f32, f32), ctx: &Context) {
         match button {
@@ -407,78 +440,26 @@ impl Battle {
                 // End the turn
                 Some(0) => self.end_turn(),
                 // Toggle the inventory
-                Some(1) => if self.selected.is_some() {
-                    self.inventory.toggle();
-                },
+                Some(1) => self.inventory.toggle(),
                 // Toggle the save game input
                 Some(2) => self.ui.text_input(0).toggle(),
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor {
-                    // Clear the path
-                    self.path = None;
-                    // Set the selection
-                    self.selected = match self.map.units.at(x, y) {
-                        Some(unit) => if unit.side == UnitSide::Player {
-                            Some(unit.id)
-                        } else {
-                            None
-                        },
-                        _ => None
-                    };
-
-                    // Make sure the inventory is only active if a unit is selected
-                    self.inventory.active &= self.selected.is_some();
+                    self.perform_actions(x, y)
                 }
             },
-            // Check if the cursor has a position and a unit is selected
-            MouseButton::Right => if let Some((x, y)) = self.cursor {
-                if let Some(selected_id) = self.selected {
-                    // Don't do anything if it's the AI's turn or if there is a command in progress
-                    if self.controller == Controller::AI || !self.command_queue.is_empty() {
-                        return;
-                    }
-
-                    if self.keys.force_fire || self.map.units.on_side(x, y, &UnitSide::AI) {
-                        self.path = None;
-                        self.command_queue.push(FireCommand::new(selected_id, x, y));
-                    } else if let Some(unit) = self.map.units.get(selected_id) {
-                        // return if the target location is taken
-                        if self.map.taken(x, y) {
-                            self.path = None;
-                            return;
-                        }
-
-                        // Is the path is the same as the existing one?
-                        let same_path = match self.path {
-                            Some(ref path) => path[path.len() - 1].at(x, y),
-                            _ => false
-                        };
-
-                        // If the paths are the same, issue a walk command
-                        self.path = if same_path {
-                            if let Some(ref path) = self.path {
-                                self.command_queue.push(WalkCommand::new(unit, &self.map, path.clone()));
-                            }
-
-                            None
-                        // Otherwise update the path
-                        } else {
-                            pathfind(unit, x, y, &self.map).map(|(path, _)| path)
-                        };
-                    }
-                }                                  
-            },
+            MouseButton::Right => {}
             _ => {}
         }
     }
 
     // Get a reference to the unit that is selected
     fn selected(&self) -> Option<&Unit> {
-        self.selected.and_then(move |selected| self.map.units.get(selected))
+        self.map.units.get(self.selected)
     }
 
     // Work out if the cursor is on an ai unit
-    pub fn cursor_active(&self) -> bool {
+    fn cursor_active(&self) -> bool {
         self.keys.force_fire ||
         self.cursor.map(|(x, y)| self.map.units.on_side(x, y, &UnitSide::AI)).unwrap_or(false)
     }
