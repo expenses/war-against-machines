@@ -22,6 +22,8 @@ use std::time::Instant;
 
 use glutin::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode, MouseButton};
 
+#[macro_use]
+mod ui;
 mod weapons;
 mod items;
 #[macro_use]
@@ -29,12 +31,10 @@ mod resources;
 #[macro_use]
 mod utils;
 mod settings;
-#[macro_use]
 mod menu;
 mod colours;
 mod context;
 mod battle;
-mod ui;
 
 use context::Context;
 use settings::Settings;

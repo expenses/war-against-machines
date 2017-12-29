@@ -23,7 +23,7 @@ use self::units::{Unit, UnitSide};
 use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
-use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu};
+use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu, MenuItem};
 use utils::distance_under;
 use settings::{Settings, SkirmishSettings};
 
@@ -341,12 +341,12 @@ impl Battle {
             // Get the name of the selected unit, it's items and the items on the ground
             let info = self.selected().map(|unit| {
                 // Collect the unit's items into a vec
-                let items: Vec<(String, bool)> = unit.inventory.iter()
+                let items: Vec<MenuItem> = unit.inventory.iter()
                     .map(|item| item!(item))
                     .collect();
 
                 // Collect the items on the ground into a vec
-                let ground: Vec<(String, bool)> = self.map.tiles.at(unit.x, unit.y).items.iter()
+                let ground: Vec<MenuItem> = self.map.tiles.at(unit.x, unit.y).items.iter()
                     .map(|item| item!(item))
                     .collect();
                 
@@ -422,6 +422,11 @@ impl Battle {
 
     // Respond to mouse presses
     pub fn mouse_button(&mut self, button: MouseButton, mouse: (f32, f32), ctx: &Context) {
+        // Don't do anything if it's the AI's turn or if there is a command in progress
+        if self.controller == Controller::AI || !self.command_queue.is_empty() {
+            return;
+        }
+
         match button {
             MouseButton::Left => match self.ui.clicked(ctx, mouse) {
                 // End the turn

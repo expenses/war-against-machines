@@ -7,7 +7,7 @@ use std::fs::read_dir;
 use context::Context;
 use resources::Image;
 use settings::{Settings, SkirmishSettings};
-use ui::{Menu, Vertical, Horizontal};
+use ui::{Menu, MenuItem, Vertical, Horizontal};
 
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
@@ -18,27 +18,6 @@ const MAIN: usize = 0;
 const SKIRMISH: usize = 1;
 const SETTINGS: usize = 2;
 const SKIRMISH_SAVES: usize = 3;
-
-macro_rules! item {
-    () => (
-        (String::new(), true)
-    );
-    ($item: expr) => (
-        ($item.to_string(), true)
-    );
-    ($item: expr, $boolean: expr) => (
-        ($item.to_string(), $boolean)
-    );
-    ($item: expr, $thing: expr, $boolean: expr) => (
-        (format!($item, $thing), $boolean)
-    )
-}
-
-macro_rules! menu {
-    ($($item: expr),*) => (
-        Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, true, true, vec![$($item,)*])
-    )
-}
 
 // Callbacks that can be returned from key presses
 pub enum MenuCallback {
@@ -134,7 +113,7 @@ impl MainMenu {
 
     // refresh the saves submenu
     fn refresh_skirmish_saves(&mut self, settings: &Settings) {
-        let mut files: Vec<(String, bool)> = read_dir(&settings.savegames).unwrap()
+        let mut files: Vec<MenuItem> = read_dir(&settings.savegames).unwrap()
             .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))
             .filter(|entry| !entry.starts_with('.'))
             .map(|entry| item!(entry))

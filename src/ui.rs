@@ -189,12 +189,47 @@ impl TextInput {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct MenuItem {
+    text: String,
+    enabled: bool
+}
+
+impl MenuItem {
+    pub fn new(text: String, enabled: bool) -> Self {
+        Self {
+            text, enabled
+        }
+    }
+}
+
+macro_rules! item {
+    () => (
+        MenuItem::new(String::new(), true)
+    );
+    ($item: expr) => (
+        MenuItem::new($item.to_string(), true)
+    );
+    ($item: expr, $boolean: expr) => (
+        MenuItem::new($item.into(), $boolean)
+    );
+    ($item: expr, $thing: expr, $boolean: expr) => (
+        MenuItem::new(format!($item, $thing), $boolean)
+    )
+}
+
+macro_rules! menu {
+    ($($item: expr),*) => (
+        Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, true, true, vec![$($item,)*])
+    )
+}
+
 // A menu for displaying
 pub struct Menu {
     pub selection: usize,
     // In a situation where there might be multiple menus, is this menu selected?
     pub selected: bool,
-    pub list: Vec<(String, bool)>,
+    pub list: Vec<MenuItem>,
     pub active: bool,
     x: f32,
     y: f32,
@@ -204,7 +239,7 @@ pub struct Menu {
 
 impl Menu {
     // Create a new menu
-    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, selected: bool, list: Vec<(String, bool)>) -> Menu {
+    pub fn new(x: f32, y: f32, v_align: Vertical, h_align: Horizontal, active: bool, selected: bool, list: Vec<MenuItem>) -> Menu {
         Menu {
             x, y, v_align, h_align, list, active, selected,
             selection: 0,
@@ -219,10 +254,10 @@ impl Menu {
         let mut y = self.h_align.get_y(self.y, height, ctx) + height / 2.0;
 
         // Enumerate through the items
-        for (i, &(ref item, enabled)) in self.list.iter().enumerate() {
-            let colour = if enabled { WHITE } else { GREY };
+        for (i, item) in self.list.iter().enumerate() {
+            let colour = if item.enabled { WHITE } else { GREY };
             
-            let mut string = item.clone();
+            let mut string = item.text.clone();
 
             // If the index is the same as the selection index, push a '>' to indicate that the option is selected
             if self.selected && i == self.selection { string.insert_str(0, "> "); }
@@ -241,15 +276,15 @@ impl Menu {
 
     // Get the selected item
     pub fn selected(&self) -> String {
-        self.list[self.selection].0.clone()
+        self.list[self.selection].text.clone()
     }
 
     pub fn set_enabled(&mut self, i: usize, enabled: bool) {
-        self.list[i].1 = enabled;
+        self.list[i].enabled = enabled;
     }
 
     pub fn enabled(&self, i: usize) -> bool {
-        self.list[i].1
+        self.list[i].enabled
     }
 
     // Fix the selection in anticipation of a size decrease
@@ -266,7 +301,7 @@ impl Menu {
 
     // Are any of the items in the list enabled?
     pub fn any_enabled(&self) -> bool {
-        self.list.iter().any(|&(_, enabled)| enabled)
+        self.list.iter().any(|item| item.enabled)
     }
 
     // Rotate the selection up
@@ -398,9 +433,9 @@ fn test_menu() {
     // Test the `item!` macro
 
     assert_eq!(items, vec![
-        ("Item 1".into(), true),
-        ("Item 2".into(), false),
-        ("Item 3".into(), true)
+        MenuItem::new("Item 1".into(), true),
+        MenuItem::new("Item 2".into(), false),
+        MenuItem::new("Item 3".into(), true)
     ]);
 
     let mut menu = Menu::new(0.0, 0.0, Vertical::Left, Horizontal::Top, true, true, items);
