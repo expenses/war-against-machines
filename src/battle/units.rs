@@ -12,14 +12,9 @@ use weapons::{Weapon, WeaponType};
 use utils::chance_to_hit;
 use resources::Image;
 
-// The cost for a unit to walk laterally
-pub const WALK_LATERAL_COST: u16 = 2;
-// The cost for a unit to walk diagonally
-pub const WALK_DIAGONAL_COST: u16 = 3;
 // The cost for a unit to pick up / drop / use an item
 pub const ITEM_COST: u16 = 5;
 
-pub const UNIT_SIGHT: f32 = 7.5;
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str] = &[
@@ -119,7 +114,7 @@ impl UnitType {
     }
 
     pub fn sight(&self) -> f32 {
-        UNIT_SIGHT
+        Unit::SIGHT
     }
 
     // How far the unit can throw
@@ -169,6 +164,13 @@ pub struct Unit {
 }
 
 impl Unit {
+    // The cost for a unit to walk laterally
+    pub const WALK_LATERAL_COST: u16 = 2;
+    // The cost for a unit to walk diagonally
+    pub const WALK_DIAGONAL_COST: u16 = 3;
+    // How far a unit can see
+    pub const SIGHT: f32 = 7.5;
+
     // Create a new unit based on unit type
     pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
         let mut rng = rand::thread_rng();

@@ -11,13 +11,6 @@ use colours;
 const TILE_WIDTH: f32 = 48.0;
 const TILE_HEIGHT: f32 = 24.0;
 
-const DEFAULT_ZOOM: f32 = 2.0;
-const ZOOM_MAX: f32 = 10.0;
-const ZOOM_MIN: f32 = 1.0;
-
-pub const CAMERA_SPEED: f32 = 10.0;
-pub const CAMERA_ZOOM_SPEED: f32 = 1.0;
-
 // Convert coordinates from isometric
 pub fn from_map_coords(x: f32, y: f32) -> (f32, f32) {
     (x - y, -(x + y))
@@ -37,11 +30,18 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub const SPEED: f32 = 10.0;
+    pub const ZOOM_SPEED: f32 = 1.0;
+    const DEFAULT_ZOOM: f32 = 2.0;
+    const ZOOM_MAX: f32 = 10.0;
+    const ZOOM_MIN: f32 = 1.0;
+
+
     pub fn new() -> Camera {
         Camera {
             x: 0.0,
             y: 0.0,
-            zoom: DEFAULT_ZOOM
+            zoom: Self::DEFAULT_ZOOM
         }
     }
 
@@ -49,8 +49,8 @@ impl Camera {
     pub fn zoom(&mut self, amount: f32) {
         self.zoom += amount * self.zoom;
 
-        if self.zoom > ZOOM_MAX { self.zoom = ZOOM_MAX; }
-        if self.zoom < ZOOM_MIN { self.zoom = ZOOM_MIN; }
+        if self.zoom > Self::ZOOM_MAX { self.zoom = Self::ZOOM_MAX; }
+        if self.zoom < Self::ZOOM_MIN { self.zoom = Self::ZOOM_MIN; }
     }
 }
 

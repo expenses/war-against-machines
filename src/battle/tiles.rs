@@ -4,7 +4,7 @@ use rand;
 use rand::Rng;
 use line_drawing::Bresenham;
 
-use super::units::{UnitSide, Units, WALK_LATERAL_COST, WALK_DIAGONAL_COST, UNIT_SIGHT};
+use super::units::{UnitSide, Units, Unit};
 use super::walls::{Walls, WallType, WallSide};
 use super::iter_2d::Iter2D;
 use items::Item;
@@ -12,9 +12,6 @@ use utils::{distance_under, min, lerp};
 use resources::Image;
 
 use std::mem::swap;
-
-const DAY_DARKNESS_RATE: f32 = 0.025;
-const NIGHT_DARKNESS_RATE: f32 = 0.05;
 
 const MIN_PIT_SIZE: usize = 2;
 const MAX_PIT_SIZE: usize = 5;
@@ -50,17 +47,20 @@ pub enum Visibility {
 }
 
 impl Visibility {
+    const DAY_DARKNESS_RATE: f32 = 0.025;
+    const NIGHT_DARKNESS_RATE: f32 = 0.05;
+
     // Get the corresponding colour for a visibility
     pub fn colour(&self, light: f32) -> [f32; 4] {
         // Get the rate at which tiles get darker
-        let rate = lerp(NIGHT_DARKNESS_RATE, DAY_DARKNESS_RATE, light);
+        let rate = lerp(Self::NIGHT_DARKNESS_RATE, Self::DAY_DARKNESS_RATE, light);
 
         // Use the distance if the tile is visible
         let alpha = if let Visibility::Visible(distance) = *self {
             f32::from(distance) * rate
         // Or use the maximum darkness + 0.1
         } else if self.is_foggy() {
-            rate * (UNIT_SIGHT * f32::from(WALK_LATERAL_COST)) + 0.1
+            rate * (Unit::SIGHT * f32::from(Unit::WALK_LATERAL_COST)) + 0.1
         } else {
             0.0
         };
@@ -402,9 +402,9 @@ impl Tiles {
 
                 // Increase the distance
                 distance += if a.0 == b.0 || a.1 == b.1 {
-                    WALK_LATERAL_COST
+                    Unit::WALK_LATERAL_COST
                 } else {
-                    WALK_DIAGONAL_COST
+                    Unit::WALK_DIAGONAL_COST
                 } as u8;
             }
 

@@ -11,12 +11,6 @@ use toml::Value;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
-const FILENAME: &str = "settings.toml";
-const MIN_MAP_SIZE: usize = 10;
-const MAX_MAP_SIZE: usize = 60;
-const DEFAULT_VOLUME: u8 = 100;
-const DEFAULT_UI_SCALE: u8 = 2;
-const MAX_UI_SCALE: u8 = 4;
 
 type Table = BTreeMap<String, Value>;
 
@@ -43,8 +37,8 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            volume: DEFAULT_VOLUME,
-            ui_scale: DEFAULT_UI_SCALE,
+            volume: Self::DEFAULT_VOLUME,
+            ui_scale: Self::DEFAULT_UI_SCALE,
             window_width: 960,
             window_height: 540,
             fullscreen: false,
@@ -54,6 +48,11 @@ impl Default for Settings {
 }
 
 impl Settings {
+    const DEFAULT_VOLUME: u8 = 100;
+    const DEFAULT_UI_SCALE: u8 = 2;
+    const MAX_UI_SCALE: u8 = 4;
+    const FILENAME: &str = "settings.toml";
+
     // Load the settings or use the defaults
     pub fn load() -> Settings {
         let mut buffer = String::new();
@@ -89,7 +88,7 @@ impl Settings {
 
     // Save the settings
     pub fn save(&self) {
-        if let Ok(mut file) = File::create(FILENAME) {
+        if let Ok(mut file) = File::create(Self::FILENAME) {
             let default = Settings::default().to_table();
             let mut settings = self.to_table();
     
@@ -103,11 +102,11 @@ impl Settings {
             // Save the rest
             if let Ok(buffer) = toml::to_vec(&Value::from(settings)) {
                 if file.write_all(&buffer).is_err() {
-                    eprintln!("Warnings: Failed to write to '{}'", FILENAME);
+                    eprintln!("Warnings: Failed to write to '{}'", Self::FILENAME);
                 }
             }
         } else {
-            eprintln!("Warning: Failed to open '{}'", FILENAME);
+            eprintln!("Warning: Failed to open '{}'", Self::FILENAME);
         }
     }
 
@@ -117,8 +116,8 @@ impl Settings {
 
     // Make sure the volume isn't too high
     pub fn clamp(&mut self) {
-        self.volume = clamp(self.volume, 0, DEFAULT_VOLUME);
-        self.ui_scale = clamp(self.ui_scale, 1, MAX_UI_SCALE);
+        self.volume = clamp(self.volume, 0, Self::DEFAULT_VOLUME);
+        self.ui_scale = clamp(self.ui_scale, 1, Self::MAX_UI_SCALE);
     }
 
     // Get the height that a string would be rendered at
@@ -133,8 +132,8 @@ impl Settings {
 
     // Reset the settings
     pub fn reset(&mut self) {
-        self.volume = DEFAULT_VOLUME;
-        self.ui_scale = DEFAULT_UI_SCALE;
+        self.volume = Self::DEFAULT_VOLUME;
+        self.ui_scale = Self::DEFAULT_UI_SCALE;
     }
 
     // Convert the settings into a B-Tree map of key-value pairs
@@ -171,10 +170,13 @@ impl Default for SkirmishSettings {
 }
 
 impl SkirmishSettings {
+    const MIN_MAP_SIZE: usize = 10;
+    const MAX_MAP_SIZE: usize = 60;
+
     // Ensure that the settings are between their min and max values
     pub fn clamp(&mut self) {
-        self.cols = clamp(self.cols, MIN_MAP_SIZE, MAX_MAP_SIZE);
-        self.rows = clamp(self.rows, MIN_MAP_SIZE, MAX_MAP_SIZE);
+        self.cols = clamp(self.cols, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
+        self.rows = clamp(self.rows, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
         self.player_units = clamp(self.player_units, 1, self.cols);
         self.ai_units = clamp(self.ai_units, 1, self.cols);
         self.light = clamp(self.light, 0.0, 1.0);
@@ -208,8 +210,8 @@ fn load_save() {
 
     settings.clamp();
 
-    assert_eq!(settings.volume, DEFAULT_VOLUME);
-    assert_eq!(settings.ui_scale, MAX_UI_SCALE);
+    assert_eq!(settings.volume, Settings::DEFAULT_VOLUME);
+    assert_eq!(settings.ui_scale, Settings::MAX_UI_SCALE);
 
     settings.volume = 99;
 

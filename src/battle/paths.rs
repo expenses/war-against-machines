@@ -3,7 +3,7 @@
 use pathfinding;
 
 use super::map::Map;
-use super::units::{Unit, WALK_LATERAL_COST, WALK_DIAGONAL_COST};
+use super::units::Unit;
 
 // Use the A Star algorithm to find a path between a unit and a destination
 pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, u16)> {
@@ -56,9 +56,9 @@ impl PathPoint {
     // Get the cost to a point
     fn cost(&self, x: usize, y: usize) -> u16 {
         if self.x == x || self.y == y {
-            WALK_LATERAL_COST
+            Unit::WALK_LATERAL_COST
         } else {
-            WALK_DIAGONAL_COST
+            Unit::WALK_DIAGONAL_COST
         }
     }
 
@@ -129,10 +129,10 @@ fn pathfinding() {
 
     let mut path = Vec::new();
     for i in 1 .. size {
-        path.push(PathPoint::new(i, i, WALK_DIAGONAL_COST));
+        path.push(PathPoint::new(i, i, Unit::WALK_DIAGONAL_COST));
     }
 
-    let cost = (size - 1) as u16 * WALK_DIAGONAL_COST;
+    let cost = (size - 1) as u16 * Unit::WALK_DIAGONAL_COST;
 
     let path = Some((path, cost));
 

@@ -15,7 +15,7 @@ use glutin::{VirtualKeyCode, MouseButton};
 
 use std::fmt;
 
-use self::drawer::{draw_battle, tile_under_cursor, CAMERA_SPEED, CAMERA_ZOOM_SPEED};
+use self::drawer::{draw_battle, tile_under_cursor, Camera};
 use self::paths::{pathfind, PathPoint};
 use self::animations::{Animations, UpdateAnimations};
 use self::commands::{CommandQueue, FireCommand, WalkCommand, ThrowItemCommand};
@@ -43,6 +43,7 @@ impl fmt::Display for Controller {
     }
 }
 
+#[derive(Default)]
 struct Keys {
     up: bool,
     left: bool,
@@ -51,20 +52,6 @@ struct Keys {
     zoom_out: bool,
     zoom_in: bool,
     force_fire: bool
-}
-
-impl Keys {
-    fn new() -> Keys {
-        Keys {
-            up: false,
-            left: false,
-            right: false,
-            down: false,
-            zoom_out: false,
-            zoom_in: false,
-            force_fire: false
-        }
-    }
 }
 
 // The main Battle struct the handles actions
@@ -148,7 +135,7 @@ impl Battle {
         Battle {
             map: map,
             cursor: None,
-            keys: Keys::new(),
+            keys: Keys::default(),
             selected: 0,
             path: None,
             ui: ui,
@@ -280,12 +267,12 @@ impl Battle {
     // Update the battle
     pub fn update(&mut self, ctx: &mut Context, dt: f32) {
         // Change camera variables if a key is being pressed
-        if self.keys.up       { self.map.camera.y += CAMERA_SPEED * dt; }
-        if self.keys.down     { self.map.camera.y -= CAMERA_SPEED * dt; }
-        if self.keys.left     { self.map.camera.x -= CAMERA_SPEED * dt; }
-        if self.keys.right    { self.map.camera.x += CAMERA_SPEED * dt; }
-        if self.keys.zoom_out { self.map.camera.zoom(-CAMERA_ZOOM_SPEED * dt); }
-        if self.keys.zoom_in  { self.map.camera.zoom(CAMERA_ZOOM_SPEED  * dt); }
+        if self.keys.up       { self.map.camera.y += Camera::SPEED * dt; }
+        if self.keys.down     { self.map.camera.y -= Camera::SPEED * dt; }
+        if self.keys.left     { self.map.camera.x -= Camera::SPEED * dt; }
+        if self.keys.right    { self.map.camera.x += Camera::SPEED * dt; }
+        if self.keys.zoom_out { self.map.camera.zoom(-Camera::ZOOM_SPEED * dt); }
+        if self.keys.zoom_in  { self.map.camera.zoom( Camera::ZOOM_SPEED * dt); }
 
         // If the controller is the AI and the command queue and animations are empty, make a ai move
         // If that returns false, switch control back to the player

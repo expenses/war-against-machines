@@ -18,20 +18,6 @@ use utils::{direction, clamp, clamp_float, distance, lerp};
 use std::f32::consts::PI;
 
 const MARGIN: f32 = 5.0;
-// Bullets travel 30 tiles a second
-const BULLET_SPEED: f32 = 30.0;
-// The minimum length of time for a bullet animation is a quarter of a second
-const MIN_BULLET_TIME: f32 = 0.25;
-// Units move 5 tiles a second
-const WALK_TIME: f32 = 1.0 / 5.0;
-// Items can be thrown 7.5 tiles a second
-const THROW_ITEM_TIME: f32 = 7.5;
-// And reach a peak height of 1 tile
-const THROW_ITEM_HEIGHT: f32 = 1.0;
-const THROW_MIN: f32 = 5.0;
-
-const EXPLOSION_DURATION: f32 = 0.25;
-const EXPLOSION_SPEED: f32 = 10.0;
 
 // Extrapolate two points on the map to get the point at which a bullet 
 // would go off the map
@@ -72,6 +58,9 @@ pub struct Walk {
 }
 
 impl Walk {
+    // Units move 5 tiles a second
+    const TIME: f32 = 1.0 / 5.0;
+
     // Create a new walk animation
     pub fn new() -> Animation {
         Animation::Walk(Walk {
@@ -86,7 +75,7 @@ impl Walk {
         }
         
         self.time += dt;
-        self.time < WALK_TIME
+        self.time < Self::TIME
     }
 }
 
@@ -103,6 +92,11 @@ pub struct Bullet {
 }
 
 impl Bullet {
+    // Bullets travel 30 tiles a second
+    const SPEED: f32 = 30.0;
+    // The minimum length of time for a bullet animation is a quarter of a second
+    const MIN_TIME: f32 = 0.25;
+
     // Create a new bullet based of the firing unit and the target unit
     pub fn new(unit: &Unit, target_x: usize, target_y: usize, will_hit: bool, map: &Map) -> Animation {
         let x = unit.x as f32;
@@ -160,15 +154,15 @@ impl Bullet {
             let above = self.y < self.target_y;
 
             // Move the bullet
-            self.x += self.direction.cos() * BULLET_SPEED * dt;
-            self.y += self.direction.sin() * BULLET_SPEED * dt;
+            self.x += self.direction.cos() * Self::SPEED * dt;
+            self.y += self.direction.sin() * Self::SPEED * dt;
             
             // Set if the bullet is past the target
             self.finished = left != (self.x < self.target_x) || above != (self.y < self.target_y);
         }
 
         // If the bullet hasn't finished or is under the minimum time
-        !self.finished || self.time < MIN_BULLET_TIME
+        !self.finished || self.time < Self::MIN_TIME
     }
 }
 
@@ -184,6 +178,12 @@ pub struct ThrowItem {
 }
 
 impl ThrowItem {
+    // Items can be thrown 7.5 tiles a second
+    const TIME: f32 = 7.5;
+    // And reach a peak height of 1 tile
+    const ITEM_HEIGHT: f32 = 1.0;
+    const MIN: f32 = 5.0;
+
     pub fn new(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Animation {        
         Animation::ThrowItem(ThrowItem {
             image,
@@ -191,7 +191,7 @@ impl ThrowItem {
             start_y: start_y as f32,
             end_x: end_x as f32,
             end_y: end_y as f32,
-            increment: THROW_ITEM_TIME / distance(start_x, start_y, end_x, end_y).min(THROW_MIN),
+            increment: Self::TIME / distance(start_x, start_y, end_x, end_y).min(Self::MIN),
             progress: 0.0,
             height: 0.0
         })
@@ -215,7 +215,7 @@ impl ThrowItem {
     // Update the progress and the height
     fn step(&mut self, dt: f32) -> bool {
         self.progress += self.increment * dt;
-        self.height = (self.progress * PI).sin() * THROW_ITEM_HEIGHT;
+        self.height = (self.progress * PI).sin() * Self::ITEM_HEIGHT;
         self.progress < 1.0
     }
 }
@@ -227,16 +227,19 @@ pub struct Explosion {
 }
 
 impl Explosion {
+    const DURATION: f32 = 0.25;
+    const SPEED: f32 = 10.0;
+
     pub fn new(x: usize, y: usize, center_x: usize, center_y: usize) -> Animation {
         Animation::Explosion(Explosion {
             x, y,
-            time: -distance(x, y, center_x, center_y) / EXPLOSION_SPEED
+            time: -distance(x, y, center_x, center_y) / Self::SPEED
         })
     }
 
     // Which explosion image to use
     pub fn image(&self) -> Image {
-        let time_percentage = self.time / EXPLOSION_DURATION;
+        let time_percentage = self.time / Self::DURATION;
 
         if time_percentage < (1.0 / 3.0) {
             Image::Explosion1
@@ -249,7 +252,7 @@ impl Explosion {
 
     fn step(&mut self, dt: f32) -> bool {
         self.time += dt;
-        self.time < EXPLOSION_DURATION
+        self.time < Self::DURATION
     }
 }
 
