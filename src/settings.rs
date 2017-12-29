@@ -51,7 +51,7 @@ impl Settings {
     const DEFAULT_VOLUME: u8 = 100;
     const DEFAULT_UI_SCALE: u8 = 2;
     const MAX_UI_SCALE: u8 = 4;
-    const FILENAME: &str = "settings.toml";
+    const FILENAME: &'static str = "settings.toml";
 
     // Load the settings or use the defaults
     pub fn load() -> Settings {
@@ -59,7 +59,7 @@ impl Settings {
         let mut settings = Settings::default();
 
         // If the settings were able to be loaded and parsed into a toml table
-        if let Some(loaded) = File::open(FILENAME).ok()
+        if let Some(loaded) = File::open(Self::FILENAME).ok()
             .and_then(|mut file| file.read_to_string(&mut buffer).ok())
             .and_then(|_| buffer.parse::<Value>().ok())
             .and_then(to_table) {
@@ -72,7 +72,7 @@ impl Settings {
                     Entry::Occupied(mut entry) => {
                         entry.insert(value);
                     },
-                    Entry::Vacant(entry) => eprintln!("Warning: '{}' key '{}' does not exist.", FILENAME, entry.key())
+                    Entry::Vacant(entry) => eprintln!("Warning: '{}' key '{}' does not exist.", Self::FILENAME, entry.key())
                 }
             }
 
