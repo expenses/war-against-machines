@@ -7,7 +7,7 @@
 use rand;
 
 use super::map::Map;
-use super::units::{Unit, UnitSide};
+use super::units::{Unit, UnitSide, UnitFacing};
 use super::paths::PathPoint;
 use super::animations::{Walk, Bullet, ThrowItem, Explosion, Animations};
 use super::walls::WallSide;
@@ -19,21 +19,11 @@ use utils::distance_under;
 use std::collections::HashSet;
 
 // A response returned by a command
+#[derive(Default)]
 struct Response {
     keep: bool,
     wait: bool,
     follow_up: Vec<Command>
-}
-
-// The default response
-impl Default for Response {
-    fn default() -> Response {
-        Response {
-            keep: false,
-            wait: false,
-            follow_up: Vec::new()
-        }
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,7 +35,24 @@ pub enum Command {
     DamageTile(DamageTileCommand),
     DamageWall(DamageWallCommand),
     ThrowItem(ThrowItemCommand),
-    Explosion(ExplosionCommand)
+    Explosion(ExplosionCommand),
+    Turn(TurnCommand)
+}
+
+impl Command {
+    fn process(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) -> Response {
+        match *self {
+            Command::Fire(ref mut command) => command.process(map, animations),
+            Command::Walk(ref mut command) => command.process(map, animations, log),
+            Command::Finished(ref mut command) => command.process(map),
+            Command::UseItem(ref mut command) => command.process(map),
+            Command::DamageTile(ref mut command) => command.process(map),
+            Command::DamageWall(ref mut command) => command.process(map),
+            Command::ThrowItem(ref mut command) => command.process(map, animations),
+            Command::Explosion(ref mut command) => command.process(map, animations),
+            Command::Turn(ref mut command) => command.process(map)
+        }
+    }
 }
 
 // Finish a units moves for a turn by setting them to 0
@@ -173,7 +180,7 @@ impl WalkCommand {
             } else {
                 // Move the unit
                 if let Some(unit) = map.units.get_mut(self.id) {
-                    unit.move_to(point.x, point.y, point.cost);
+                    unit.move_to(point);
                     map.tiles.at_mut(point.x, point.y).walk_on();
                 }
 
@@ -390,6 +397,30 @@ impl ExplosionCommand {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct TurnCommand {
+    id: u8,
+    facing: UnitFacing
+}
+
+impl TurnCommand {
+    pub fn new(id: u8, facing: UnitFacing) -> Command {
+        Command::Turn(Self {
+            id, facing
+        })
+    }
+
+    fn process(&self, map: &mut Map) -> Response {
+        if let Some(unit) = map.units.get_mut(self.id) {
+            unit.facing = self.facing;
+        }
+
+        map.tiles.update_visibility(&map.units);
+
+        Response::default()
+    }
+}
+
 pub struct CommandQueue {
     pub commands: Vec<Command>,
     wait_for_animations: bool
@@ -411,30 +442,20 @@ impl CommandQueue {
     pub fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
         while !self.is_empty() && (!self.wait_for_animations || animations.is_empty()) {
             // Get the command response
-            if let Some(mut response) = self.commands.first_mut().map(|command| match *command {
-                Command::Fire(ref mut command) => command.process(map, animations),
-                Command::Walk(ref mut command) => command.process(map, animations, log),
-                Command::Finished(ref mut command) => command.process(map),
-                Command::UseItem(ref mut command) => command.process(map),
-                Command::DamageTile(ref mut command) => command.process(map),
-                Command::DamageWall(ref mut command) => command.process(map),
-                Command::ThrowItem(ref mut command) => command.process(map, animations),
-                Command::Explosion(ref mut command) => command.process(map, animations)
-            }) {
-                // If there are follow-up commands, insert them after the first command
-                if !response.follow_up.is_empty() {
-                    let mut split = self.commands.split_off(1);
-                    self.commands.append(&mut response.follow_up);
-                    self.commands.append(&mut split);
-                }
-
-                // Remove the command if it's not wanted
-                if !response.keep {
-                    self.commands.remove(0);
-                }
-
-                self.wait_for_animations = response.wait;
+            let mut response = self.commands[0].process(map, animations, log);
+            // If there are follow-up commands, insert them after the first command
+            if !response.follow_up.is_empty() {
+                let mut split = self.commands.split_off(1);
+                self.commands.append(&mut response.follow_up);
+                self.commands.append(&mut split);
             }
+
+            // Remove the command if it's not wanted
+            if !response.keep {
+                self.commands.remove(0);
+            }
+
+            self.wait_for_animations = response.wait;
         }
     }
 

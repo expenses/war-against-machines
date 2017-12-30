@@ -3,7 +3,7 @@
 use pathfinding;
 
 use super::map::Map;
-use super::units::Unit;
+use super::units::{Unit, UnitFacing};
 
 // Use the A Star algorithm to find a path between a unit and a destination
 pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, u16)> {
@@ -28,14 +28,15 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
 pub struct PathPoint {
     pub x: usize,
     pub y: usize,
-    pub cost: u16
+    pub cost: u16,
+    pub facing: UnitFacing
 }
 
 impl PathPoint {
     // Create a new PathPoint
-    fn new(x: usize, y: usize, cost: u16) -> PathPoint {
+    fn new(x: usize, y: usize, cost: u16, facing: UnitFacing) -> PathPoint {
         PathPoint {
-            x, y, cost
+            x, y, cost, facing
         }
     }
 
@@ -44,11 +45,12 @@ impl PathPoint {
         PathPoint {
             x: unit.x,
             y: unit.y,
-            cost: 0
+            cost: 0,
+            facing: unit.facing
         }
     }
 
-    // Test if two point are at the sme location (they may not have the same cost)
+    // Test if two point are at the same location (they may not have the same cost or facing)
     pub fn at(&self, x: usize, y: usize) -> bool {
         self.x == x && self.y == y
     }
@@ -111,7 +113,8 @@ impl PathPoint {
     fn add_point(&self, neighbours: &mut Vec<(PathPoint, u16)>, map: &Map, x: usize, y: usize) {
         if !map.taken(x, y) {
             let cost = self.cost(x, y);
-            neighbours.push((PathPoint::new(x, y, cost), cost));
+            let facing = UnitFacing::from_points(self.x, self.y, x, y);
+            neighbours.push((PathPoint::new(x, y, cost, facing), cost));
         }
     }
 }

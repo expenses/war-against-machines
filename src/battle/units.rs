@@ -6,6 +6,7 @@ use rand::{Rng, ThreadRng};
 use std::fmt;
 use std::slice::{Iter, IterMut};
 
+use super::paths::PathPoint;
 use super::tiles::Tiles;
 use items::Item;
 use weapons::{Weapon, WeaponType};
@@ -77,7 +78,7 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
     format!("SK{}", serial)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum UnitFacing {
     Bottom,
     BottomLeft,
@@ -107,8 +108,10 @@ impl UnitFacing {
         }
     }
 
-    fn from_point(x: f32, y: f32) -> Self {
-        let rotation = (y.atan2(x).to_degrees() + 315.0) % 360.0;
+    pub fn from_points(x: usize, y: usize, target_x: usize, target_y: usize) -> Self {
+        let x = target_x as f32 - x as f32;
+        let y = target_y as f32 - y as f32;
+        let rotation = (y.atan2(x).to_degrees() + 360.0 / 16.0 * 15.0) % 360.0;
 
         if rotation < 45.0 {
             UnitFacing::Bottom
@@ -279,10 +282,11 @@ impl Unit {
     }
 
     // Move the unit to a location with a specific cost
-    pub fn move_to(&mut self, x: usize, y: usize, cost: u16) {
-        self.x = x;
-        self.y = y;
-        self.moves -= cost;
+    pub fn move_to(&mut self, point: &PathPoint) {
+        self.x = point.x;
+        self.y = point.y;
+        self.facing = point.facing;
+        self.moves -= point.cost;
     }
 
     // Get the chance-to-hit of a tile from the unit
@@ -406,13 +410,6 @@ impl Unit {
         }
 
         can_fire
-    }
-
-    pub fn face(&mut self, x: usize, y: usize) {
-        self.facing = UnitFacing::from_point(
-            x as f32 - self.x as f32,
-            y as f32 - self.y as f32
-        );
     }
 }
 

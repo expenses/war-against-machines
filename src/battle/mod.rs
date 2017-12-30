@@ -18,8 +18,8 @@ use std::fmt;
 use self::drawer::{draw_battle, tile_under_cursor, Camera};
 use self::paths::{pathfind, PathPoint};
 use self::animations::{Animations, UpdateAnimations};
-use self::commands::{CommandQueue, FireCommand, WalkCommand, ThrowItemCommand};
-use self::units::{Unit, UnitSide};
+use self::commands::{CommandQueue, FireCommand, WalkCommand, ThrowItemCommand, TurnCommand};
+use self::units::{Unit, UnitSide, UnitFacing};
 use self::map::Map;
 use resources::{ImageSource, Image};
 use context::Context;
@@ -443,9 +443,8 @@ impl Battle {
             MouseButton::Right => {
                 if let Some((x, y)) = self.cursor {
                     if let Some(unit) = self.map.units.get_mut(self.selected) {
-                        unit.face(x, y);
+                        self.command_queue.push(TurnCommand::new(self.selected, UnitFacing::from_points(unit.x, unit.y, x, y)));
                     }
-                    self.map.tiles.update_visibility(&self.map.units);
                 }
             }
             _ => {}
