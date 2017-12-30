@@ -440,7 +440,14 @@ impl Battle {
                     self.perform_actions(x, y)
                 }
             },
-            MouseButton::Right => {}
+            MouseButton::Right => {
+                if let Some((x, y)) = self.cursor {
+                    if let Some(unit) = self.map.units.get_mut(self.selected) {
+                        unit.face(x, y);
+                    }
+                    self.map.tiles.update_visibility(&self.map.units);
+                }
+            }
             _ => {}
         }
     }

@@ -229,7 +229,7 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     // Loop though the reachable tiles
     for (tile_x, tile_y) in map.tiles.iter() {
         // If the tile would be visible, add the score
-        if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight()).is_some() {    
+        if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight(), &unit.facing).is_some() {    
             score += match map.tiles.at(tile_x, tile_y).ai_visibility {
                 Visibility::Invisible => 1.0,
                 Visibility::Foggy => 0.1,

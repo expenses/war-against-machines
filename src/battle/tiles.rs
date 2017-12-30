@@ -4,11 +4,11 @@ use rand;
 use rand::Rng;
 use line_drawing::Bresenham;
 
-use super::units::{UnitSide, Units, Unit};
+use super::units::{UnitSide, Units, Unit, UnitFacing};
 use super::walls::{Walls, WallType, WallSide};
 use super::iter_2d::Iter2D;
 use items::Item;
-use utils::{distance_under, min, lerp};
+use utils::{min, lerp};
 use resources::Image;
 
 use std::mem::swap;
@@ -388,8 +388,8 @@ impl Tiles {
 
     // Would a unit with a particular sight range be able to see from one tile to another
     // Return the number of tiles away a point is, or none if visibility is blocked
-    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32) -> Option<u8> {
-        if distance_under(a_x, a_y, b_x, b_y, sight) {
+    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32, facing: &UnitFacing) -> Option<u8> {
+        if facing.can_see(a_x, a_y, b_x, b_y, sight) {
             // Sort the points so that line-of-sight is symmetrical
             let (start, end, _) = sort(to_point(a_x, a_y), to_point(b_x, b_y));
             let mut distance = 0;
@@ -418,7 +418,7 @@ impl Tiles {
     fn tile_visible(&self, units: &Units, side: &UnitSide, x: usize, y: usize) -> Option<u8> {
         units.iter()
             .filter(|unit| unit.side == *side)
-            .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight()))
+            .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight(), &unit.facing))
             // Get the minimum distance or none
             .fold(None, |sum, dist| sum.and_then(|sum| dist.map(|dist| min(sum, dist))).or(sum).or(dist))
     }

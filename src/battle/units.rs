@@ -9,7 +9,7 @@ use std::slice::{Iter, IterMut};
 use super::tiles::Tiles;
 use items::Item;
 use weapons::{Weapon, WeaponType};
-use utils::chance_to_hit;
+use utils::{chance_to_hit, distance_under};
 use resources::Image;
 
 // The cost for a unit to pick up / drop / use an item
@@ -75,6 +75,66 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
     }
 
     format!("SK{}", serial)
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum UnitFacing {
+    Bottom,
+    BottomLeft,
+    Left,
+    TopLeft,
+    Top,
+    TopRight,
+    Right,
+    BottomRight
+}
+
+impl UnitFacing {
+    // Which tiles should be visible relative to the center depending on the facing
+    // You can use
+    // http://www.wolframalpha.com/input/?+-abs(y)+%3E=+x&i=graph+y+%3E%3D+0+%26%26+abs(x)+%3C%3D+y
+    // to check that there are correct
+    fn visible(&self, x: isize, y: isize) -> bool {
+        match *self {
+            UnitFacing::Bottom      => x >= 0 && y >= 0,
+            UnitFacing::BottomLeft  => y >= 0 && x.abs() <= y,
+            UnitFacing::Left        => x <= 0 && y >= 0,
+            UnitFacing::TopLeft     => x <= 0 && -y.abs() >= x,
+            UnitFacing::Top         => x <= 0 && y <= 0,
+            UnitFacing::TopRight    => y <= 0 && -x.abs() >= y,
+            UnitFacing::Right       => x >= 0 && y <= 0,
+            UnitFacing::BottomRight => x >= 0 && y.abs() <= x
+        }
+    }
+
+    fn from_point(x: f32, y: f32) -> Self {
+        let rotation = (y.atan2(x).to_degrees() + 315.0) % 360.0;
+
+        if rotation < 45.0 {
+            UnitFacing::Bottom
+        } else if rotation < 90.0 {
+            UnitFacing::BottomLeft
+        } else if rotation < 135.0 {
+            UnitFacing::Left
+        } else if rotation < 180.0 {
+            UnitFacing::TopLeft
+        } else if rotation < 225.0 {
+            UnitFacing::Top
+        } else if rotation < 270.0 {
+            UnitFacing::TopRight
+        } else if rotation < 315.0 {
+            UnitFacing::Right
+        } else {
+            UnitFacing::BottomRight
+        }
+    }
+
+    pub fn can_see(&self, x: usize, y: usize, target_x: usize, target_y: usize, sight: f32) -> bool {
+        self.visible(
+            target_x as isize - x as isize,
+            target_y as isize - y as isize
+        ) && distance_under(x, y, target_x, target_y, sight)
+    }
 }
 
 // The type of a unit
@@ -160,7 +220,8 @@ pub struct Unit {
     pub name: String,
     pub moves: u16,
     pub health: i16,
-    pub inventory: Vec<Item>
+    pub inventory: Vec<Item>,
+    pub facing: UnitFacing
 }
 
 impl Unit {
@@ -191,7 +252,8 @@ impl Unit {
                         vec![Item::RifleClip(capacity), Item::RifleClip(capacity), Item::Bandages, Item::Grenade(false)]
                     } else {
                         vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity), Item::Bandages, Item::Grenade(false)]
-                    }
+                    },
+                    facing: UnitFacing::Bottom
                 }
             },
             UnitType::Machine => {
@@ -201,7 +263,8 @@ impl Unit {
                     name: generate_machine_name(&mut rng),
                     moves: tag.moves(),
                     health: tag.health(),
-                    inventory: Vec::new()
+                    inventory: Vec::new(),
+                    facing: UnitFacing::Bottom
                 }
             }
         }
@@ -343,6 +406,13 @@ impl Unit {
         }
 
         can_fire
+    }
+
+    pub fn face(&mut self, x: usize, y: usize) {
+        self.facing = UnitFacing::from_point(
+            x as f32 - self.x as f32,
+            y as f32 - self.y as f32
+        );
     }
 }
 
