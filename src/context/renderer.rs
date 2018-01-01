@@ -5,7 +5,8 @@ use gfx::format::DepthStencil;
 use gfx::Device as GfxDevice;
 use gfx::Factory as GfxFactory;
 use gfx::handle::{DepthStencilView, ShaderResourceView};
-use gfx::texture::{SamplerInfo, FilterMethod, WrapMode, Kind, AaMode};
+use gfx::texture::{SamplerInfo, FilterMethod, WrapMode, Kind, AaMode, Mipmap};
+use gfx::state::ColorMask;
 use gfx_window_glutin;
 use gfx_device_gl;
 use glutin;
@@ -39,7 +40,8 @@ fn load_texture(factory: &mut Factory, bytes: &[u8]) -> ([f32; 2], Texture) {
     let img = load_from_memory_with_format(bytes, ImageFormat::PNG).unwrap().to_rgba();
     let (width, height) = img.dimensions();
     let kind = Kind::D2(width as u16, height as u16, AaMode::Single);
-    let texture = factory.create_texture_immutable_u8::<ColorFormat>(kind, &[&img]).unwrap().1;
+    let mipmap = Mipmap::Allocated;
+    let texture = factory.create_texture_immutable_u8::<ColorFormat>(kind, mipmap, &[&img]).unwrap().1;
     
     ([width as f32, height as f32], texture)
 }
@@ -79,7 +81,7 @@ gfx_defines! {
         global: gfx::ConstantBuffer<Global> = "Global",
         constants: gfx::ConstantBuffer<Constants> = "Constants",
         sampler: gfx::TextureSampler<[f32; 4]> = "sampler",
-        out: gfx::BlendTarget<ColorFormat> = ("target", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+        out: gfx::BlendTarget<ColorFormat> = ("target", ColorMask::all(), gfx::preset::blend::ALPHA),
     }
 }
 
