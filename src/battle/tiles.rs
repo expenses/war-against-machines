@@ -486,10 +486,11 @@ impl Tiles {
 #[test]
 fn unit_visibility() {
     use super::units::UnitType;
+    use super::paths::PathPoint;
 
     let mut tiles = Tiles::new(30, 30);
     let mut units = Units::new();
-    units.add(UnitType::Squaddie, UnitSide::Player, 0, 0);
+    units.add(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom);
     tiles.update_visibility(&units);
 
     // A tile a unit is standing on should be visible with a distance of 0
@@ -499,7 +500,7 @@ fn unit_visibility() {
 
     // A tile that was visible but is no longer should be foggy
 
-    units.get_mut(0).unwrap().move_to(29, 0, 0);
+    units.get_mut(0).unwrap().move_to(&PathPoint::new(29, 0, 0, UnitFacing::Top));
     tiles.update_visibility(&units);
 
     assert_eq!(tiles.at(0, 0).player_visibility, Visibility::Foggy);

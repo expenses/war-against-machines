@@ -34,7 +34,7 @@ pub struct PathPoint {
 
 impl PathPoint {
     // Create a new PathPoint
-    fn new(x: usize, y: usize, cost: u16, facing: UnitFacing) -> PathPoint {
+    pub fn new(x: usize, y: usize, cost: u16, facing: UnitFacing) -> PathPoint {
         PathPoint {
             x, y, cost, facing
         }
@@ -125,14 +125,14 @@ fn pathfinding() {
     use super::walls::WallType;
 
     let size = 30;
-    let unit = Unit::new(UnitType::Squaddie, UnitSide::Player, 0, 0, 0);
+    let unit = Unit::new(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom, 0);
     let mut map = Map::new(size, size, 0.5);
 
     // A path between (0, 0) and (29, 29) should be a straight diagonal
 
     let mut path = Vec::new();
     for i in 1 .. size {
-        path.push(PathPoint::new(i, i, Unit::WALK_DIAGONAL_COST));
+        path.push(PathPoint::new(i, i, Unit::WALK_DIAGONAL_COST, UnitFacing::Bottom));
     }
 
     let cost = (size - 1) as u16 * Unit::WALK_DIAGONAL_COST;

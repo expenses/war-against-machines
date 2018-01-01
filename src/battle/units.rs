@@ -236,7 +236,7 @@ impl Unit {
     pub const SIGHT: f32 = 7.5;
 
     // Create a new unit based on unit type
-    pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, id: u8) -> Unit {
+    pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, facing: UnitFacing, id: u8) -> Unit {
         let mut rng = rand::thread_rng();
 
         match tag {
@@ -246,7 +246,7 @@ impl Unit {
                 let capacity = weapon_type.capacity();
 
                 Unit {
-                    tag, side, x, y, id,
+                    tag, side, x, y, facing, id,
                     weapon: Weapon::new(weapon_type, capacity),
                     name: generate_squaddie_name(&mut rng),
                     moves: tag.moves(),
@@ -255,19 +255,17 @@ impl Unit {
                         vec![Item::RifleClip(capacity), Item::RifleClip(capacity), Item::Bandages, Item::Grenade(false)]
                     } else {
                         vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity), Item::Bandages, Item::Grenade(false)]
-                    },
-                    facing: UnitFacing::Bottom
+                    }
                 }
             },
             UnitType::Machine => {
                 Unit {
-                    tag, side, x, y, id,
+                    tag, side, x, y, facing, id,
                     weapon: Weapon::new(WeaponType::PlasmaRifle, WeaponType::PlasmaRifle.capacity()),
                     name: generate_machine_name(&mut rng),
                     moves: tag.moves(),
                     health: tag.health(),
                     inventory: Vec::new(),
-                    facing: UnitFacing::Bottom
                 }
             }
         }
@@ -434,13 +432,13 @@ impl Units {
     }
 
     // Add a unit to the struct
-    pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize) {
+    pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize, facing: UnitFacing) {
         match side {
             UnitSide::Player => self.total_player_units += 1,
             UnitSide::AI => self.total_ai_units += 1
         };
 
-        self.units.push(Unit::new(tag, side, x, y, self.index));
+        self.units.push(Unit::new(tag, side, x, y, facing, self.index));
         self.index += 1;
     }
 
@@ -532,7 +530,7 @@ fn unit_actions() {
     // After adding 10 units, there should be 10 ai units into total
 
     for i in 0 .. 10 {
-        units.add(UnitType::Machine, UnitSide::AI, i, i);
+        units.add(UnitType::Machine, UnitSide::AI, i, i, UnitFacing::Bottom);
     }
 
     assert_eq!(units.count(&UnitSide::AI), 10);

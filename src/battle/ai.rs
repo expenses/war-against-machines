@@ -243,7 +243,7 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
 
 #[test]
 fn test_basic_ai() {
-    use super::units::UnitType;
+    use super::units::{UnitType, UnitFacing};
     use super::animations::Animations;
     use ui::{TextDisplay, Vertical, Horizontal};
 
@@ -251,8 +251,8 @@ fn test_basic_ai() {
     let mut command_queue = CommandQueue::new();
     let mut log = TextDisplay::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, true);
     let mut map = Map::new(5, 5, 0.0);
-    map.units.add(UnitType::Squaddie, UnitSide::AI, 0, 0);
-    map.units.add(UnitType::Squaddie, UnitSide::Player, 4, 4);
+    map.units.add(UnitType::Squaddie, UnitSide::AI, 0, 0, UnitFacing::Bottom);
+    map.units.add(UnitType::Squaddie, UnitSide::Player, 4, 4, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
 

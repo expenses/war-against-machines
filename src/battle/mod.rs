@@ -117,12 +117,12 @@ impl Battle {
 
             // Add player units
             for x in 0 .. skirmish_settings.player_units {
-                map.units.add(skirmish_settings.player_unit_type, UnitSide::Player, x, 0);
+                map.units.add(skirmish_settings.player_unit_type, UnitSide::Player, x, 0, UnitFacing::Bottom);
             }
 
             // Add ai units
             for y in skirmish_settings.cols - skirmish_settings.ai_units .. skirmish_settings.cols {
-                map.units.add(skirmish_settings.ai_unit_type, UnitSide::AI, y, skirmish_settings.rows - 1);
+                map.units.add(skirmish_settings.ai_unit_type, UnitSide::AI, y, skirmish_settings.rows - 1, UnitFacing::Top);
             }
             
             // Generate tiles

@@ -82,7 +82,7 @@ impl Map {
 
 #[test]
 fn load_save() {
-    use super::units::UnitType;
+    use super::units::{UnitType, UnitFacing};
 
     // Test saving and loading a map
 
@@ -91,7 +91,7 @@ fn load_save() {
     output.push("test.sav");
 
     let mut map = Map::new(20, 20, 0.5);
-    map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0);
+    map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
     assert_eq!(map.save("test".into(), &settings), Some(output));
