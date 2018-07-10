@@ -42,8 +42,8 @@ impl fmt::Display for Item {
 
 impl Item {
     // Get the item's weight
-    pub fn weight(&self) -> f32 {
-        match *self {
+    pub fn weight(self) -> f32 {
+        match self {
             Item::Scrap          => 5.0,
             Item::Bandages       => 1.0,
             Item::Rifle(_)       => 4.0,
@@ -56,8 +56,8 @@ impl Item {
     }
 
     // Get the item's image
-    pub fn image(&self) -> Image {
-        match *self {
+    pub fn image(self) -> Image {
+        match self {
             Item::Scrap => Image::Scrap,
             Item::Bandages => Image::Bandages,
             Item::Grenade(_) => Image::Grenade,
@@ -69,8 +69,8 @@ impl Item {
     }
 
     // The item's bullet capacity (if it has one)
-    fn capacity(&self) -> u8 {
-        match *self {
+    fn capacity(self) -> u8 {
+        match self {
             Item::Rifle(_) | Item::RifleClip(_) => WeaponType::Rifle.capacity(),
             Item::MachineGun(_) | Item::MachineGunClip(_) => WeaponType::MachineGun.capacity(),
             Item::PlasmaRifle(_) | Item::PlasmaClip(_) => WeaponType::PlasmaRifle.capacity(),
@@ -79,16 +79,16 @@ impl Item {
     }
 
     // If the item is a healing item, the ammount it heals by
-    pub fn heal(&self, tag: UnitType) -> i16 {
-        match (*self, tag) {
+    pub fn heal(self, tag: UnitType) -> i16 {
+        match (self, tag) {
             (Item::Bandages, UnitType::Squaddie) => 25,
             _ => 0
         }
     }
 
     // How much ammo this clip could reload a weapon by
-    pub fn ammo(&self, tag: WeaponType) -> u8 {
-        match (*self, tag) {
+    pub fn ammo(self, tag: WeaponType) -> u8 {
+        match (self, tag) {
             (Item::RifleClip(ammo), WeaponType::Rifle) |
             (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
             (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => ammo,
@@ -97,8 +97,8 @@ impl Item {
     }
 
     // Could the item explode when thrown/dropped?
-    pub fn as_explosive(&self) -> Option<(i16, f32)> {
-        match *self {
+    pub fn as_explosive(self) -> Option<(i16, f32)> {
+        match self {
             Item::Grenade(primed) if primed => Some((100, 2.5)),
             _ => None
         }

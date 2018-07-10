@@ -5,7 +5,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(float_cmp, new_ret_no_self))]
 
 use rand;
-use rand::distributions::{IndependentSample, Range};
+use rand::distributions::{Distribution, Range};
 use odds::vec::VecExt;
 
 use super::map::Map;
@@ -109,7 +109,7 @@ impl Bullet {
 
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
-            direction += Range::new(-0.2, 0.2).ind_sample(&mut rand::thread_rng());
+            direction += Range::new(-0.2, 0.2).sample(&mut rand::thread_rng());
             
             let (x, y) = extrapolate(x, y, x + direction.cos(), y + direction.sin(), map);
 

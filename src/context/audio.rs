@@ -1,7 +1,7 @@
 // Audio Playback
 
-use rodio::{Decoder, Sink, Endpoint};
-use cpal::default_endpoint;
+use rodio::{Decoder, Sink, Device};
+use rodio::default_output_device;
 
 use std::rc::Rc;
 use std::io::Cursor;
@@ -10,7 +10,7 @@ use std::io::Cursor;
 pub struct Player {
     sources: [Rc<Vec<u8>>; 3],
     sinks: Vec<Sink>,
-    endpoint: Endpoint
+    endpoint: Device
 }
 
 impl Player {
@@ -19,7 +19,7 @@ impl Player {
             // Use reference-counting to avoid cloning the source each time
             sources: [Rc::new(sounds[0].to_vec()), Rc::new(sounds[1].to_vec()), Rc::new(sounds[2].to_vec())],
             sinks: Vec::new(),
-            endpoint: default_endpoint().unwrap()
+            endpoint: default_output_device().unwrap()
         }
     }
 

@@ -81,7 +81,7 @@ impl Button {
         let y = self.h_align.get_y(self.y, self.height(ctx), ctx);
 
         let ui_scale = ctx.settings.ui_scale();
-        ctx.render(&self.image, [x, y], ui_scale);
+        ctx.render(self.image, [x, y], ui_scale);
     }
 
     // Calculate if the button was pressed

@@ -11,7 +11,7 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
         return None;
     }
 
-    pathfinding::astar(
+    pathfinding::directed::astar::astar(
         &PathPoint::from(unit),
         |point| point.neighbours(map),
         |point| point.cost(dest_x, dest_y),

@@ -91,23 +91,6 @@ pub enum UnitFacing {
 }
 
 impl UnitFacing {
-    // Which tiles should be visible relative to the center depending on the facing
-    // You can use
-    // http://www.wolframalpha.com/input/?+-abs(y)+%3E=+x&i=graph+y+%3E%3D+0+%26%26+abs(x)+%3C%3D+y
-    // to check that there are correct
-    fn visible(&self, x: isize, y: isize) -> bool {
-        match *self {
-            UnitFacing::Bottom      => x >= 0 && y >= 0,
-            UnitFacing::BottomLeft  => y >= 0 && x.abs() <= y,
-            UnitFacing::Left        => x <= 0 && y >= 0,
-            UnitFacing::TopLeft     => x <= 0 && -y.abs() >= x,
-            UnitFacing::Top         => x <= 0 && y <= 0,
-            UnitFacing::TopRight    => y <= 0 && -x.abs() >= y,
-            UnitFacing::Right       => x >= 0 && y <= 0,
-            UnitFacing::BottomRight => x >= 0 && y.abs() <= x
-        }
-    }
-
     pub fn from_points(x: usize, y: usize, target_x: usize, target_y: usize) -> Self {
         let x = target_x as f32 - x as f32;
         let y = target_y as f32 - y as f32;
@@ -131,8 +114,25 @@ impl UnitFacing {
             UnitFacing::BottomRight
         }
     }
+    
+    // Which tiles should be visible relative to the center depending on the facing
+    // You can use
+    // http://www.wolframalpha.com/input/?+-abs(y)+%3E=+x&i=graph+y+%3E%3D+0+%26%26+abs(x)+%3C%3D+y
+    // to check that there are correct
+    fn visible(self, x: isize, y: isize) -> bool {
+        match self {
+            UnitFacing::Bottom      => x >= 0 && y >= 0,
+            UnitFacing::BottomLeft  => y >= 0 && x.abs() <= y,
+            UnitFacing::Left        => x <= 0 && y >= 0,
+            UnitFacing::TopLeft     => x <= 0 && -y.abs() >= x,
+            UnitFacing::Top         => x <= 0 && y <= 0,
+            UnitFacing::TopRight    => y <= 0 && -x.abs() >= y,
+            UnitFacing::Right       => x >= 0 && y <= 0,
+            UnitFacing::BottomRight => x >= 0 && y.abs() <= x
+        }
+    }
 
-    pub fn can_see(&self, x: usize, y: usize, target_x: usize, target_y: usize, sight: f32) -> bool {
+    pub fn can_see(self, x: usize, y: usize, target_x: usize, target_y: usize, sight: f32) -> bool {
         self.visible(
             target_x as isize - x as isize,
             target_y as isize - y as isize
@@ -148,40 +148,40 @@ pub enum UnitType {
 }
 
 impl UnitType {
-    pub fn moves(&self) -> u16 {
-        match *self {
+    pub fn moves(self) -> u16 {
+        match self {
             UnitType::Squaddie => 30,
             UnitType::Machine => 25
         }
     }
 
-    pub fn health(&self) -> i16 {
-        match *self {
+    pub fn health(self) -> i16 {
+        match self {
             UnitType::Squaddie => 100,
             UnitType::Machine => 150
         }
     }
 
-    pub fn image(&self) -> Image {
-        match *self {
+    pub fn image(self) -> Image {
+        match self {
             UnitType::Squaddie => Image::Squaddie,
             UnitType::Machine => Image::Machine
         }
     }
 
-    pub fn capacity(&self) -> f32 {
-        match *self {
+    pub fn capacity(self) -> f32 {
+        match self {
             UnitType::Squaddie => 25.0,
             UnitType::Machine => 75.0
         }
     }
 
-    pub fn sight(&self) -> f32 {
+    pub fn sight(self) -> f32 {
         Unit::SIGHT
     }
 
     // How far the unit can throw
-    pub fn throw_distance(&self) -> f32 {
+    pub fn throw_distance(self) -> f32 {
         self.sight() * 1.5
     }
 }
@@ -292,12 +292,12 @@ impl Unit {
         chance_to_hit(self.x, self.y, target_x, target_y)
     }
 
-    pub fn can_heal_from(&self, item: &Item) -> bool {
+    pub fn can_heal_from(&self, item: Item) -> bool {
         let amount = item.heal(self.tag);
         amount > 0 && self.moves >= ITEM_COST && self.tag.health() - self.health >= amount
     }
 
-    pub fn can_reload_from(&self, item: &Item) -> bool {
+    pub fn can_reload_from(&self, item: Item) -> bool {
         let ammo = item.ammo(self.weapon.tag);
         ammo > 0 && self.weapon.can_reload(ammo)
     }
@@ -369,7 +369,7 @@ impl Unit {
                     true
                 },
                 // Use other items
-                (Item::Bandages, _) if self.can_heal_from(item) => {
+                (Item::Bandages, _) if self.can_heal_from(*item) => {
                     self.health += item.heal(self.tag);
                     true
                 },
@@ -567,11 +567,11 @@ fn unit_actions() {
 
         // The unit is at full health and shouldn't be able to heal
 
-        assert!(!unit.can_heal_from(&Item::Bandages));
+        assert!(!unit.can_heal_from(Item::Bandages));
 
         // Or reload
 
-        assert!(!unit.can_reload_from(&Item::RifleClip(rifle.capacity())));
+        assert!(!unit.can_reload_from(Item::RifleClip(rifle.capacity())));
 
         // Test firing the weapon
 

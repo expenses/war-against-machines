@@ -133,13 +133,11 @@ impl Battle {
 
         // Create the battle
         Battle {
-            map: map,
+            map, ui, inventory,
             cursor: None,
             keys: Keys::default(),
             selected: 0,
             path: None,
-            ui: ui,
-            inventory: inventory,
             animations: Animations::new(),
             command_queue: CommandQueue::new(),
             controller: Controller::Player,

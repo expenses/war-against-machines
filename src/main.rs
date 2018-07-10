@@ -15,12 +15,12 @@ extern crate gfx_device_gl;
 extern crate glutin;
 extern crate gfx_window_glutin;
 extern crate image;
-extern crate cpal;
 extern crate rodio;
 
 use std::time::Instant;
 
 use glutin::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode, MouseButton};
+use glutin::dpi::LogicalPosition;
 
 #[macro_use]
 mod ui;
@@ -126,8 +126,8 @@ impl App {
     fn handle_mouse_motion(&mut self, x: f32, y: f32) {
         // Convert the coordinates
         let (x, y) = (
-            (x / self.ctx.dpi_ratio()) - self.ctx.width / 2.0,
-            self.ctx.height / 2.0 - (y / self.ctx.dpi_ratio())
+            x - self.ctx.width / 2.0,
+            self.ctx.height / 2.0 - y
         );
 
         self.mouse = (x, y);
@@ -190,16 +190,16 @@ fn main() {
         // Poll the window events
         events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
             match event {
-                WindowEvent::Closed => running = false,
+                WindowEvent::CloseRequested => running = false,
                 WindowEvent::KeyboardInput {
                     input: KeyboardInput {state: ElementState::Pressed, virtual_keycode: Some(key), ..}, ..
                 } => running = app.handle_key_press(key),
                 WindowEvent::KeyboardInput {
                     input: KeyboardInput {state: ElementState::Released, virtual_keycode: Some(key), ..}, ..
                 } => app.handle_key_release(key),
-                WindowEvent::CursorMoved {position: (x, y), ..} => app.handle_mouse_motion(x as f32, y as f32),
+                WindowEvent::CursorMoved {position: LogicalPosition {x, y}, ..} => app.handle_mouse_motion(x as f32, y as f32),
                 WindowEvent::MouseInput {state: ElementState::Pressed, button, ..} => app.handle_mouse_button(button),
-                WindowEvent::Resized(width, height) => app.resize(width, height),
+                WindowEvent::Resized(size) => app.resize(size.width as u32, size.height as u32),
                 _ => {},
             };
         });

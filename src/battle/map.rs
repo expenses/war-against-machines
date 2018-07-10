@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 
 use bincode;
 
-const SIZE_LIMIT: bincode::Infinite = bincode::Infinite;
 const EXTENSION: &str = ".sav";
 
 // The Map struct
@@ -56,7 +55,7 @@ impl Map {
         let path = Path::new(&settings.savegames).join(filename);
 
         File::open(path).ok()
-            .and_then(|mut file| bincode::deserialize_from(&mut file, SIZE_LIMIT).ok())
+            .and_then(|mut file| bincode::deserialize_from(&mut file).ok())
     }
 
     // Save the skirmish
@@ -75,7 +74,7 @@ impl Map {
         let save = directory.join(filename);
 
         File::create(&save).ok()
-            .and_then(|mut file| bincode::serialize_into(&mut file, self, SIZE_LIMIT).ok())
+            .and_then(|mut file| bincode::serialize_into(&mut file, self).ok())
             .map(|_| save)
     }
 }

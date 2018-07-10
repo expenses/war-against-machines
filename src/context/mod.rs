@@ -29,17 +29,10 @@ impl Context {
         }
     }
 
-    // Get the dpi ratio
-    pub fn dpi_ratio(&self) -> f32 {
-        self.renderer.dpi_ratio()
-    }
-
     // Resize the context
     pub fn resize(&mut self, width: u32, height: u32) {
-        // Divide the width and height by the dpi so the size remains the same across resolutions
-        let dpi_ratio = self.dpi_ratio();
-        self.width = width as f32 / dpi_ratio;
-        self.height = height as f32 / dpi_ratio;
+        self.width = width as f32;
+        self.height = height as f32;
         // resize the renderer
         self.renderer.resize(width, height);
     }
@@ -76,7 +69,7 @@ impl Context {
     }
 
     // Render an image
-    pub fn render(&mut self, image: &Image, dest: [f32; 2], scale: f32) {
+    pub fn render(&mut self, image: Image, dest: [f32; 2], scale: f32) {
         self.renderer.render(Properties {
             src: image.source(),
             dest, scale,
@@ -86,7 +79,7 @@ impl Context {
     }
 
     // Render an image with a colour overlay
-    pub fn render_with_overlay(&mut self, image: &Image, dest: [f32; 2], scale: f32, overlay_colour: [f32; 4]) {
+    pub fn render_with_overlay(&mut self, image: Image, dest: [f32; 2], scale: f32, overlay_colour: [f32; 4]) {
         self.renderer.render(Properties {
             src: image.source(),
             dest, scale, overlay_colour,
@@ -95,7 +88,7 @@ impl Context {
     }
 
     // Render an image with a particular rotation
-    pub fn render_with_rotation(&mut self, image: &Image, dest: [f32; 2], scale: f32, rotation: f32) {
+    pub fn render_with_rotation(&mut self, image: Image, dest: [f32; 2], scale: f32, rotation: f32) {
         self.renderer.render(Properties {
             src: image.source(),
             dest, scale, rotation,

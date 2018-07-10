@@ -82,7 +82,7 @@ impl MainMenu {
     pub fn render(&self, ctx: &mut Context) {
         // Draw the title
         let dest = [0.0, ctx.height / 2.0 - TITLE_TOP_OFFSET];
-        ctx.render(&Image::Title, dest, 1.0);
+        ctx.render(Image::Title, dest, 1.0);
 
         // Draw the selected submenu
         self.submenus[self.submenu].render(ctx);

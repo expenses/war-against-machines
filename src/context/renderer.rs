@@ -11,6 +11,7 @@ use gfx_window_glutin;
 use gfx_device_gl;
 use glutin;
 use glutin::{GlContext, EventsLoop};
+use glutin::dpi::{PhysicalSize, LogicalSize};
 use image::{load_from_memory_with_format, ImageFormat};
 
 use settings::Settings;
@@ -57,7 +58,6 @@ gfx_defines! {
     // Constants for rendering
     constant Constants {
         tileset: [f32; 2] = "constant_tileset",
-        dpi_ratio: f32 = "constant_dpi_ratio",
     }
 
     // Global settings
@@ -103,7 +103,7 @@ impl Renderer {
         // Build the window
         let mut builder = glutin::WindowBuilder::new()
             .with_title(title)
-            .with_dimensions(width, height);
+            .with_dimensions(LogicalSize::new(f64::from(width), f64::from(height)));
 
         // Set the window to be fullscreen if that's set in settings
         if settings.fullscreen {
@@ -152,30 +152,22 @@ impl Renderer {
             encoder, data, pso, slice, window, device, depth
         };
 
-        let dpi_ratio = renderer.dpi_ratio();
-
         // Set the constants buffer
         renderer.encoder.update_constant_buffer(
             &renderer.data.constants,
             &Constants {
                 tileset: tileset_size,
-                dpi_ratio
             }
         );
         
         renderer.encoder.update_constant_buffer(
             &renderer.data.global,
             &Global {
-                resolution: [width as f32 * dpi_ratio, height as f32 * dpi_ratio]
+                resolution: [width as f32, height as f32]
             }
         );
 
         renderer
-    }
-
-    // Get the dpi ratio from the window (1 = regular, 2 = high dpi)
-    pub fn dpi_ratio(&self) -> f32 {
-        self.window.hidpi_factor()
     }
 
     // Resize the renderer window
@@ -185,7 +177,7 @@ impl Renderer {
             resolution: [width as f32, height as f32]
         });
         // Resize the gl context
-        self.window.resize(width, height);
+        self.window.resize(PhysicalSize::new(f64::from(width), f64::from(height)));
         // Update the view
         gfx_window_glutin::update_views(&self.window, &mut self.data.out, &mut self.depth);
     }

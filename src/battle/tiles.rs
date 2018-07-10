@@ -51,12 +51,12 @@ impl Visibility {
     const NIGHT_DARKNESS_RATE: f32 = 0.05;
 
     // Get the corresponding colour for a visibility
-    pub fn colour(&self, light: f32) -> [f32; 4] {
+    pub fn colour(self, light: f32) -> [f32; 4] {
         // Get the rate at which tiles get darker
         let rate = lerp(Self::NIGHT_DARKNESS_RATE, Self::DAY_DARKNESS_RATE, light);
 
         // Use the distance if the tile is visible
-        let alpha = if let Visibility::Visible(distance) = *self {
+        let alpha = if let Visibility::Visible(distance) = self {
             f32::from(distance) * rate
         // Or use the maximum darkness + 0.1
         } else if self.is_foggy() {
@@ -69,8 +69,8 @@ impl Visibility {
     }
 
     // Return the distance of the tile or the maximum value 
-    fn distance(&self) -> u8 {
-        if let Visibility::Visible(value) = *self {
+    fn distance(self) -> u8 {
+        if let Visibility::Visible(value) = self {
             value
         } else {
             u8::max_value()
@@ -131,7 +131,7 @@ impl Tile {
 
     // return if the tile is visible to the player
     pub fn visible(&self) -> bool {
-        !self.player_visibility.is_invisible()
+        !self.ai_visibility.is_invisible()
     }
 
     // Actions that occur when the tile is walked on
@@ -388,7 +388,7 @@ impl Tiles {
 
     // Would a unit with a particular sight range be able to see from one tile to another
     // Return the number of tiles away a point is, or none if visibility is blocked
-    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32, facing: &UnitFacing) -> Option<u8> {
+    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32, facing: UnitFacing) -> Option<u8> {
         if facing.can_see(a_x, a_y, b_x, b_y, sight) {
             // Sort the points so that line-of-sight is symmetrical
             let (start, end, _) = sort(to_point(a_x, a_y), to_point(b_x, b_y));
@@ -418,7 +418,7 @@ impl Tiles {
     fn tile_visible(&self, units: &Units, side: &UnitSide, x: usize, y: usize) -> Option<u8> {
         units.iter()
             .filter(|unit| unit.side == *side)
-            .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight(), &unit.facing))
+            .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight(), unit.facing))
             // Get the minimum distance or none
             .fold(None, |sum, dist| sum.and_then(|sum| dist.map(|dist| min(sum, dist))).or(sum).or(dist))
     }
@@ -457,10 +457,10 @@ impl Tiles {
 
     // What should the visiblity of a left wall at a position be
     pub fn left_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let visibility = self.at(x, y).player_visibility;
+        let visibility = self.at(x, y).ai_visibility;
 
         if x > 0 {
-            combine_visibilities(visibility, self.at(x - 1, y).player_visibility)
+            combine_visibilities(visibility, self.at(x - 1, y).ai_visibility)
         } else {
             visibility
         }
@@ -468,10 +468,10 @@ impl Tiles {
 
     // What should the visibility of a top wall at a position be
     pub fn top_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let visibility = self.at(x, y).player_visibility;
+        let visibility = self.at(x, y).ai_visibility;
         
         if y > 0 {
-            combine_visibilities(visibility, self.at(x, y - 1).player_visibility)
+            combine_visibilities(visibility, self.at(x, y - 1).ai_visibility)
         } else {
             visibility
         }

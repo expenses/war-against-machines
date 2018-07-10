@@ -16,47 +16,47 @@ pub enum WeaponType {
 
 impl WeaponType {
     // Get the corresponding bullet image
-    pub fn bullet(&self) -> Image {
-        match *self {
+    pub fn bullet(self) -> Image {
+        match self {
             WeaponType::PlasmaRifle => Image::PlasmaBullet,
             _ => Image::RegularBullet
         }
     }
 
     // Get the corresponding fire sound
-    pub fn fire_sound(&self) -> SoundEffect {
-        match *self {
+    pub fn fire_sound(self) -> SoundEffect {
+        match self {
             WeaponType::PlasmaRifle => SoundEffect::PlasmaShot,
             _ => SoundEffect::RegularShot
         }
     }
 
-    pub fn cost(&self) -> u16 {
-        match *self {
+    pub fn cost(self) -> u16 {
+        match self {
             WeaponType::Rifle => 10,
             WeaponType::MachineGun => 5,
             WeaponType::PlasmaRifle => 8
         }
     }
 
-    pub fn damage(&self) -> i16 {
-        match *self {
+    pub fn damage(self) -> i16 {
+        match self {
             WeaponType::Rifle => 40,
             WeaponType::MachineGun => 20,
             WeaponType::PlasmaRifle => 60
         }
     }
 
-    pub fn capacity(&self) -> u8 {
-        match *self {
+    pub fn capacity(self) -> u8 {
+        match self {
             WeaponType::Rifle => 6,
             WeaponType::MachineGun => 10,
             WeaponType::PlasmaRifle => 15
         }
     }
 
-    pub fn weight(&self) -> f32 {
-        match *self {
+    pub fn weight(self) -> f32 {
+        match self {
             WeaponType::Rifle => Item::Rifle(0).weight(),
             WeaponType::MachineGun => Item::MachineGun(0).weight(),
             WeaponType::PlasmaRifle => Item::PlasmaRifle(0).weight()

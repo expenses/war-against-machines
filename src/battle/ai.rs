@@ -77,7 +77,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
     if let Some(unit) = next_unit(map) {
         // If the unit has a consumable item and can use it, add a use item command
         for (index, item) in unit.inventory.iter().enumerate() {
-            if unit.can_heal_from(item) || unit.can_reload_from(item) {
+            if unit.can_heal_from(*item) || unit.can_reload_from(*item) {
                 command_queue.push(UseItemCommand::new(unit.id, index));
                 return true;
             }
@@ -130,7 +130,7 @@ pub fn make_move(map: &Map, command_queue: &mut CommandQueue) -> bool {
 // Find the next ai unit that can be moved
 fn next_unit(map: &Map) -> Option<&Unit> {
     map.units.iter()
-        // Make sure that there is a player unit alive and find ai units with avaliable moves
+        // Make sure that there is a player unit alive and find ai units with available moves
         .find(|unit| map.units.count(&UnitSide::Player) > 0 && unit.side == UnitSide::AI && unit.moves > 0)
 }
 
@@ -229,7 +229,7 @@ fn search_score(x: usize, y: usize, map: &Map, unit: &Unit) -> f32 {
     // Loop though the reachable tiles
     for (tile_x, tile_y) in map.tiles.iter() {
         // If the tile would be visible, add the score
-        if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight(), &unit.facing).is_some() {    
+        if map.tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight(), unit.facing).is_some() {    
             score += match map.tiles.at(tile_x, tile_y).ai_visibility {
                 Visibility::Invisible => 1.0,
                 Visibility::Foggy => 0.1,

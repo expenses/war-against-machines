@@ -29,8 +29,6 @@ bincode = "*"
 image = "*"
 ## Loading and playing sounds
 rodio = "*"
-## Cpal is needed for `default_endpoint` and is updated before rodio so we pin the version
-cpal = "0.4"
 
 # Engine
 ## Gfx backend over OpenGL
