@@ -131,7 +131,7 @@ impl Tile {
 
     // return if the tile is visible to the player
     pub fn visible(&self) -> bool {
-        !self.ai_visibility.is_invisible()
+        !self.player_visibility.is_invisible()
     }
 
     // Actions that occur when the tile is walked on
@@ -457,10 +457,10 @@ impl Tiles {
 
     // What should the visiblity of a left wall at a position be
     pub fn left_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let visibility = self.at(x, y).ai_visibility;
+        let visibility = self.at(x, y).player_visibility;
 
         if x > 0 {
-            combine_visibilities(visibility, self.at(x - 1, y).ai_visibility)
+            combine_visibilities(visibility, self.at(x - 1, y).player_visibility)
         } else {
             visibility
         }
@@ -468,10 +468,10 @@ impl Tiles {
 
     // What should the visibility of a top wall at a position be
     pub fn top_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let visibility = self.at(x, y).ai_visibility;
+        let visibility = self.at(x, y).player_visibility;
         
         if y > 0 {
-            combine_visibilities(visibility, self.at(x, y - 1).ai_visibility)
+            combine_visibilities(visibility, self.at(x, y - 1).player_visibility)
         } else {
             visibility
         }
@@ -517,6 +517,7 @@ fn unit_visibility() {
 
         if x == 29 && y == 0 {
             assert_eq!(visibility, Visibility::Visible(0));
+            assert!(tiles.at(x, y).visible());
         } else {
             assert!(!visibility.is_visible());
         }

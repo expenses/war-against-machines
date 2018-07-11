@@ -88,7 +88,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     // If the tile is on the screen, draw it
     if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
         // Get the colour overlay
-        let overlay = tile.ai_visibility.colour(battle.map.light);
+        let overlay = tile.player_visibility.colour(battle.map.light);
 
         // Draw the tile base if visible
         if tile.visible() {
@@ -126,7 +126,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 if cursor_x == x && cursor_y == y {
                     // Determine the cursor type
                     // Grey if the tile is not visible
-                    let colour = if !tile.ai_visibility.is_visible() {
+                    let colour = if !tile.player_visibility.is_visible() {
                         colours::GREY
                     // Red if the tile has an obstacle
                     } else if !tile.obstacle.is_empty() {
@@ -147,7 +147,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         // Draw the rest
         if tile.visible() {
             // Draw items that should only be shown on visible tiles
-            if tile.ai_visibility.is_visible() {
+            if tile.player_visibility.is_visible() {
                 // Draw the tile decoration
                 if let Some(decoration) = tile.decoration {
                     ctx.render_with_overlay(decoration, dest, camera.zoom, overlay);

@@ -9,3 +9,6 @@ target/
 # Save files
 *.sav
 settings.toml
+
+# Editor files
+.idea
