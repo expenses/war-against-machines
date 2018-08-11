@@ -30,13 +30,8 @@ image = "*"
 ## Loading and playing sounds
 rodio = "*"
 
-# Engine
-## Gfx backend over OpenGL
-gfx = "*"
-gfx_device_gl = "*"
-gfx_window_glutin = "*"
-## Windowing
-glutin = "*"
+# OpenGl!
+glium = "*"
 
 ## For `retain_mut`
 [dependencies.odds]

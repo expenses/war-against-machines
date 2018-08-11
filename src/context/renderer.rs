@@ -1,98 +1,67 @@
-use gfx;
-use gfx::{Encoder, PipelineState};
-use gfx::traits::FactoryExt;
-use gfx::format::DepthStencil;
-use gfx::Device as GfxDevice;
-use gfx::Factory as GfxFactory;
-use gfx::handle::{DepthStencilView, ShaderResourceView};
-use gfx::texture::{SamplerInfo, FilterMethod, WrapMode, Kind, AaMode, Mipmap};
-use gfx::state::ColorMask;
-use gfx_window_glutin;
-use gfx_device_gl;
-use glutin;
-use glutin::{GlContext, EventsLoop};
-use glutin::dpi::{PhysicalSize, LogicalSize};
+use glium;
+use glium::*;
+use glutin::*;
+use glutin::dpi::*;
 use image::{load_from_memory_with_format, ImageFormat};
-
+use glium::texture::*;
+use glium::index::PrimitiveType::*;
+use glium::uniforms::*;
 use settings::Settings;
+
+const VERT: &str = include_str!("shaders/shader.vert");
+const FRAG: &str = include_str!("shaders/shader.frag");
+
+#[derive(Copy, Clone)]
+struct Vertex {
+    in_pos: [f32; 2],
+    in_uv: [f32; 2]
+}
+
+implement_vertex!(Vertex, in_pos, in_uv);
 
 // A square of vertices
 const SQUARE: &[Vertex] = &[
-    Vertex { pos: [1.0, -1.0],  uv: [1.0, 1.0]},
-    Vertex { pos: [-1.0, -1.0], uv: [0.0, 1.0]},
-    Vertex { pos: [-1.0, 1.0],  uv: [0.0, 0.0]},
-    Vertex { pos: [1.0, 1.0],   uv: [1.0, 0.0]},
+    Vertex { in_pos: [1.0, -1.0],  in_uv: [1.0, 1.0]},
+    Vertex { in_pos: [-1.0, -1.0], in_uv: [0.0, 1.0]},
+    Vertex { in_pos: [-1.0, 1.0],  in_uv: [0.0, 0.0]},
+    Vertex { in_pos: [1.0, 1.0],   in_uv: [1.0, 0.0]},
 ];
 // The indices that hold the square together
 const INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
 
-// Definitions for stuff
-type ColorFormat = gfx::format::Srgba8;
-type DepthFormat = gfx::format::DepthStencil;
-// Type definitions for opengl stuff (so I can change the backend easily)
-type Resources = gfx_device_gl::Resources;
-type Factory = gfx_device_gl::Factory;
-type CommandBuffer = gfx_device_gl::CommandBuffer;
-type Device = gfx_device_gl::Device;
-type Texture = ShaderResourceView<Resources, [f32; 4]>;
 
 // Load a texture from memory and return it and its dimensions
-fn load_texture(factory: &mut Factory, bytes: &[u8]) -> ([f32; 2], Texture) {
+fn load_texture(display: &Display, bytes: &[u8]) -> ([f32; 2], SrgbTexture2d) {
     let img = load_from_memory_with_format(bytes, ImageFormat::PNG).unwrap().to_rgba();
     let (width, height) = img.dimensions();
-    let kind = Kind::D2(width as u16, height as u16, AaMode::Single);
-    let mipmap = Mipmap::Allocated;
-    let texture = factory.create_texture_immutable_u8::<ColorFormat>(kind, mipmap, &[&img]).unwrap().1;
+    let image = RawImage2d::from_raw_rgba_reversed(&img.into_raw(), (width, height));
+    let texture = SrgbTexture2d::new(display, image).unwrap();
     
     ([width as f32, height as f32], texture)
 }
 
-// Define the rendering stuff
-gfx_defines! {
-    // The input vertex
-    vertex Vertex {
-        pos: [f32; 2] = "in_pos",
-        uv: [f32; 2] = "in_uv",
-    }
+#[derive(Default)]
+pub struct Properties {
+    pub src: [f32; 4],
+    pub overlay_colour: [f32; 4],
+    pub dest: [f32; 2],
+    pub rotation: f32,
+    pub scale: f32
+}
 
-    // Constants for rendering
-    constant Constants {
-        tileset: [f32; 2] = "constant_tileset",
-    }
-
-    // Global settings
-    constant Global {
-        resolution: [f32; 2] = "global_resolution",
-    }
-
-    // Settings for the current image
-    constant Properties {
-        src: [f32; 4] = "prop_src",
-        overlay_colour: [f32; 4] = "prop_overlay_colour",
-        dest: [f32; 2] = "prop_dest",
-        rotation: f32 = "prop_rotation",
-        scale: f32 = "prop_scale",
-    }
-    
-    // The pipeline
-    pipeline pipe {
-        vbuf: gfx::VertexBuffer<Vertex> = (),
-        properties: gfx::ConstantBuffer<Properties> = "Properties",
-        global: gfx::ConstantBuffer<Global> = "Global",
-        constants: gfx::ConstantBuffer<Constants> = "Constants",
-        sampler: gfx::TextureSampler<[f32; 4]> = "sampler",
-        out: gfx::BlendTarget<ColorFormat> = ("target", ColorMask::all(), gfx::preset::blend::ALPHA),
-    }
+struct Uniforms {
+    screen_resolution: [f32; 2],
+    tileset_size: [f32; 2],
+    texture: SrgbTexture2d
 }
 
 pub struct Renderer {
-    encoder: Encoder<Resources, CommandBuffer>,
-    data: pipe::Data<Resources>,
-    pso: PipelineState<Resources, pipe::Meta>,
-    slice: gfx::Slice<Resources>,
-    window: glutin::GlWindow,
-    device: Device,
-    depth: DepthStencilView<Resources, DepthStencil>,
+    uniforms: Uniforms,
+    target: Frame,
+    display: Display,
+    vertex_buffer: VertexBuffer<Vertex>,
+    indices: IndexBuffer<u16>,
+    program: Program
 }
 
 impl Renderer {
@@ -101,7 +70,7 @@ impl Renderer {
         let (width, height) = (settings.window_width, settings.window_height);
 
         // Build the window
-        let mut builder = glutin::WindowBuilder::new()
+        let mut builder = WindowBuilder::new()
             .with_title(title)
             .with_dimensions(LogicalSize::new(f64::from(width), f64::from(height)));
 
@@ -110,99 +79,85 @@ impl Renderer {
             builder = builder.with_fullscreen(Some(event_loop.get_primary_monitor()));
         }
 
-        // Create the GL context
-        let context = glutin::ContextBuilder::new()
-            .with_gl(glutin::GL_CORE)
-            .with_vsync(true);
+        // Create the context and display
+        let context = ContextBuilder::new().with_vsync(true);
+        let display = Display::new(builder, context, &event_loop).unwrap();
 
-        // Initialise the gfx-glutin connection
-        let (window, device, mut factory, colour, depth) =
-            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, event_loop);
-
-        // Create the Pipeline State Object, loading in the shaders
-        let pso = factory.create_pipeline_simple(
-            include_bytes!("shaders/rect_150.glslv"),
-            include_bytes!("shaders/rect_150.glslf"),
-            pipe::new()
-        ).unwrap();
-
-        // Get the vertex buffer and slice
-        let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(SQUARE, INDICES);
+        // Create the buffers and program
+        let vertex_buffer = VertexBuffer::new(&display, SQUARE).unwrap();
+        let indices = IndexBuffer::new(&display, TrianglesList, INDICES).unwrap();
+        let program = Program::from_source(&display, VERT, FRAG, None).unwrap();
 
         // Load the texture
-        let (tileset_size, tileset) = load_texture(&mut factory, tileset);
-        // Create a Nearest-Neighbor sampler (with basic mipmapping)
-        let sampler = factory.create_sampler(SamplerInfo::new(FilterMethod::Mipmap, WrapMode::Clamp));
-
-        // Create the pipeline data
-        let data = pipe::Data {
-            vbuf: vertex_buffer,
-            sampler: (tileset, sampler),
-            properties: factory.create_constant_buffer(1),
-            global: factory.create_constant_buffer(1),
-            constants: factory.create_constant_buffer(1),
-            out: colour
-        };
-
-        // Create a encoder to abstract the command buffer
-        let encoder = factory.create_command_buffer().into();
-
-        // Create the renderer!
-        let mut renderer = Renderer {
-            encoder, data, pso, slice, window, device, depth
-        };
-
-        // Set the constants buffer
-        renderer.encoder.update_constant_buffer(
-            &renderer.data.constants,
-            &Constants {
-                tileset: tileset_size,
-            }
-        );
+        let (tileset_size, tileset) = load_texture(&display, tileset);
         
-        renderer.encoder.update_constant_buffer(
-            &renderer.data.global,
-            &Global {
-                resolution: [width as f32, height as f32]
-            }
-        );
-
-        renderer
+        Renderer {
+            // Setup uniforms
+            uniforms: Uniforms {
+                tileset_size,
+                screen_resolution: [width as f32, height as f32],
+                texture: tileset
+            },
+            // Setup the draw target
+            target: display.draw(),
+            display,
+            vertex_buffer,
+            indices,
+            program
+        }
     }
 
-    // Resize the renderer window
+    // Set the internal screen resolution uniform
     pub fn resize(&mut self, width: u32, height: u32) {
-        // Update the global buffer
-        self.encoder.update_constant_buffer(&self.data.global, &Global {
-            resolution: [width as f32, height as f32]
-        });
-        // Resize the gl context
-        self.window.resize(PhysicalSize::new(f64::from(width), f64::from(height)));
-        // Update the view
-        gfx_window_glutin::update_views(&self.window, &mut self.data.out, &mut self.depth);
+        self.uniforms.screen_resolution = [width as f32, height as f32];
     }
 
     // Render a image from a set of properties
     pub fn render(&mut self, properties: Properties) {
-        // Update the properties buffer
-        self.encoder.update_constant_buffer(&self.data.properties, &properties);
-        // Draw the image
-        self.encoder.draw(&self.slice, &self.pso, &self.data);
+        // Create the samper and set it to do nearest neighbour resizing of the image for nice pixelation
+        let sampler = glium::uniforms::Sampler::new(&self.uniforms.texture)
+            .minify_filter(MinifySamplerFilter::Nearest)
+            .magnify_filter(MagnifySamplerFilter::Nearest);
+
+        // Setup the uniforms
+        // TODO: See if properties can be supplied as a whole struct
+        let uniforms = uniform! {
+            tileset_size: self.uniforms.tileset_size,
+            screen_resolution: self.uniforms.screen_resolution,
+            prop_src: properties.src,
+            prop_dest: properties.dest,
+            prop_overlay_colour: properties.overlay_colour,
+            prop_rotation: properties.rotation,
+            prop_scale: properties.scale,
+            sampler: sampler
+        };
+
+        // Make sure alpha blending is enabled
+        let draw_params = DrawParameters {
+            blend: Blend::alpha_blending(),
+            .. Default::default()
+        };
+
+        // Draw to the target
+        self.target.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &draw_params).unwrap();
     }
 
-    // Flush the renderer and swap buffers
+    // Finish the current draw target (swapping it onto the screen) and setup a new one
     pub fn flush(&mut self) {
-        // Flush the device
-        self.encoder.flush(&mut self.device);
-        // Swap buffers
-        self.window.swap_buffers().unwrap();
-        // Clean up
-        self.device.cleanup();
+        self.target.set_finish().unwrap();
+        self.target = self.display.draw();
     }
 
-    // Clear the renderer
+    // Clear the target
     pub fn clear(&mut self, colour: [f32; 4]) {
-        self.encoder.clear(&self.data.out, colour);
+        self.target.clear_color(colour[0], colour[1], colour[2], colour[3]);
+    }
+}
+
+// When the renderer is dropped the current target needs to finish or a panic occurs
+impl Drop for Renderer {
+    fn drop(&mut self) {
+        self.target.set_finish().unwrap();
     }
 }
 
@@ -211,29 +166,9 @@ impl Renderer {
 // so only enable this test on OSX
 #[cfg(target_os = "macos")]
 fn compile_shaders() {
-    use std::os::raw::c_void;
-
-    // Create the headless context and make it the current one
-
-    let headless = glutin::HeadlessRendererBuilder::new(640, 480)
-        .build()
-        .unwrap();
-
-    unsafe {
-        headless.make_current().unwrap();
-    };
-
-    // Get the factory
-
-    let (_, mut factory) = gfx_device_gl::create(
-        |s| headless.get_proc_address(s) as *const c_void
-    );
-
-    // Test creating the PSO
-
-    factory.create_pipeline_simple(
-        include_bytes!("shaders/rect_150.glslv"),
-        include_bytes!("shaders/rect_150.glslf"),
-        pipe::new()
-    ).unwrap_or_else(|error| panic!("{}", error));
+    // Create the headless context and renderer
+    let context = HeadlessRendererBuilder::new(640, 480).build().unwrap();
+    let display = HeadlessRenderer::new(context).unwrap();
+    // Try create the program
+    Program::from_source(&display, VERT, FRAG, None).unwrap();
 }

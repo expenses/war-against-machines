@@ -9,17 +9,17 @@ extern crate toml;
 #[macro_use]
 extern crate serde_derive;
 extern crate bincode;
-#[macro_use]
-extern crate gfx;
-extern crate gfx_device_gl;
-extern crate glutin;
-extern crate gfx_window_glutin;
 extern crate image;
 extern crate rodio;
+#[macro_use]
+extern crate glium;
 
 use std::time::Instant;
 
-use glutin::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode, MouseButton};
+// Lazy way to pretend glutin is a direct dependency
+pub use glium::glutin;
+
+use glutin::*;
 use glutin::dpi::LogicalPosition;
 
 #[macro_use]
