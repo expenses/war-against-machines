@@ -3,13 +3,10 @@
 pub mod units;
 pub mod map;
 mod drawer;
-mod tiles;
 mod paths;
 mod animations;
 //mod ai;
 mod commands;
-mod walls;
-mod iter_2d;
 mod networking;
 mod messages;
 
@@ -52,6 +49,7 @@ pub struct Battle {
     keys: Keys,
     ui: UI,
     inventory: UI,
+    side: Side
 }
 
 // todo: clean up all these `self.client.map` etc calls
@@ -108,6 +106,7 @@ impl Battle {
             selected: 0,
             path: None,
             camera: Camera::new(),
+            side: Side::PLAYER
         })
     }
 
@@ -334,7 +333,7 @@ impl Battle {
         let (x, y) = tile_under_cursor(x, y, &self.camera);
 
         // Set cursor position if it is on the map and visible
-        self.cursor = if x < self.client.map.tiles.cols && y < self.client.map.tiles.rows {
+        self.cursor = if x < self.client.map.tiles.width() && y < self.client.map.tiles.height() {
             Some((x, y))
         } else {
             None
@@ -346,11 +345,10 @@ impl Battle {
             Some(unit) => {
                 self.path = None;
 
-                match unit.side {
-                    // Select a unit
-                    UnitSide::Player => self.selected = unit.id,
-                    // Fire on a unit
-                    UnitSide::AI => self.client.fire(self.selected, x, y)
+                if unit.side == self.side {
+                    self.selected = unit.id;
+                } else {
+                    self.client.fire(self.selected, x, y);
                 }
             },
             // Force fire on a tile
@@ -415,7 +413,7 @@ impl Battle {
     // Work out if the cursor is on an ai unit
     fn cursor_active(&self) -> bool {
         self.keys.force_fire ||
-        self.cursor.map(|(x, y)| self.client.map.units.on_side(x, y, &UnitSide::AI)).unwrap_or(false)
+        self.cursor.map(|(x, y)| self.client.map.units.on_side(x, y, self.side.enemies())).unwrap_or(false)
     }
 
     // End the current turn
@@ -438,19 +436,19 @@ fn battle_operations() {
     assert_eq!(battle.client.map.controller, Controller::Player);
 
     // The cols and rows are equal
-    assert_eq!(battle.client.map.tiles.cols, skirmish_settings.cols);
-    assert_eq!(battle.client.map.tiles.rows, skirmish_settings.rows);
+    assert_eq!(battle.client.map.tiles.width(), skirmish_settings.cols);
+    assert_eq!(battle.client.map.tiles.height(), skirmish_settings.rows);
 
     // The player unit counts are equal
-    assert_eq!(battle.client.map.units.count(&UnitSide::Player) as usize, skirmish_settings.player_units);
+    assert_eq!(battle.client.map.units.count(Side::PLAYER) as usize, skirmish_settings.player_units);
     
     // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
-    assert_eq!(battle.client.map.units.count(&UnitSide::AI) as usize, 0);
+    assert_eq!(battle.client.map.units.count(Side::AI) as usize, 0);
 
     // The unit types are correct
 
     assert!(battle.client.map.units.iter()
-        .filter(|unit| unit.side == UnitSide::Player)
+        .filter(|unit| unit.side == Side::PLAYER)
         .all(|unit| unit.tag == skirmish_settings.player_unit_type));
 
     {
@@ -458,7 +456,7 @@ fn battle_operations() {
 
         let unit = battle.client.map.units.get_mut(0).unwrap();
 
-        assert_eq!(unit.side, UnitSide::Player);
+        assert_eq!(unit.side, Side::PLAYER);
         assert_eq!(unit.tag, skirmish_settings.player_unit_type);
 
         assert_eq!((unit.x, unit.y), (0, 0));

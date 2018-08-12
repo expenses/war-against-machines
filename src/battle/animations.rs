@@ -37,7 +37,7 @@ struct Status {
     blocking: bool
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Animation {
     Walk(f32),
     NewState(Box<Map>),
@@ -51,8 +51,8 @@ pub enum Animation {
 }
 
 impl Animation {
-    pub fn new_state(map: &mut Map) -> Self {
-        Animation::NewState(Box::new(map.clone_visible()))
+    pub fn new_state(map: &mut Map, side: Side) -> Self {
+        Animation::NewState(Box::new(map.clone_visible(side)))
     }
 
     pub fn new_explosion(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
@@ -115,7 +115,7 @@ impl Animation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Explosion {
     x: usize,
     y: usize,
@@ -162,7 +162,7 @@ impl Explosion {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ThrownItem {
     image: Image,
     start_x: f32,
@@ -211,11 +211,6 @@ impl ThrownItem {
         lerp(self.start_y, self.end_y, self.progress)
     }
 
-    // Return if the item is visible
-    pub fn visible(&self, map: &Map) -> bool {
-        visible(self.x(), self.y(), map)
-    }
-
     // Update the progress and the height
     fn step(&mut self, dt: f32) -> Status {
         self.progress += self.increment * dt;
@@ -223,15 +218,6 @@ impl ThrownItem {
         Status {finished: self.progress > 1.0, blocking: true}
     }
 }
-
-// Calculate if the nearest tile to the an item is visible
-fn visible(x: f32, y: f32, map: &Map) -> bool {
-    map.tiles.at(
-        clamp_float(x, 0, map.tiles.cols - 1),
-        clamp_float(y, 0, map.tiles.rows - 1)
-    ).player_visibility.is_visible()
-}
-
 
 const MARGIN: f32 = 5.0;
 
@@ -241,8 +227,8 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
     // Get the min and max edges
     let min_x = -MARGIN;
     let min_y = -MARGIN;
-    let max_x = map.tiles.cols as f32 + MARGIN;
-    let max_y = map.tiles.rows as f32 + MARGIN;
+    let max_x = map.tiles.width() as f32 + MARGIN;
+    let max_y = map.tiles.height() as f32 + MARGIN;
     
     // get the relevant edges
     let relevant_x = if x_2 > x_1 {max_x} else {min_x};
@@ -261,7 +247,7 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
 }
 
 // A bullet animation for drawing on the screen
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Bullet {
     x: f32,
     y: f32,
@@ -324,11 +310,6 @@ impl Bullet {
 
     pub fn direction(&self) -> f32 {
         self.direction
-    }
-
-    // Calculate if the nearest tile to the bullet is visible
-    pub fn visible(&self, map: &Map) -> bool {
-        visible(self.x, self.y, map)
     }
 
     // Move the bullet a step and work out if its still going or not

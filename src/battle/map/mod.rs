@@ -2,7 +2,6 @@
 // This struct contains all the stuff that is saved/loaded
 
 use super::units::*;
-use super::tiles::Tiles;
 use super::animations::*;
 use settings::Settings;
 
@@ -10,8 +9,17 @@ use std::fs::*;
 use std::path::*;
 use std::fmt;
 
+mod grid;
+mod iter_2d;
+mod tiles;
+mod vision;
+mod walls;
+
 use super::messages::*;
 use super::commands::*;
+
+pub use self::walls::*;
+pub use self::tiles::*;
 
 use bincode;
 
@@ -63,12 +71,9 @@ impl Map {
     }
 
     // Work out how many units of a particular side are visible to the other side
-    pub fn visible(&self, side: UnitSide) -> impl Iterator<Item=&Unit> {
+    pub fn visible(&self, side: Side) -> impl Iterator<Item=&Unit> {
         self.units.iter()
-            .filter(move |unit| unit.side == side && match side {
-                UnitSide::Player => self.tiles.at(unit.x, unit.y).ai_visibility,
-                UnitSide::AI => self.tiles.at(unit.x, unit.y).player_visibility
-            }.is_visible())
+            .filter(move |unit| unit.side == side && self.tiles.visibility_at(unit.x, unit.y, side.enemies()).is_visible())
     }
 
     // Load a skirmish if possible
@@ -97,8 +102,8 @@ impl Map {
             .map(|_| save)
     }
 
-    pub fn perform_command(&mut self, id: u8, command: Command) -> Vec<Animation> {
-        let mut animations = Vec::new();
+    pub fn perform_command(&mut self, id: u8, command: Command) -> (Vec<Animation>, Vec<Animation>) {
+        let mut animations = ServerAnimations::new();
 
         match command {
             Command::Walk(path) => move_command(self, id, path, &mut animations),
@@ -110,7 +115,7 @@ impl Map {
             Command::Fire {x, y} => fire_command(self, id, x, y, &mut animations),
         }
 
-        animations
+        animations.split()
     }
 
     pub fn end_turn(&mut self) {
@@ -127,7 +132,7 @@ impl Map {
         }
     }
 
-    pub fn clone_visible(&mut self) -> Self {
+    pub fn clone_visible(&mut self, side: Side) -> Self {
         // Update visibility first
         self.tiles.update_visibility(&self.units);
 
@@ -135,7 +140,7 @@ impl Map {
             light: self.light,
             turn: self.turn,
             controller: self.controller,
-            units: self.tiles.visible_units(&self.units).cloned().collect(),
+            units: self.tiles.visible_units(&self.units, side).cloned().collect(),
             tiles: self.tiles.clone()
 
         }
@@ -144,7 +149,7 @@ impl Map {
 
 #[test]
 fn load_save() {
-    use super::units::{UnitType, UnitFacing};
+    use super::units::*;
 
     // Test saving and loading a map
 
@@ -153,7 +158,7 @@ fn load_save() {
     output.push("test.sav");
 
     let mut map = Map::new(20, 20, 0.5);
-    map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom);
+    map.units.add(UnitType::Squaddie, Side::PLAYER, 0, 0, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
     assert_eq!(map.save("test".into(), &settings), Some(output.clone()));

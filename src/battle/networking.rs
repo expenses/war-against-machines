@@ -40,12 +40,12 @@ impl Server {
 
 	            // Add player units
 	            for x in 0 .. settings.player_units {
-	                map.units.add(settings.player_unit_type, UnitSide::Player, x, 0, UnitFacing::Bottom);
+	                map.units.add(settings.player_unit_type, Side::PLAYER, x, 0, UnitFacing::Bottom);
 	            }
 
 	            // Add ai units
 	            for y in settings.cols - settings.ai_units .. settings.cols {
-	                map.units.add(settings.ai_unit_type, UnitSide::AI, y, settings.rows - 1, UnitFacing::Top);
+	                map.units.add(settings.ai_unit_type, Side::AI, y, settings.rows - 1, UnitFacing::Top);
 	            }
 	            
 	            // Generate tiles
@@ -55,9 +55,7 @@ impl Server {
 			}
 		};
 
-        let client_map = map.clone_visible();
-
-        connection.send(ServerMessage::State(client_map)).ok()?;
+        connection.send(ServerMessage::State(map.clone_visible(Side::PLAYER))).ok()?;
 
         Some(Self {
         	connection, map
@@ -76,11 +74,11 @@ impl Server {
 							self.map.end_turn();
 						}
 
-						self.connection.send(ServerMessage::Animations(vec![Animation::new_state(&mut self.map)])).unwrap();
+						self.connection.send(ServerMessage::Animations(vec![Animation::new_state(&mut self.map, Side::PLAYER)])).unwrap();
 					},
 					ClientMessage::Command {unit, command} => {
-						let animations = self.map.perform_command(unit, command);
-						self.connection.send(ServerMessage::Animations(animations)).unwrap();
+						let (player_a_animations, _player_b_animations) = self.map.perform_command(unit, command);
+						self.connection.send(ServerMessage::Animations(player_a_animations)).unwrap();
 					}
 				}
 			}

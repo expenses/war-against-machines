@@ -1,5 +1,6 @@
 // The units in the game, and a struct to contain them
 
+
 use rand;
 use rand::{Rng, ThreadRng};
 
@@ -7,14 +8,12 @@ use std::fmt;
 use std::collections::hash_map::*;
 use std::iter::*;
 
-
 use super::paths::PathPoint;
-use super::tiles::Tiles;
+use super::map::*;
 use items::Item;
 use weapons::{Weapon, WeaponType};
 use utils::{chance_to_hit, distance_under};
 use resources::Image;
-
 
 // The cost for a unit to pick up / drop / use an item
 pub const ITEM_COST: u16 = 5;
@@ -79,6 +78,27 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
     }
 
     format!("SK{}", serial)
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Side(u8);
+
+impl Side {
+    // Multiplayer
+    pub const PLAYER_A: Side = Side(0);
+    pub const PLAYER_B: Side = Side(1);
+
+    // Singleplayer
+    pub const PLAYER: Side = Side(0);
+    pub const AI: Side = Side(1);
+
+    pub fn enemies(self) -> Side {
+        Side(1 - self.0)
+    }
+
+    pub fn inner(self) -> u8 {
+        self.0
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -198,21 +218,6 @@ impl fmt::Display for UnitType {
     }
 }
 
-// Which side the unit is on
-#[derive(PartialEq, Serialize, Deserialize, Debug, Clone)]
-pub enum UnitSide {
-    Player,
-    AI
-}
-
-impl UnitSide {
-    pub fn enemies(&self) -> UnitSide {
-        match *self {
-            UnitSide::Player => UnitSide::AI,
-            UnitSide::AI => UnitSide::Player
-        }
-    }
-}
 
 // todo: lock down on public fields
 
@@ -221,7 +226,7 @@ impl UnitSide {
 pub struct Unit {
     pub id: u8,
     pub tag: UnitType,
-    pub side: UnitSide,
+    pub side: Side,
     pub x: usize,
     pub y: usize,
     pub weapon: Weapon,
@@ -241,7 +246,7 @@ impl Unit {
     pub const SIGHT: f32 = 7.5;
 
     // Create a new unit based on unit type
-    pub fn new(tag: UnitType, side: UnitSide, x: usize, y: usize, facing: UnitFacing, id: u8) -> Unit {
+    pub fn new(tag: UnitType, side: Side, x: usize, y: usize, facing: UnitFacing, id: u8) -> Unit {
         let mut rng = rand::thread_rng();
 
         match tag {
@@ -425,8 +430,8 @@ impl Unit {
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Units {
-    pub total_player_units: u8,
-    pub total_ai_units: u8,
+    pub max_player_units: u8,
+    pub max_ai_units: u8,
     index: u8,
     units: HashMap<u8, Unit>
 }
@@ -436,18 +441,19 @@ impl Units {
     pub fn new() -> Units {
         Units {
             index: 0,
-            total_player_units: 0,
-            total_ai_units: 0,
+            max_player_units: 0,
+            max_ai_units: 0,
             units: HashMap::new()
         }
     }
 
     // Add a unit to the struct
-    pub fn add(&mut self, tag: UnitType, side: UnitSide, x: usize, y: usize, facing: UnitFacing) {
-        match side {
-            UnitSide::Player => self.total_player_units += 1,
-            UnitSide::AI => self.total_ai_units += 1
-        };
+    pub fn add(&mut self, tag: UnitType, side: Side, x: usize, y: usize, facing: UnitFacing) {
+        if side == Side::PLAYER {
+            self.max_player_units += 1;
+        } else {
+            self.max_ai_units += 1;
+        }
 
         self.units.insert(self.index, Unit::new(tag, side, x, y, facing, self.index));
         self.index += 1;
@@ -484,13 +490,13 @@ impl Units {
     }
 
     // Count the number of units on a particular side
-    pub fn count(&self, side: &UnitSide) -> u8 {
-        self.iter().filter(|unit| unit.side == *side).count() as u8
+    pub fn count(&self, side: Side) -> u8 {
+        self.iter().filter(|unit| unit.side == side).count() as u8
     }
 
     // Is a unit on a particular side at (x, y)?
-    pub fn on_side(&self, x: usize, y: usize, side: &UnitSide) -> bool {
-        self.at(x, y).map(|unit| unit.side == *side).unwrap_or(false)
+    pub fn on_side(&self, x: usize, y: usize, side: Side) -> bool {
+        self.at(x, y).map(|unit| unit.side == side).unwrap_or(false)
     }
 
     // Kill a unit and drop a corpse
@@ -519,20 +525,21 @@ impl Units {
 
 impl FromIterator<Unit> for Units {
     fn from_iter<I: IntoIterator<Item=Unit>>(iterator: I) -> Self {
-        let mut total_player_units = 0;
-        let mut total_ai_units = 0;
+        let mut max_player_units = 0;
+        let mut max_ai_units = 0;
 
         let units = iterator.into_iter().inspect(|unit| {
-                match unit.side {
-                    UnitSide::Player => total_player_units += 1,
-                    UnitSide::AI => total_ai_units += 1
+                if unit.side == Side::PLAYER {
+                    max_player_units += 1;
+                } else {
+                    max_ai_units += 1;
                 }
             })
             .map(|unit| (unit.id, unit))
             .collect();
 
         Self {
-            total_player_units, total_ai_units, units,
+            max_player_units, max_ai_units, units,
             index: 0
         }
     }
@@ -549,10 +556,10 @@ fn unit_actions() {
     // After adding 10 units, there should be 10 ai units into total
 
     for i in 0 .. 10 {
-        units.add(UnitType::Machine, UnitSide::AI, i, i, UnitFacing::Bottom);
+        units.add(UnitType::Machine, Side::AI, i, i, UnitFacing::Bottom);
     }
 
-    assert_eq!(units.count(&UnitSide::AI), 10);
+    assert_eq!(units.count(Side::AI), 10);
 
     // Iterating over the units should work as expected
 
@@ -603,7 +610,7 @@ fn unit_actions() {
 
     units.kill(&mut tiles, 0);
 
-    assert_eq!(units.count(&UnitSide::AI), 9);
+    assert_eq!(units.count(Side::AI), 9);
 
     // And the tile under the unit should have items on it
 

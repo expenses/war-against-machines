@@ -76,7 +76,7 @@ impl PathPoint {
             self.add_point(&mut neighbours, map, self.x - 1, self.y);
         }
 
-        if self.x < tiles.cols - 1 && tiles.horizontal_clear(self.x + 1, self.y) {
+        if self.x < tiles.width() - 1 && tiles.horizontal_clear(self.x + 1, self.y) {
             self.add_point(&mut neighbours, map, self.x + 1, self.y);
         }
 
@@ -84,7 +84,7 @@ impl PathPoint {
             self.add_point(&mut neighbours, map, self.x, self.y - 1);
         }
 
-        if self.y < tiles.rows - 1 && tiles.vertical_clear(self.x, self.y + 1) {
+        if self.y < tiles.height() - 1 && tiles.vertical_clear(self.x, self.y + 1) {
             self.add_point(&mut neighbours, map, self.x, self.y + 1);
         }
 
@@ -121,11 +121,11 @@ impl PathPoint {
 
 #[test]
 fn pathfinding() {
-    use super::units::{UnitSide, UnitType};
-    use super::walls::WallType;
+    use super::units::*;
+    use super::map::*;
 
     let size = 30;
-    let unit = Unit::new(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom, 0);
+    let unit = Unit::new(UnitType::Squaddie, Side::PLAYER, 0, 0, UnitFacing::Bottom, 0);
     let mut map = Map::new(size, size, 0.5);
 
     // A path between (0, 0) and (29, 29) should be a straight diagonal

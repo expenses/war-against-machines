@@ -2,41 +2,20 @@
 
 use rand;
 use rand::Rng;
-use line_drawing::Bresenham;
 
-use super::units::{UnitSide, Units, Unit, UnitFacing};
-use super::walls::{Walls, WallType, WallSide};
+use super::super::units::*;
+use super::walls::*;
 use super::iter_2d::Iter2D;
+
+use super::grid::*;
 use items::Item;
-use utils::{min, lerp};
+use utils::*;
 use resources::Image;
 
-use std::mem::swap;
 
 const MIN_PIT_SIZE: usize = 2;
 const MAX_PIT_SIZE: usize = 5;
 
-// A point for line-of-sight
-type Point = (isize, isize);
-
-// Sort two points on the y axis 
-fn sort(a: Point, b: Point) -> (Point, Point, bool) {
-    if a.1 > b.1 {
-        (b, a, true)
-    } else {
-        (a, b, false)
-    }
-}
-
-// Convert a coord in `usize`s to a point
-fn to_point(x: usize, y: usize) -> Point {
-    (x as isize, y as isize)
-}
-
-// Convert a point back into `usize`s
-fn from_point(point: Point) -> (usize, usize) {
-    (point.0 as usize, point.1 as usize)
-}
 
 // The visibility of the tile
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, is_enum_variant, PartialEq)]
@@ -76,6 +55,10 @@ impl Visibility {
             u8::max_value()
         }
     }
+
+    pub fn not_invisible(self) -> bool {
+        !self.is_invisible()
+    }
 }
 
 // Get the highest of two visibilities
@@ -104,8 +87,6 @@ pub struct Tile {
     pub obstacle: Obstacle,
     pub decoration: Option<Image>,
     pub walls: Walls,
-    pub player_visibility: Visibility,
-    pub ai_visibility: Visibility,
     pub items: Vec<Item>
 }
 
@@ -117,8 +98,6 @@ impl Tile {
             obstacle: Obstacle::Empty,
             decoration: None,
             walls: Walls::new(),
-            player_visibility: Visibility::Invisible,
-            ai_visibility: Visibility::Invisible,
             items: Vec::new()
         }
     }
@@ -127,11 +106,6 @@ impl Tile {
     fn set_pit(&mut self, pit_image: Image) {
         self.obstacle = Obstacle::Pit(pit_image);
         self.decoration = None;
-    }
-
-    // return if the tile is visible to the player
-    pub fn visible(&self) -> bool {
-        !self.player_visibility.is_invisible()
     }
 
     // Actions that occur when the tile is walked on
@@ -154,26 +128,36 @@ impl Tile {
 // A 2D array of tiles
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Tiles {
-    tiles: Vec<Tile>,
-    pub cols: usize,
-    pub rows: usize
+    tiles: Grid<Tile>,
+    visibility_grids: [Grid<Visibility>; 2]
 }
 
 impl Tiles {
     // Create a new set of tiles but do not generate it
-    pub fn new(cols: usize, rows: usize) -> Tiles {
+    pub fn new(width: usize, height: usize) -> Self {
         let mut rng = rand::thread_rng();
-        let mut tiles = Vec::new();
-
         let bases = &[Image::Base1, Image::Base2];
+        let tiles = Grid::new(width, height, || Tile::new(*rng.choose(bases).unwrap()));
 
-        for _ in 0 .. cols * rows {
-            tiles.push(Tile::new(*rng.choose(bases).unwrap()));
+        Self {
+            tiles, visibility_grids: [Grid::new(width, height, || Visibility::Invisible), Grid::new(width, height, || Visibility::Invisible)]
         }
+    }
 
-        Tiles {
-            cols, rows, tiles
-        }
+    pub fn visibility_at(&self, x: usize, y: usize, side: Side) -> Visibility {
+        *self.visibility_grids[side.inner() as usize].at(x, y)
+    }
+
+    pub fn set_visibility_at(&mut self, x: usize, y: usize, side: Side, visibility: Visibility) {
+        *self.visibility_grids[side.inner() as usize].at_mut(x, y) = visibility;
+    }
+
+    pub fn width(&self) -> usize {
+        self.tiles.width()
+    }
+
+    pub fn height(&self) -> usize {
+        self.tiles.height()
     }
 
     // Generate the tiles
@@ -226,29 +210,29 @@ impl Tiles {
 
     // Add a left wall if possible
     pub fn add_left_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if x < self.cols && y < self.rows && (self.not_pit(x, y) || self.not_pit(x - 1, y)) {
+        if self.tiles.in_bounds(x, y) && (self.not_pit(x, y) || self.not_pit(x - 1, y)) {
             self.at_mut(x, y).walls.set_left(tag);
         }
     }
 
     // Add a top wall if possible
     pub fn add_top_wall(&mut self, x: usize, y: usize, tag: WallType) {
-        if x < self.cols && y < self.rows && (self.not_pit(x, y) || self.not_pit(x, y - 1)) {
+        if self.tiles.in_bounds(x, y) && (self.not_pit(x, y) || self.not_pit(x, y - 1)) {
             self.at_mut(x, y).walls.set_top(tag);
         }
     }
 
     // Check if a position is in-bounds and not a pit
     fn not_pit(&self, x: usize, y: usize) -> bool {
-        x < self.cols && y < self.rows && !self.at(x, y).obstacle.is_pit()
+        self.tiles.in_bounds(x, y) && !self.at(x, y).obstacle.is_pit()
     }
 
     fn add_pit(&mut self, width: usize, height: usize) {
         // Generate pit position and size
         let mut rng = rand::thread_rng();
 
-        let max_x = self.cols - width  - 1;
-        let max_y = self.rows - height - 1;
+        let max_x = self.width() - width  - 1;
+        let max_y = self.height() - height - 1;
 
         let pit_x = if max_x > 1 { rng.gen_range(1, max_x) } else { 1 };
         let pit_y = if max_y > 1 { rng.gen_range(1, max_y) } else { 1 };
@@ -278,35 +262,33 @@ impl Tiles {
 
     // Get a reference to a tile
     pub fn at(&self, x: usize, y: usize) -> &Tile {
-        assert!(x < self.cols && y < self.rows, "Tile at ({}, {}) is out of bounds", x, y);
-        &self.tiles[x * self.rows + y]
+        self.tiles.at(x, y)
     }
 
     // Get a mutable reference to a tile
     pub fn at_mut(&mut self, x: usize, y: usize) -> &mut Tile {
-        assert!(x < self.cols && y < self.rows, "Tile at ({}, {}) is out of bounds", x, y);
-        &mut self.tiles[x * self.rows + y]
+        self.tiles.at_mut(x, y)
     }
 
     // Update the visibility of the map
     pub fn update_visibility(&mut self, units: &Units) {
         for (x, y) in self.iter() {
-            let player_visible = self.tile_visible(units, &UnitSide::Player, x, y);
-            let ai_visible = self.tile_visible(units, &UnitSide::AI, x, y);
-            let tile = self.at_mut(x, y);
+            let player_a_visible = self.tile_visible(units, Side::PLAYER_A, x, y);
+            let player_b_visible = self.tile_visible(units, Side::PLAYER_B, x, y);
             
-            // If the tile is visible set the visibility to visible, or if it was visible make it foggy
-            
-            if let Some(distance) = player_visible {
-                tile.player_visibility = Visibility::Visible(distance);
-            } else if tile.player_visibility.is_visible() {
-                tile.player_visibility = Visibility::Foggy;
+            let player_a_already_visible = self.visibility_at(x, y, Side::PLAYER_A).is_visible();
+            let player_b_already_visible = self.visibility_at(x, y, Side::PLAYER_B).is_visible();
+
+            if let Some(distance) = player_a_visible {
+                self.set_visibility_at(x, y, Side::PLAYER_A, Visibility::Visible(distance));
+            } else if player_a_already_visible {
+                self.set_visibility_at(x, y, Side::PLAYER_A, Visibility::Foggy);
             }
             
-            if let Some(distance) = ai_visible {
-                tile.ai_visibility = Visibility::Visible(distance);
-            } else if tile.ai_visibility.is_visible() {
-                tile.ai_visibility = Visibility::Foggy;
+            if let Some(distance) = player_b_visible {
+                self.set_visibility_at(x, y, Side::PLAYER_B, Visibility::Visible(distance));
+            } else if player_b_already_visible {
+                self.set_visibility_at(x, y, Side::PLAYER_B, Visibility::Foggy);
             }
         }
     }
@@ -321,111 +303,10 @@ impl Tiles {
         self.at_mut(x, y).items.append(items);
     }
 
-    // Return whether there is a wall between two tiles
-    fn wall_between(&self, a: Point, b: Point) -> bool {
-        let ((a_x, a_y), (b_x, b_y)) = (from_point(a), from_point(b));
-
-        ! match (b.0 - a.0, b.1 - a.1) {
-            (0, 1) => self.vertical_clear(b_x, b_y),
-            (1, 0) => self.horizontal_clear(b_x, b_y),
-            (-1, 0) => self.horizontal_clear(a_x, a_y),
-            (-1, 1) => self.diagonal_clear(a_x, b_y, false),
-            (1, 1) => self.diagonal_clear(b_x, b_y, true),
-            _ => unreachable!()
-        }
-    }
-
-    // Return the first blocking obstacle between two points or none
-    pub fn line_of_fire(&self, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Option<(Point, WallSide)> {
-        // Convert the points to isize and sort
-        let (start, end) = (to_point(start_x, start_y), to_point(end_x, end_y));
-        let (start, end, reversed) = sort(start, end);
-
-        // Create an iterator of tile steps
-        let mut iter = Bresenham::new(start, end).steps()
-            // Filter to steps with walls between
-            .filter(|&(a, b)| self.wall_between(a, b))
-            // Map to the containing tile and wall direction
-            .map(|(a, b)| match (b.0 - a.0, b.1 - a.1) {
-                (0, 1) => (b, WallSide::Top),
-                (1, 0) => (b, WallSide::Left),
-                (-1, 0) => (a, WallSide::Left),
-                // For diagonal steps we have to randomly pick one of the two closest walls
-                (-1, 1) | (1, 1) => {
-                    let left_to_right = a.0 < b.0;
-
-                    // Get the four walls segments between the tiles if left-to-right or their flipped equivalents
-                    let (mut top, mut left, mut right, mut bottom) = if left_to_right {
-                        ((b.0, a.1), (a.0, b.1), b, b)
-                    } else {
-                        (a, (a.0, b.1), b, (a.0, b.1))
-                    };
-
-                    // Swap the points around if the line is reversed
-                    if reversed {
-                        swap(&mut top, &mut bottom);
-                        swap(&mut left, &mut right);
-                    }
-
-                    // Get whether each of these segments contain walls
-                    let top_block = !self.horizontal_clear(top.0 as usize, top.1 as usize);
-                    let left_block = !self.vertical_clear(left.0 as usize, left.1 as usize);
-                    let right_block = !self.vertical_clear(right.0 as usize, right.1 as usize);
-                    let bottom_block = !self.horizontal_clear(bottom.0 as usize, bottom.1 as usize);
-
-                    // Get the pairs of walls to choose from
-                    let (wall_a, wall_b) = if top_block && left_block {
-                        ((top, WallSide::Left), (left, WallSide::Top))
-                    } else if left_block && right_block {
-                        ((left, WallSide::Top), (right, WallSide::Top))
-                    } else if top_block && bottom_block {
-                        ((top, WallSide::Left), (bottom, WallSide::Left))
-                    } else {
-                        ((bottom, WallSide::Left), (right, WallSide::Top))
-                    };
-
-                    // Choose a random wall
-                    if rand::random::<bool>() { wall_a } else { wall_b }
-                },
-                _ => unreachable!()
-            });
-
-        // Return either the last or first wall found or none
-        if reversed { iter.last() } else { iter.next() }
-    }
-
-    // Would a unit with a particular sight range be able to see from one tile to another
-    // Return the number of tiles away a point is, or none if visibility is blocked
-    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32, facing: UnitFacing) -> Option<u8> {
-        if facing.can_see(a_x, a_y, b_x, b_y, sight) {
-            // Sort the points so that line-of-sight is symmetrical
-            let (start, end, _) = sort(to_point(a_x, a_y), to_point(b_x, b_y));
-            let mut distance = 0;
-
-            for (a, b) in Bresenham::new(start, end).steps() {
-                // Return if line of sight is blocked by a wall
-                if self.wall_between(a, b) {
-                    return None;
-                }
-
-                // Increase the distance
-                distance += if a.0 == b.0 || a.1 == b.1 {
-                    Unit::WALK_LATERAL_COST
-                } else {
-                    Unit::WALK_DIAGONAL_COST
-                } as u8;
-            }
-
-            Some(distance)
-        } else {
-            None
-        }
-    }
-
     // Is a tile visible by any unit on a particular side
-    fn tile_visible(&self, units: &Units, side: &UnitSide, x: usize, y: usize) -> Option<u8> {
+    fn tile_visible(&self, units: &Units, side: Side, x: usize, y: usize) -> Option<u8> {
         units.iter()
-            .filter(|unit| unit.side == *side)
+            .filter(|unit| unit.side == side)
             .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight(), unit.facing))
             // Get the minimum distance or none
             .fold(None, |sum, dist| sum.and_then(|sum| dist.map(|dist| min(sum, dist))).or(sum).or(dist))
@@ -443,7 +324,7 @@ impl Tiles {
 
     // Is a diagonal clear
     pub fn diagonal_clear(&self, x: usize, y: usize, tl_to_br: bool) -> bool {
-        if x.wrapping_sub(1) >= self.cols - 1 || y.wrapping_sub(1) >= self.rows - 1 {
+        if x.wrapping_sub(1) >= self.width() - 1 || y.wrapping_sub(1) >= self.height() - 1 {
             return false;
         }
 
@@ -464,22 +345,22 @@ impl Tiles {
     }
 
     // What should the visiblity of a left wall at a position be
-    pub fn left_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let visibility = self.at(x, y).player_visibility;
+    pub fn left_wall_visibility(&self, x: usize, y: usize, side: Side) -> Visibility {
+        let visibility = self.visibility_at(x, y, side);
 
         if x > 0 {
-            combine_visibilities(visibility, self.at(x - 1, y).player_visibility)
+            combine_visibilities(visibility, self.visibility_at(x - 1, y, side))
         } else {
             visibility
         }
     }
 
     // What should the visibility of a top wall at a position be
-    pub fn top_wall_visibility(&self, x: usize, y: usize) -> Visibility {
-        let visibility = self.at(x, y).player_visibility;
+    pub fn top_wall_visibility(&self, x: usize, y: usize, side: Side) -> Visibility {
+        let visibility = self.visibility_at(x, y, side);
         
         if y > 0 {
-            combine_visibilities(visibility, self.at(x, y - 1).player_visibility)
+            combine_visibilities(visibility, self.visibility_at(x, y - 1, side))
         } else {
             visibility
         }
@@ -487,35 +368,35 @@ impl Tiles {
 
     // Iterate through the rows and columns
     pub fn iter(&self) -> Iter2D {
-        Iter2D::new(self.cols, self.rows)
+        Iter2D::new(self.width(), self.height())
     }
 
-    pub fn visible_units<'a>(&'a self, units: &'a Units) -> impl Iterator<Item=&'a Unit> {
-        units.iter().filter(move |unit| self.at(unit.x, unit.y).player_visibility.is_visible())
+    pub fn visible_units<'a>(&'a self, units: &'a Units, side: Side) -> impl Iterator<Item=&'a Unit> {
+        units.iter().filter(move |unit| self.visibility_at(unit.x, unit.y, side).is_visible())
     }
 }
 
 #[test]
 fn unit_visibility() {
-    use super::units::UnitType;
-    use super::paths::PathPoint;
+    use super::super::units::*;
+    use super::super::paths::*;
 
     let mut tiles = Tiles::new(30, 30);
     let mut units = Units::new();
-    units.add(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom);
+    units.add(UnitType::Squaddie, Side::PLAYER, 0, 0, UnitFacing::Bottom);
     tiles.update_visibility(&units);
 
     // A tile a unit is standing on should be visible with a distance of 0
-    assert_eq!(tiles.at(0, 0).player_visibility, Visibility::Visible(0));
+    assert_eq!(tiles.visibility_at(0, 0, Side::PLAYER), Visibility::Visible(0));
     // A far away tile should be invisible
-    assert_eq!(tiles.at(29, 29).player_visibility, Visibility::Invisible);
+    assert_eq!(tiles.visibility_at(29, 29, Side::PLAYER), Visibility::Invisible);
 
     // A tile that was visible but is no longer should be foggy
 
     units.get_mut(0).unwrap().move_to(&PathPoint::new(29, 0, 0, UnitFacing::Top));
     tiles.update_visibility(&units);
 
-    assert_eq!(tiles.at(0, 0).player_visibility, Visibility::Foggy);
+    assert_eq!(tiles.visibility_at(0, 0, Side::PLAYER), Visibility::Foggy);
 
     // If the unit is boxed into a corner, only it's tile should be visible
 
@@ -525,11 +406,11 @@ fn unit_visibility() {
     tiles.update_visibility(&units);
 
     for (x, y) in tiles.iter() {
-        let visibility = tiles.at(x, y).player_visibility;
+        let visibility = tiles.visibility_at(x, y, Side::PLAYER);
 
         if x == 29 && y == 0 {
             assert_eq!(visibility, Visibility::Visible(0));
-            assert!(tiles.at(x, y).visible());
+            assert!(tiles.visibility_at(x, y, Side::PLAYER).not_invisible());
         } else {
             assert!(!visibility.is_visible());
         }
@@ -574,7 +455,7 @@ fn pit_generation() {
     tiles.generate(&Units::new());
 
     // At least one tile should have a pit on it
-    assert!(tiles.tiles.iter().any(|tile| tile.obstacle.is_pit()));
+    assert!(tiles.iter().map(|(x, y)| tiles.at(x, y)).any(|tile| tile.obstacle.is_pit()));
 }
 
 #[test]

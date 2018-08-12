@@ -1,7 +1,6 @@
 use super::map::*;
 use super::units::*;
 use super::paths::*;
-use super::walls::*;
 use super::animations::*;
 
 use utils::*;
@@ -9,6 +8,43 @@ use resources::*;
 use rand::*;
 
 use std::collections::*;
+
+pub struct ServerAnimations {
+    player_a: Vec<Animation>,
+    player_b: Vec<Animation>
+}
+
+impl ServerAnimations {
+    pub fn new() -> Self {
+        Self {
+            player_a: Vec::new(),
+            player_b: Vec::new()
+        }
+    }
+
+    fn push(&mut self, side: Side, animation: Animation) {
+        if side == Side::PLAYER_A {
+            self.player_a.push(animation);
+        } else {
+            self.player_b.push(animation);
+        }
+    }
+
+    fn push_both(&mut self, animation: Animation) {
+        self.push(Side::PLAYER_A, animation.clone());
+        self.push(Side::PLAYER_B, animation);
+    }
+
+    fn push_state(&mut self, map: &mut Map) {
+        self.push(Side::PLAYER_A, Animation::new_state(map, Side::PLAYER_A));
+        self.push(Side::PLAYER_B, Animation::new_state(map, Side::PLAYER_B));
+    }
+
+    pub fn split(self) -> (Vec<Animation>, Vec<Animation>) {
+        (self.player_a, self.player_b)
+    }
+}
+
 
 struct VisibleEnemies {
     positions: Vec<(usize, usize)>
@@ -33,28 +69,32 @@ impl VisibleEnemies {
     }
 }
 
-pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, animations: &mut Vec<Animation>) {
+pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, animations: &mut ServerAnimations) {
     let visible_enemies = VisibleEnemies::new(&map.units.get(id).unwrap(), map);
+
+    let side = map.units.get(id).unwrap().side;
 
     // Todo: turning should have a cost
     map.units.get_mut(id).unwrap().facing = new_facing;
 
-    animations.push(Animation::new_state(map));
+    animations.push_state(map);
 
     if let Some((x, y)) = visible_enemies.new_enemy(map.units.get(id).unwrap(), map) {
-        animations.push(Animation::EnemySpotted {x, y});
+        animations.push(side, Animation::EnemySpotted {x, y});
     }
 }
 
 // todo: decide to do unit verification in commands or beforehand
 
-pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mut Vec<Animation>) {
+pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mut ServerAnimations) {
     let visible_enemies = VisibleEnemies::new(map.units.get(id).unwrap(), map);
+
+    let side = map.units.get(id).unwrap().side;
 
     for point in path {
         if let Some(unit) = map.units.get(id) {
             if let Some((x, y)) = visible_enemies.new_enemy(unit, map) {
-                animations.push(Animation::EnemySpotted {x, y});
+                animations.push(side, Animation::EnemySpotted {x, y});
                 return;
             }
         }
@@ -71,31 +111,31 @@ pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mu
             map.tiles.at_mut(point.x, point.y).walk_on();
         }
 
-        animations.push(Animation::new_state(map));
-        animations.push(Animation::Walk(0.0));
+        animations.push_state(map);
+        animations.push_both(Animation::Walk(0.0));
     }
 }
 
-pub fn use_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Vec<Animation>) {
+pub fn use_item_command(map: &mut Map, id: u8, item: usize, animations: &mut ServerAnimations) {
     map.units.get_mut(id).unwrap().use_item(item);
-    animations.push(Animation::new_state(map));
+    animations.push_state(map);
 }
 
-pub fn pickup_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Vec<Animation>) {
+pub fn pickup_item_command(map: &mut Map, id: u8, item: usize, animations: &mut ServerAnimations) {
     map.units.get_mut(id).unwrap().pickup_item(&mut map.tiles, item);
-    animations.push(Animation::new_state(map));
+    animations.push_state(map);
 }
 
-pub fn drop_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Vec<Animation>) {
+pub fn drop_item_command(map: &mut Map, id: u8, item: usize, animations: &mut ServerAnimations) {
     map.units.get_mut(id).unwrap().drop_item(&mut map.tiles, item);
-    animations.push(Animation::new_state(map));
+    animations.push_state(map);
 }
 
-pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize, animations: &mut Vec<Animation>) {
+pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize, animations: &mut ServerAnimations) {
     let item = {
         let unit = map.units.get_mut(id).unwrap();
         let item = unit.inventory_remove(item).unwrap();
-        animations.push(Animation::new_thrown_item(item.image(), unit.x, unit.y, x, y));
+        animations.push_both(Animation::new_thrown_item(item.image(), unit.x, unit.y, x, y));
         item
     };
 
@@ -105,10 +145,10 @@ pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize
         map.tiles.drop(x, y, item);
     }
 
-    animations.push(Animation::new_state(map));
+    animations.push_state(map);
 }
 
-pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: usize, animations: &mut Vec<Animation>) {
+pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: usize, animations: &mut ServerAnimations) {
 
     // Fire the unit's weapon and get if the bullet will hit and the damage it will do
     let (will_hit, damage, unit_x, unit_y) = match map.units.get_mut(id) {
@@ -135,19 +175,19 @@ pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: us
 
     // Push a bullet to the animation queue
     if let Some(unit) = map.units.get(id) {
-        animations.push(Animation::new_bullet(unit, target_x, target_y, will_hit, map));
+        animations.push_both(Animation::new_bullet(unit, target_x, target_y, will_hit, map));
     }
 
-    animations.push(Animation::new_state(map));
+    animations.push_state(map);
 }
 
-fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, animations: &mut Vec<Animation>) {
+fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, animations: &mut ServerAnimations) {
     let tiles: HashSet<_> = map.tiles.iter().filter(|&(tile_x, tile_y)| distance_under(x, y, tile_x, tile_y, radius)).collect();
 
 
     for (i, &(tile_x, tile_y)) in tiles.iter().enumerate() {
         let last = i == tiles.len() - 1;
-        animations.push(Animation::new_explosion(tile_x, tile_y, x, y, last));
+        animations.push_both(Animation::new_explosion(tile_x, tile_y, x, y, last));
     }
 
     for &(x, y) in &tiles {
@@ -192,8 +232,6 @@ fn damage_wall(map: &mut Map, x: usize, y: usize, damage: i16, side: WallSide) {
         wall.health <= 0
     })
     .unwrap_or(false);
-
-
 
     if destroyed {
         match side {

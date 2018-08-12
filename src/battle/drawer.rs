@@ -1,7 +1,7 @@
 // A drawer struct for drawing the map and battle items
 
 use super::Battle;
-use super::tiles::Obstacle;
+use super::map::*;
 use super::animations::*;
 use resources::Image;
 use utils::convert_rotation;
@@ -83,40 +83,40 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     let camera = &battle.camera;
     let animations = &battle.client.animations;
     let light = battle.client.map.light;
+    let side = battle.side;
 
     // Get the tile
+    let visibility = tiles.visibility_at(x, y, side);
+    let overlay = visibility.colour(light);
     let tile = tiles.at(x, y);
 
     // If the tile is on the screen, draw it
     if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
-        // Get the colour overlay
-        let overlay = tile.player_visibility.colour(light);
-
         // Draw the tile base if visible
-        if tile.visible() {
+        if visibility.not_invisible() {
             ctx.render_with_overlay(tile.base, dest, camera.zoom, overlay);
         }
 
         // Draw the left wall if visible
         if let Some(ref wall) = tile.walls.left {
-            let visibility = tiles.left_wall_visibility(x, y);
+            let visibility = tiles.left_wall_visibility(x, y, side);
 
-            if !visibility.is_invisible() {
+            if visibility.not_invisible() {
                 ctx.render_with_overlay(wall.tag.left_image(), dest, camera.zoom, visibility.colour(light));
             }
         }
 
         // Draw the right wall if visible
         if let Some(ref wall) = tile.walls.top {
-            let visibility = tiles.top_wall_visibility(x, y);
+            let visibility = tiles.top_wall_visibility(x, y, side);
 
-            if !visibility.is_invisible() {
+            if visibility.not_invisible() {
                 ctx.render_with_overlay(wall.tag.top_image(), dest, camera.zoom, visibility.colour(light));
             }
         }
 
         // If the tile is visible and has a pit on it, draw it
-        if tile.visible() {
+        if visibility.not_invisible() {
             if let Obstacle::Pit(image) = tile.obstacle {
                 ctx.render_with_overlay(image, dest, camera.zoom, overlay);
             }
@@ -128,7 +128,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 if cursor_x == x && cursor_y == y {
                     // Determine the cursor type
                     // Grey if the tile is not visible
-                    let colour = if !tile.player_visibility.is_visible() {
+                    let colour = if !visibility.is_visible() {
                         colours::GREY
                     // Red if the tile has an obstacle
                     } else if !tile.obstacle.is_empty() {
@@ -147,9 +147,9 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         }
 
         // Draw the rest
-        if tile.visible() {
+        if visibility.not_invisible() {
             // Draw items that should only be shown on visible tiles
-            if tile.player_visibility.is_visible() {
+            if visibility.is_visible() {
                 // Draw the tile decoration
                 if let Some(decoration) = tile.decoration {
                     ctx.render_with_overlay(decoration, dest, camera.zoom, overlay);
@@ -188,9 +188,10 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
 pub fn draw_map(ctx: &mut Context, battle: &Battle) {
     let map = &battle.client.map;
     let camera = &battle.camera;
-    let rows = map.tiles.rows;
-    let cols = map.tiles.cols;
+    let width = map.tiles.width();
+    let height = map.tiles.height();
     let light = map.light;
+    let side = battle.side;
 
     // Draw all the tiles
     for (x, y) in map.tiles.iter() {
@@ -199,23 +200,23 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 
     // Draw the edge edges if visible
 
-    for x in 0 .. cols {
-        let tile = map.tiles.at(x, rows - 1);
+    for x in 0 .. width {
+        let visibility = map.tiles.visibility_at(x, height - 1, side);
 
-        if tile.visible() {
-            if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, rows as f32) {
-                ctx.render_with_overlay(Image::LeftEdge, dest, camera.zoom, tile.player_visibility.colour(light));
+        if visibility.not_invisible() {
+            if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, height as f32) {
+                ctx.render_with_overlay(Image::LeftEdge, dest, camera.zoom, visibility.colour(light));
             }
         }
         
     }
 
-    for y in 0 .. rows {
-        let tile = map.tiles.at(cols - 1, y);
+    for y in 0 .. height {
+        let visibility = map.tiles.visibility_at(width - 1, y, side);
 
-        if tile.visible() {
-            if let Some(dest) = draw_location(ctx, camera, cols as f32, (y + 1) as f32) {
-                ctx.render_with_overlay(Image::RightEdge, dest, camera.zoom, tile.player_visibility.colour(light));
+        if visibility.not_invisible() {
+            if let Some(dest) = draw_location(ctx, camera, width as f32, (y + 1) as f32) {
+                ctx.render_with_overlay(Image::RightEdge, dest, camera.zoom, visibility.colour(light));
             }
         }
     }
@@ -226,6 +227,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     let map = &battle.client.map;
     let camera = &battle.camera;
     let animations = &battle.client.animations;
+    let side = battle.side;
     
     draw_map(ctx, battle);
 
@@ -238,7 +240,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
             for point in points {
                 total_cost += point.cost;
 
-                if map.tiles.at(point.x, point.y).visible() {
+                if map.tiles.visibility_at(point.x, point.y, side).not_invisible() {
                     if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
                         // Render the path tile
 
@@ -262,7 +264,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
             for point in points {
                 total_cost += point.cost;
 
-                if map.tiles.at(point.x, point.y).visible() {
+                if map.tiles.visibility_at(point.x, point.y, side).not_invisible() {
                     if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
                         // Render the path cost
                         ctx.render_text(&total_cost.to_string(), dest[0], dest[1], colours::WHITE);
@@ -280,7 +282,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
                     // Draw the crosshair
                     ctx.render(Image::CursorCrosshair, dest, camera.zoom);
 
-                    let colour = if !map.tiles.at(x, y).visible() {
+                    let colour = if map.tiles.visibility_at(x, y, side).is_invisible() {
                         colours::GREY
                     } else if !firing.weapon.can_fire() {
                         colours::RED
@@ -304,7 +306,6 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     // Draw all the visible bullets in the animation queue
     animations.iter()
         .filter_map(Animation::as_bullet)
-        .filter(|bullet| bullet.visible(map))
         .for_each(|bullet| {
         
         // If the bullet is on screen, draw it with the right rotation      
@@ -317,7 +318,6 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
 
     animations.iter()
         .filter_map(Animation::as_thrown_item)
-        .filter(|thrown_item| thrown_item.visible(map))
         .for_each(|thrown_item| {
 
         if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
