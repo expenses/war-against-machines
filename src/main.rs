@@ -14,7 +14,8 @@ extern crate rodio;
 #[macro_use]
 extern crate glium;
 
-use std::time::Instant;
+use std::path::*;
+use std::time::*;
 
 // Lazy way to pretend glutin is a direct dependency
 pub use glium::glutin;
@@ -35,12 +36,12 @@ mod menu;
 mod colours;
 mod context;
 mod battle;
+mod networking;
 
 use context::Context;
-use settings::Settings;
-use menu::{MainMenu, MenuCallback};
-use battle::Battle;
-use battle::map::Map;
+use settings::*;
+use menu::*;
+use battle::*;
 
 const TITLE: &str = "War Against Machines";
 
@@ -89,12 +90,18 @@ impl App {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish = Some(Battle::new(&self.menu.skirmish_settings, None));
+                        self.skirmish = Battle::new(self.menu.skirmish_settings, None);
                     },
                     // Load a saved skirmish
-                    MenuCallback::LoadSkirmish(filename) => if let Some(map) = Map::load(&filename, &self.ctx.settings) {
-                        self.skirmish = Some(Battle::new(&self.menu.skirmish_settings, Some(map)));
-                        self.mode = Mode::Skirmish;
+                    MenuCallback::LoadSkirmish(filename) => {
+                        let path = Path::new(&self.ctx.settings.savegames).join(&filename);
+
+                        self.skirmish = Battle::new(self.menu.skirmish_settings, Some(&path.as_path()));
+                        if self.skirmish.is_some() {
+                            self.mode = Mode::Skirmish;
+                        } else {
+                            println!("File '{}' could not be read", filename);
+                        }
                     },
                     MenuCallback::Resume => self.mode = Mode::Skirmish,
                     // Quit
@@ -171,7 +178,7 @@ impl App {
 // The main function
 fn main() {
     // Generate the event loop and the context
-    let mut events_loop = glutin::EventsLoop::new();
+    let mut events_loop = EventsLoop::new();
     let ctx = Context::new(
         &events_loop, Settings::load(), TITLE.into(),
         bytes!("tileset.png"),
@@ -191,12 +198,13 @@ fn main() {
         events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
             match event {
                 WindowEvent::CloseRequested => running = false,
-                WindowEvent::KeyboardInput {
-                    input: KeyboardInput {state: ElementState::Pressed, virtual_keycode: Some(key), ..}, ..
-                } => running = app.handle_key_press(key),
-                WindowEvent::KeyboardInput {
-                    input: KeyboardInput {state: ElementState::Released, virtual_keycode: Some(key), ..}, ..
-                } => app.handle_key_release(key),
+                WindowEvent::KeyboardInput {input: KeyboardInput {state, virtual_keycode: Some(key), ..}, ..} => {
+                    match state {
+                        ElementState::Pressed => running = app.handle_key_press(key),
+                        ElementState::Released => app.handle_key_release(key)
+                    }
+                },
+
                 WindowEvent::CursorMoved {position: LogicalPosition {x, y}, ..} => app.handle_mouse_motion(x as f32, y as f32),
                 WindowEvent::MouseInput {state: ElementState::Pressed, button, ..} => app.handle_mouse_button(button),
                 WindowEvent::Resized(size) => app.resize(size.width as u32, size.height as u32),

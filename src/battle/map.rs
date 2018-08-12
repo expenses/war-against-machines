@@ -1,26 +1,48 @@
 // A Map struct that combines Tiles and Units for convenience
 // This struct contains all the stuff that is saved/loaded
 
-use super::units::{UnitSide, Units};
+use super::units::*;
 use super::tiles::Tiles;
-use super::drawer::Camera;
+use super::animations::*;
 use settings::Settings;
 
-use std::fs::{File, create_dir_all};
-use std::path::{Path, PathBuf};
+use std::fs::*;
+use std::path::*;
+use std::fmt;
+
+use super::messages::*;
+use super::commands::*;
 
 use bincode;
 
 const EXTENSION: &str = ".sav";
 
+
+// Whose turn is it
+#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
+pub enum Controller {
+    Player,
+    AI
+}
+
+impl fmt::Display for Controller {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            Controller::Player => "Player",
+            Controller::AI => "AI"
+        })
+    }
+}
+
+
 // The Map struct
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Map {
     pub units: Units,
     pub tiles: Tiles,
-    pub camera: Camera,
     pub turn: u8,
-    pub light: f32
+    pub light: f32,
+    pub controller: Controller
 }
 
 impl Map {
@@ -30,8 +52,8 @@ impl Map {
             light, 
             units: Units::new(),
             tiles: Tiles::new(cols, rows),
-            camera: Camera::new(),
-            turn: 1
+            turn: 1,
+            controller: Controller::Player
         }
     }
     
@@ -41,19 +63,16 @@ impl Map {
     }
 
     // Work out how many units of a particular side are visible to the other side
-    pub fn visible(&self, side: &UnitSide) -> usize {
+    pub fn visible(&self, side: UnitSide) -> impl Iterator<Item=&Unit> {
         self.units.iter()
-            .filter(|unit| unit.side == *side && match *side {
-                UnitSide::Player => self.tiles.at(unit.x, unit.y). ai_visibility,
+            .filter(move |unit| unit.side == side && match side {
+                UnitSide::Player => self.tiles.at(unit.x, unit.y).ai_visibility,
                 UnitSide::AI => self.tiles.at(unit.x, unit.y).player_visibility
             }.is_visible())
-            .count()
     }
 
     // Load a skirmish if possible
-    pub fn load(filename: &str, settings: &Settings) -> Option<Map> {
-        let path = Path::new(&settings.savegames).join(filename);
-
+    pub fn load(path: &Path) -> Option<Map> {
         File::open(path).ok()
             .and_then(|mut file| bincode::deserialize_from(&mut file).ok())
     }
@@ -77,6 +96,50 @@ impl Map {
             .and_then(|mut file| bincode::serialize_into(&mut file, self).ok())
             .map(|_| save)
     }
+
+    pub fn perform_command(&mut self, id: u8, command: Command) -> Vec<Animation> {
+        let mut animations = Vec::new();
+
+        match command {
+            Command::Walk(path) => move_command(self, id, path, &mut animations),
+            Command::Turn(facing) => turn_command(self, id, facing, &mut animations),
+            Command::UseItem(item) => use_item_command(self, id, item, &mut animations),
+            Command::PickupItem(item) => pickup_item_command(self, id, item, &mut animations),
+            Command::DropItem(item) => drop_item_command(self, id, item, &mut animations),
+            Command::ThrowItem {item, x, y} => throw_item_command(self, id, item, x, y, &mut animations),
+            Command::Fire {x, y} => fire_command(self, id, x, y, &mut animations),
+        }
+
+        animations
+    }
+
+    pub fn end_turn(&mut self) {
+        for unit in self.units.iter_mut() {
+            unit.moves = unit.tag.moves();
+        }
+
+        match self.controller {
+            Controller::Player => self.controller = Controller::AI,
+            Controller::AI => {
+                self.turn += 1;
+                self.controller = Controller::Player;
+            }
+        }
+    }
+
+    pub fn clone_visible(&mut self) -> Self {
+        // Update visibility first
+        self.tiles.update_visibility(&self.units);
+
+        Self {
+            light: self.light,
+            turn: self.turn,
+            controller: self.controller,
+            units: self.tiles.visible_units(&self.units).cloned().collect(),
+            tiles: self.tiles.clone()
+
+        }
+    }
 }
 
 #[test]
@@ -93,6 +156,6 @@ fn load_save() {
     map.units.add(UnitType::Squaddie, UnitSide::Player, 0, 0, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
-    assert_eq!(map.save("test".into(), &settings), Some(output));
-    Map::load("test.sav", &settings).unwrap();
+    assert_eq!(map.save("test".into(), &settings), Some(output.clone()));
+    Map::load(&output).unwrap();
 }

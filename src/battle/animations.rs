@@ -1,21 +1,237 @@
-// Unit and game animations
+// float_cmp is an annoying clippy lint
+#![cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
 
-// Turn off clippy warning for floating point comparisons
-// and `new` functons not returning self because I'm lazy
-#![cfg_attr(feature = "cargo-clippy", allow(float_cmp, new_ret_no_self))]
-
+use super::map::*;
+use super::units::*;
 use rand;
-use rand::distributions::{Distribution, Range};
-use odds::vec::VecExt;
+use rand::distributions::*;
 
-use super::map::Map;
-use super::units::Unit;
-use resources::{Image, SoundEffect};
-use weapons::WeaponType;
-use context::Context;
-use utils::{direction, clamp, clamp_float, distance, lerp};
+use weapons::*;
 
+use ui::*;
+use context::*;
+use utils::*;
+use resources::*;
 use std::f32::consts::PI;
+
+pub fn process_animations(animations: &mut Vec<Animation>, dt: f32, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) {
+    let mut i = 0;
+
+    while i < animations.len() {
+        let status = animations[i].step(dt, map, ctx, log);
+
+        if status.finished {
+            animations.remove(0);
+        } else {
+            i += 1;
+        }
+
+        if status.blocking {
+            break;
+        }
+    }
+}
+
+struct Status {
+    finished: bool,
+    blocking: bool
+}
+
+#[derive(Debug)]
+pub enum Animation {
+    Walk(f32),
+    NewState(Box<Map>),
+    EnemySpotted {
+        x: usize,
+        y: usize
+    },
+    ThrownItem(ThrownItem),
+    Explosion(Explosion),
+    Bullet(Bullet)
+}
+
+impl Animation {
+    pub fn new_state(map: &mut Map) -> Self {
+        Animation::NewState(Box::new(map.clone_visible()))
+    }
+
+    pub fn new_explosion(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
+        Animation::Explosion(Explosion::new(x, y, center_x, center_y, blocking))
+    }
+
+    pub fn new_thrown_item(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Self {
+        Animation::ThrownItem(ThrownItem::new(image, start_x, start_y, end_x, end_y))
+    }
+
+    pub fn new_bullet(unit: &Unit, target_x: usize, target_y: usize, will_hit: bool, map: &Map) -> Self {
+        Animation::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
+    }
+
+    fn step(&mut self, dt: f32, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) -> Status {
+        match *self {
+            Animation::NewState(ref new_map) => {
+                map.clone_from(&new_map);
+                Status {finished: true, blocking: false}
+            },
+            Animation::EnemySpotted {x, y} => {
+                log.append(&format!("Enemy spotted at ({}, {})!", x, y));
+                // todo: set camera location to enemy location perhaps?
+                Status {finished: true, blocking: false}
+            },
+            Animation::Walk(ref mut time) => {
+                if *time == 0.0 {
+                    ctx.play_sound(&SoundEffect::Walk);
+                }
+
+                *time += dt;
+
+                Status {finished: *time > 0.2, blocking: true}
+            },
+            Animation::Explosion(ref mut explosion) => explosion.step(dt),
+            Animation::ThrownItem(ref mut item) => item.step(dt),
+            Animation::Bullet(ref mut bullet) => bullet.step(ctx, dt)
+        }
+    }
+
+    pub fn as_explosion(&self) -> Option<&Explosion> {
+        match *self {
+            Animation::Explosion(ref explosion) if explosion.time > 0.0 => Some(explosion),
+            _ => None
+        }
+    }
+
+    pub fn as_thrown_item(&self) -> Option<&ThrownItem> {
+        match *self {
+            Animation::ThrownItem(ref item) => Some(item),
+            _ => None
+        }
+    }
+
+    pub fn as_bullet(&self) -> Option<&Bullet> {
+        match *self {
+            Animation::Bullet(ref bullet) if !bullet.finished => Some(bullet),
+            _ => None
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Explosion {
+    x: usize,
+    y: usize,
+    time: f32,
+    blocking: bool
+}
+
+impl Explosion {
+    const DURATION: f32 = 0.25;
+    const SPEED: f32 = 10.0;
+
+    fn new(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
+        Self {
+            x, y, blocking,
+            time: -distance(x, y, center_x, center_y) / Self::SPEED
+        }
+    }
+
+    // Which explosion image to use
+    pub fn image(&self) -> Image {
+        let time_percentage = self.time / Self::DURATION;
+
+        if time_percentage < (1.0 / 3.0) {
+            Image::Explosion1
+        } else if time_percentage < (2.0 / 3.0) {
+            Image::Explosion2
+        } else {
+            Image::Explosion3
+        }
+    }
+
+    pub fn x(&self) -> usize {
+        self.x
+    }
+
+    pub fn y(&self) -> usize {
+        self.y
+    }
+
+    fn step(&mut self, dt: f32) -> Status {
+        self.time += dt;        
+        
+        Status {finished: self.time > Self::DURATION, blocking: self.blocking}
+    }
+}
+
+#[derive(Debug)]
+pub struct ThrownItem {
+    image: Image,
+    start_x: f32,
+    start_y: f32,
+    progress: f32,
+    increment: f32,
+    end_x: f32,
+    end_y: f32
+}
+
+impl ThrownItem {
+    // Items can be thrown 7.5 tiles a second
+    const TIME: f32 = 7.5;
+    // And reach a peak height of 1 tile
+    const ITEM_HEIGHT: f32 = 1.0;
+    // Min time of the equiv of 5 tiles
+    //const MIN: f32 = 5.0;
+
+    fn new(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Self {        
+        Self {
+            image,
+            start_x: start_x as f32,
+            start_y: start_y as f32,
+            end_x: end_x as f32,
+            end_y: end_y as f32,
+            increment: Self::TIME / distance(start_x, start_y, end_x, end_y).min(Self::TIME),
+            progress: 0.0,
+        }
+    }
+
+    pub fn image(&self) -> Image {
+        self.image
+    }
+
+    pub fn height(&self) -> f32 {
+        (self.progress * PI).sin() * Self::ITEM_HEIGHT
+    }
+
+    // Interpolate the x position
+    pub fn x(&self) -> f32 {
+        lerp(self.start_x, self.end_x, self.progress)
+    }
+
+    // Interpolate the y position
+    pub fn y(&self) -> f32 {
+        lerp(self.start_y, self.end_y, self.progress)
+    }
+
+    // Return if the item is visible
+    pub fn visible(&self, map: &Map) -> bool {
+        visible(self.x(), self.y(), map)
+    }
+
+    // Update the progress and the height
+    fn step(&mut self, dt: f32) -> Status {
+        self.progress += self.increment * dt;
+        
+        Status {finished: self.progress > 1.0, blocking: true}
+    }
+}
+
+// Calculate if the nearest tile to the an item is visible
+fn visible(x: f32, y: f32, map: &Map) -> bool {
+    map.tiles.at(
+        clamp_float(x, 0, map.tiles.cols - 1),
+        clamp_float(y, 0, map.tiles.rows - 1)
+    ).player_visibility.is_visible()
+}
+
 
 const MARGIN: f32 = 5.0;
 
@@ -44,46 +260,12 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
     )}
 }
 
-// Calculate if the nearest tile to the an item is visible
-fn visible(x: f32, y: f32, map: &Map) -> bool {
-    map.tiles.at(
-        clamp_float(x, 0, map.tiles.cols - 1),
-        clamp_float(y, 0, map.tiles.rows - 1)
-    ).player_visibility.is_visible()
-}
-
-// A pretty simple walk animation
-pub struct Walk {
-    time: f32
-}
-
-impl Walk {
-    // Units move 5 tiles a second
-    const TIME: f32 = 1.0 / 5.0;
-
-    // Create a new walk animation
-    pub fn new() -> Animation {
-        Animation::Walk(Walk {
-            time: 0.0
-        })
-    }
-
-    // Move the animation a step, and return if its still going
-    fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
-        if self.time == 0.0 {
-            ctx.play_sound(&SoundEffect::Walk);
-        }
-        
-        self.time += dt;
-        self.time < Self::TIME
-    }
-}
-
 // A bullet animation for drawing on the screen
+#[derive(Debug)]
 pub struct Bullet {
-    pub x: f32,
-    pub y: f32,
-    pub direction: f32,
+    x: f32,
+    y: f32,
+    direction: f32,
     time: f32,
     finished: bool,
     weapon_type: WeaponType,
@@ -98,7 +280,7 @@ impl Bullet {
     const MIN_TIME: f32 = 0.25;
 
     // Create a new bullet based of the firing unit and the target unit
-    pub fn new(unit: &Unit, target_x: usize, target_y: usize, will_hit: bool, map: &Map) -> Animation {
+    fn new(unit: &Unit, target_x: usize, target_y: usize, will_hit: bool, map: &Map) -> Self {
         let x = unit.x as f32;
         let y = unit.y as f32;
         let mut target_x = target_x as f32;
@@ -117,19 +299,31 @@ impl Bullet {
             target_y = y;
         }
 
-        Animation::Bullet(Bullet {
+        Self {
            x, y, direction, target_x, target_y,
            // Get the type of the firing weapon
            weapon_type: unit.weapon.tag,
            // The bullet hasn't started moving
            time: 0.0,
            finished: false
-        })
+        }
     }
     
     // Get the image of the bullet
     pub fn image(&self) -> Image {
         self.weapon_type.bullet()
+    }
+
+    pub fn x(&self) -> f32 {
+        self.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.y
+    }
+
+    pub fn direction(&self) -> f32 {
+        self.direction
     }
 
     // Calculate if the nearest tile to the bullet is visible
@@ -138,7 +332,7 @@ impl Bullet {
     }
 
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, ctx: &mut Context, dt: f32) -> bool {
+    fn step(&mut self, ctx: &mut Context, dt: f32) -> Status {
         // If the bullet hasn't started moving, play its sound effect
         if self.time == 0.0 {
             ctx.play_sound(&self.weapon_type.fire_sound());
@@ -162,150 +356,10 @@ impl Bullet {
         }
 
         // If the bullet hasn't finished or is under the minimum time
-        !self.finished || self.time < Self::MIN_TIME
-    }
-}
-
-pub struct ThrowItem {
-    pub image: Image,
-    pub height: f32,
-    start_x: f32,
-    start_y: f32,
-    progress: f32,
-    increment: f32,
-    end_x: f32,
-    end_y: f32
-}
-
-impl ThrowItem {
-    // Items can be thrown 7.5 tiles a second
-    const TIME: f32 = 7.5;
-    // And reach a peak height of 1 tile
-    const ITEM_HEIGHT: f32 = 1.0;
-    const MIN: f32 = 5.0;
-
-    pub fn new(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Animation {        
-        Animation::ThrowItem(ThrowItem {
-            image,
-            start_x: start_x as f32,
-            start_y: start_y as f32,
-            end_x: end_x as f32,
-            end_y: end_y as f32,
-            increment: Self::TIME / distance(start_x, start_y, end_x, end_y).min(Self::MIN),
-            progress: 0.0,
-            height: 0.0
-        })
-    }
-
-    // Interpolate the x position
-    pub fn x(&self) -> f32 {
-        lerp(self.start_x, self.end_x, self.progress)
-    }
-
-    // Interpolate the y position
-    pub fn y(&self) -> f32 {
-        lerp(self.start_y, self.end_y, self.progress)
-    }
-
-    // Return if the item is visible
-    pub fn visible(&self, map: &Map) -> bool {
-        visible(self.x(), self.y(), map)
-    }
-
-    // Update the progress and the height
-    fn step(&mut self, dt: f32) -> bool {
-        self.progress += self.increment * dt;
-        self.height = (self.progress * PI).sin() * Self::ITEM_HEIGHT;
-        self.progress < 1.0
-    }
-}
-
-pub struct Explosion {
-    pub x: usize,
-    pub y: usize,
-    time: f32
-}
-
-impl Explosion {
-    const DURATION: f32 = 0.25;
-    const SPEED: f32 = 10.0;
-
-    pub fn new(x: usize, y: usize, center_x: usize, center_y: usize) -> Animation {
-        Animation::Explosion(Explosion {
-            x, y,
-            time: -distance(x, y, center_x, center_y) / Self::SPEED
-        })
-    }
-
-    // Which explosion image to use
-    pub fn image(&self) -> Image {
-        let time_percentage = self.time / Self::DURATION;
-
-        if time_percentage < (1.0 / 3.0) {
-            Image::Explosion1
-        } else if time_percentage < (2.0 / 3.0) {
-            Image::Explosion2
-        } else {
-            Image::Explosion3
+        Status {
+            finished: self.finished && self.time > Self::MIN_TIME,
+            blocking: true
         }
-    }
-
-    fn step(&mut self, dt: f32) -> bool {
-        self.time += dt;
-        self.time < Self::DURATION
-    }
-}
-
-// An animation enum to hold the different types of animations
-pub enum Animation {
-    Walk(Walk),
-    Bullet(Bullet),
-    ThrowItem(ThrowItem),
-    Explosion(Explosion)
-}
-
-impl Animation {
-    // Attempt to get the inner bullet
-    pub fn as_bullet(&self) -> Option<&Bullet> {
-        match *self {
-            Animation::Bullet(ref bullet) if !bullet.finished => Some(bullet),
-            _ => None
-        }
-    }
-
-    // Attempt to get the inner thrown item
-    pub fn as_throw_item(&self) -> Option<&ThrowItem> {
-        match *self {
-            Animation::ThrowItem(ref throw_item) => Some(throw_item),
-            _ => None
-        }
-    }
-
-    pub fn as_explosion(&self) -> Option<&Explosion> {
-        match *self {
-            Animation::Explosion(ref explosion) if explosion.time > 0.0 => Some(explosion),
-            _ => None
-        }
-    }
-}
-
-// A type for holding the animations
-pub type Animations = Vec<Animation>;
-
-// A trait for updating the animations
-pub trait UpdateAnimations {
-    fn update(&mut self, ctx: &mut Context, dt: f32);
-}
-
-impl UpdateAnimations for Animations {
-    // Update all of the animations, keeping only those that are still going
-    fn update(&mut self, ctx: &mut Context, dt: f32) {
-        self.retain_mut(|animation| match *animation {
-            Animation::Walk(ref mut animation) => animation.step(ctx, dt),
-            Animation::Bullet(ref mut animation) => animation.step(ctx, dt),
-            Animation::ThrowItem(ref mut animation) => animation.step(dt),
-            Animation::Explosion(ref mut animation) => animation.step(dt),
-        });
     }
 }
 

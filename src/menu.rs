@@ -1,6 +1,6 @@
 // The main menu of the game
 
-use glutin::VirtualKeyCode;
+use *;
 
 use std::fs::read_dir;
 

@@ -1,6 +1,6 @@
 // Image and text resources
 
-use glutin::VirtualKeyCode;
+use *;
 
 const TILE: f32 = 48.0;
 const FONT_Y: f32 = TILE * 8.5;

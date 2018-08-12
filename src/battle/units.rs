@@ -4,7 +4,9 @@ use rand;
 use rand::{Rng, ThreadRng};
 
 use std::fmt;
-use std::slice::{Iter, IterMut};
+use std::collections::hash_map::*;
+use std::iter::*;
+
 
 use super::paths::PathPoint;
 use super::tiles::Tiles;
@@ -12,6 +14,7 @@ use items::Item;
 use weapons::{Weapon, WeaponType};
 use utils::{chance_to_hit, distance_under};
 use resources::Image;
+
 
 // The cost for a unit to pick up / drop / use an item
 pub const ITEM_COST: u16 = 5;
@@ -196,7 +199,7 @@ impl fmt::Display for UnitType {
 }
 
 // Which side the unit is on
-#[derive(PartialEq, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone)]
 pub enum UnitSide {
     Player,
     AI
@@ -211,8 +214,10 @@ impl UnitSide {
     }
 }
 
+// todo: lock down on public fields
+
 // A struct for a unit in the game
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Unit {
     pub id: u8,
     pub tag: UnitType,
@@ -287,6 +292,14 @@ impl Unit {
         self.moves -= point.cost;
     }
 
+    pub fn inventory_remove(&mut self, item: usize) -> Option<Item> {
+        if item < self.inventory.len() {
+            Some(self.inventory.remove(item))
+        } else {
+            None
+        }
+    }
+
     // Get the chance-to-hit of a tile from the unit
     pub fn chance_to_hit(&self, target_x: usize, target_y: usize) -> f32 {
         chance_to_hit(self.x, self.y, target_x, target_y)
@@ -308,9 +321,8 @@ impl Unit {
             return false;
         }
 
-        if let Some(item) = self.inventory.get(index).cloned() {
+        if let Some(item) = self.inventory_remove(index) {
             tiles.drop(self.x, self.y, item);
-            self.inventory.remove(index);
             self.moves -= ITEM_COST;
             return true;
         }
@@ -318,17 +330,16 @@ impl Unit {
         false
     }
 
-    pub fn pick_up_item(&mut self, tiles: &mut Tiles, index: usize) -> bool {
+    pub fn pickup_item(&mut self, tiles: &mut Tiles, index: usize) -> bool {
         if self.moves < ITEM_COST {
             return false;
         }
         
         let tile = tiles.at_mut(self.x, self.y);
 
-        if let Some(item) = tile.items.get(index).cloned() {
+        if let Some(item) = tile.items_remove(index) {
             if self.carrying() + item.weight() <= self.tag.capacity() {                        
                 self.inventory.push(item);
-                tile.items.remove(index);
                 self.moves -= ITEM_COST;
                 return true;
             } 
@@ -412,12 +423,12 @@ impl Unit {
 }
 
 // A struct for containing all of the units
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Units {
     pub total_player_units: u8,
     pub total_ai_units: u8,
     index: u8,
-    units: Vec<Unit>
+    units: HashMap<u8, Unit>
 }
 
 impl Units {
@@ -427,7 +438,7 @@ impl Units {
             index: 0,
             total_player_units: 0,
             total_ai_units: 0,
-            units: Vec::new()
+            units: HashMap::new()
         }
     }
 
@@ -438,32 +449,28 @@ impl Units {
             UnitSide::AI => self.total_ai_units += 1
         };
 
-        self.units.push(Unit::new(tag, side, x, y, facing, self.index));
+        self.units.insert(self.index, Unit::new(tag, side, x, y, facing, self.index));
         self.index += 1;
     }
 
     // Iterate over the units
-    pub fn iter(&self) -> Iter<Unit> {
-        self.units.iter()
+    pub fn iter(&self) -> Values<u8, Unit> {
+        self.units.values()
     }
 
     // Iterate mutably over the units
-    pub fn iter_mut(&mut self) -> IterMut<Unit> {
-        self.units.iter_mut()
+    pub fn iter_mut(&mut self) -> ValuesMut<u8, Unit> {
+        self.units.values_mut()
     }
 
     // Get a reference to a unit with a specific ID, if the unit exists
     pub fn get(&self, id: u8) -> Option<&Unit> {
-        self.units
-            .binary_search_by_key(&id, |unit| unit.id).ok()
-            .and_then(move |id| self.units.get(id))
+        self.units.get(&id)
     }
 
     // Get a mutable reference to a unit with a specific ID, if the unit exists
     pub fn get_mut(&mut self, id: u8) -> Option<&mut Unit> {
-        self.units
-            .binary_search_by_key(&id, |unit| unit.id).ok()
-            .and_then(move |id| self.units.get_mut(id))
+        self.units.get_mut(&id)
     }
 
     // Return a reference to a unit at (x, y)
@@ -486,14 +493,6 @@ impl Units {
         self.at(x, y).map(|unit| unit.side == *side).unwrap_or(false)
     }
 
-    // Convert a unit ID to that unit's index in the vec
-    fn id_to_index(&self, id: u8) -> Option<usize> {
-        self.iter()
-            .enumerate()
-            .find(|&(_, unit)| unit.id == id)
-            .map(|(i, _)| i)
-    }
-
     // Kill a unit and drop a corpse
     pub fn kill(&mut self, tiles: &mut Tiles, id: u8) {
         if let Some(unit) = self.get_mut(id) {
@@ -512,10 +511,30 @@ impl Units {
             return;
         }
         // Remove the unit
-        let to_remove = self.id_to_index(id).unwrap();
-        self.units.remove(to_remove);
+        self.units.remove(&id);
         // Update the visibility of the tiles
         tiles.update_visibility(self);
+    }
+}
+
+impl FromIterator<Unit> for Units {
+    fn from_iter<I: IntoIterator<Item=Unit>>(iterator: I) -> Self {
+        let mut total_player_units = 0;
+        let mut total_ai_units = 0;
+
+        let units = iterator.into_iter().inspect(|unit| {
+                match unit.side {
+                    UnitSide::Player => total_player_units += 1,
+                    UnitSide::AI => total_ai_units += 1
+                }
+            })
+            .map(|unit| (unit.id, unit))
+            .collect();
+
+        Self {
+            total_player_units, total_ai_units, units,
+            index: 0
+        }
     }
 }
 
@@ -548,7 +567,7 @@ fn unit_actions() {
 
         tiles.at_mut(0, 0).items.push(Item::Rifle(rifle.capacity()));
 
-        assert!(unit.pick_up_item(&mut tiles, 0));
+        assert!(unit.pickup_item(&mut tiles, 0));
         assert_eq!(tiles.at(0, 0).items, Vec::new());
 
         assert_eq!(unit.inventory[0], Item::Rifle(rifle.capacity()));

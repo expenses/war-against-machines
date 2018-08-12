@@ -1,6 +1,6 @@
 // A UI struct to display clickable buttons and text fields
 
-use glutin::VirtualKeyCode;
+use *;
 
 use resources::{ImageSource, Image, ToChar};
 use context::Context;

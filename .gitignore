@@ -12,3 +12,8 @@ settings.toml
 
 # Editor files
 .idea
+*.iml
+
+# Misc
+.DS_Store
+*.dot

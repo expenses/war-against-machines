@@ -2,7 +2,7 @@
 
 use super::Battle;
 use super::tiles::Obstacle;
-use super::animations::Animation;
+use super::animations::*;
 use resources::Image;
 use utils::convert_rotation;
 use context::Context;
@@ -79,8 +79,10 @@ fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32;
 
 // Draw all the elements of a particular map tile
 fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
-    let tiles = &battle.map.tiles;
-    let camera = &battle.map.camera;
+    let tiles = &battle.client.map.tiles;
+    let camera = &battle.camera;
+    let animations = &battle.client.animations;
+    let light = battle.client.map.light;
 
     // Get the tile
     let tile = tiles.at(x, y);
@@ -88,7 +90,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     // If the tile is on the screen, draw it
     if let Some(dest) = draw_location(ctx, camera, x as f32, y as f32) {
         // Get the colour overlay
-        let overlay = tile.player_visibility.colour(battle.map.light);
+        let overlay = tile.player_visibility.colour(light);
 
         // Draw the tile base if visible
         if tile.visible() {
@@ -100,7 +102,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             let visibility = tiles.left_wall_visibility(x, y);
 
             if !visibility.is_invisible() {
-                ctx.render_with_overlay(wall.tag.left_image(), dest, camera.zoom, visibility.colour(battle.map.light));
+                ctx.render_with_overlay(wall.tag.left_image(), dest, camera.zoom, visibility.colour(light));
             }
         }
 
@@ -109,7 +111,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             let visibility = tiles.top_wall_visibility(x, y);
 
             if !visibility.is_invisible() {
-                ctx.render_with_overlay(wall.tag.top_image(), dest, camera.zoom, visibility.colour(battle.map.light));
+                ctx.render_with_overlay(wall.tag.top_image(), dest, camera.zoom, visibility.colour(light));
             }
         }
 
@@ -132,7 +134,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                     } else if !tile.obstacle.is_empty() {
                         colours::RED
                     // Orange if it has a unit
-                    } else if battle.map.units.at(x, y).is_some() {
+                    } else if battle.client.map.units.at(x, y).is_some() {
                         colours::ORANGE
                     // Yellow by default
                     } else {
@@ -159,7 +161,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 }
 
                 // Draw a unit at the position
-                if let Some(unit) = battle.map.units.at(x, y) {
+                if let Some(unit) = battle.client.map.units.at(x, y) {
                     // Draw the cursor to show that the unit is selected
                     if battle.selected == unit.id {
                         ctx.render_with_overlay(Image::Cursor, dest, camera.zoom, colours::ORANGE);
@@ -175,19 +177,20 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
             }
 
             // Draw explosions on the tile
-            battle.animations.iter()
+            animations.iter()
                 .filter_map(|animation| animation.as_explosion())
-                .filter(|explosion| explosion.x == x && explosion.y == y)
+                .filter(|explosion| explosion.x() == x && explosion.y() == y)
                 .for_each(|explosion| ctx.render(explosion.image(), dest, camera.zoom));
         }
     }
 }
 
 pub fn draw_map(ctx: &mut Context, battle: &Battle) {
-    let map = &battle.map;
-    let camera = &map.camera;
+    let map = &battle.client.map;
+    let camera = &battle.camera;
     let rows = map.tiles.rows;
     let cols = map.tiles.cols;
+    let light = map.light;
 
     // Draw all the tiles
     for (x, y) in map.tiles.iter() {
@@ -201,7 +204,7 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 
         if tile.visible() {
             if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, rows as f32) {
-                ctx.render_with_overlay(Image::LeftEdge, dest, camera.zoom, tile.player_visibility.colour(battle.map.light));
+                ctx.render_with_overlay(Image::LeftEdge, dest, camera.zoom, tile.player_visibility.colour(light));
             }
         }
         
@@ -212,7 +215,7 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 
         if tile.visible() {
             if let Some(dest) = draw_location(ctx, camera, cols as f32, (y + 1) as f32) {
-                ctx.render_with_overlay(Image::RightEdge, dest, camera.zoom, tile.player_visibility.colour(battle.map.light));
+                ctx.render_with_overlay(Image::RightEdge, dest, camera.zoom, tile.player_visibility.colour(light));
             }
         }
     }
@@ -220,8 +223,9 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 
 // Draw the whole battle
 pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
-    let map = &battle.map;
-    let camera = &map.camera;
+    let map = &battle.client.map;
+    let camera = &battle.camera;
+    let animations = &battle.client.animations;
     
     draw_map(ctx, battle);
 
@@ -298,28 +302,28 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     }
 
     // Draw all the visible bullets in the animation queue
-    battle.animations.iter()
+    animations.iter()
         .filter_map(Animation::as_bullet)
         .filter(|bullet| bullet.visible(map))
         .for_each(|bullet| {
         
         // If the bullet is on screen, draw it with the right rotation      
-        if let Some(dest) = draw_location(ctx, camera, bullet.x, bullet.y) {
+        if let Some(dest) = draw_location(ctx, camera, bullet.x(), bullet.y()) {
             ctx.render_with_rotation(
-                bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction)
+                bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction())
             );
         }
     });
 
-    battle.animations.iter()
-        .filter_map(Animation::as_throw_item)
+    animations.iter()
+        .filter_map(Animation::as_thrown_item)
         .filter(|thrown_item| thrown_item.visible(map))
         .for_each(|thrown_item| {
 
         if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
             ctx.render(
-                thrown_item.image,
-                [dest[0], dest[1] + thrown_item.height * camera.zoom * TILE_HEIGHT],
+                thrown_item.image(),
+                [dest[0], dest[1] + thrown_item.height() * camera.zoom * TILE_HEIGHT],
                 camera.zoom
             );
         }

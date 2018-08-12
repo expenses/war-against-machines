@@ -90,7 +90,7 @@ fn combine_visibilities(a: Visibility, b: Visibility) -> Visibility {
     }
 }
 
-#[derive(Serialize, Deserialize, is_enum_variant)]
+#[derive(Serialize, Deserialize, is_enum_variant, Debug, Clone)]
 pub enum Obstacle {
     Object(Image),
     Pit(Image),
@@ -98,7 +98,7 @@ pub enum Obstacle {
 }
 
 // A tile in the map
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Tile {
     pub base: Image,
     pub obstacle: Obstacle,
@@ -141,10 +141,18 @@ impl Tile {
             self.decoration = Some(Image::SkeletonCracked);
         }
     }
+
+    pub fn items_remove(&mut self, index: usize) -> Option<Item> {
+        if index < self.items.len() {
+            Some(self.items.remove(index))
+        } else {
+            None
+        }
+    }
 }
 
 // A 2D array of tiles
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Tiles {
     tiles: Vec<Tile>,
     pub cols: usize,
@@ -480,6 +488,10 @@ impl Tiles {
     // Iterate through the rows and columns
     pub fn iter(&self) -> Iter2D {
         Iter2D::new(self.cols, self.rows)
+    }
+
+    pub fn visible_units<'a>(&'a self, units: &'a Units) -> impl Iterator<Item=&'a Unit> {
+        units.iter().filter(move |unit| self.at(unit.x, unit.y).player_visibility.is_visible())
     }
 }
 

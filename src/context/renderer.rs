@@ -40,7 +40,7 @@ fn load_texture(display: &Display, bytes: &[u8]) -> ([f32; 2], SrgbTexture2d) {
     ([width as f32, height as f32], texture)
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 pub struct Properties {
     pub src: [f32; 4],
     pub overlay_colour: [f32; 4],

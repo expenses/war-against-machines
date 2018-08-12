@@ -144,6 +144,7 @@ impl Settings {
 }
 
 // A struct for holding the initialization settings for a skirmish
+#[derive(Copy, Clone)]
 pub struct SkirmishSettings {
     pub cols: usize,
     pub rows: usize,

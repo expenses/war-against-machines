@@ -1,6 +1,6 @@
 // A pathfinding function and struct for the game
 
-use pathfinding;
+use pathfinding::directed::astar::astar;
 
 use super::map::Map;
 use super::units::{Unit, UnitFacing};
@@ -11,7 +11,7 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
         return None;
     }
 
-    pathfinding::directed::astar::astar(
+    astar(
         &PathPoint::from(unit),
         |point| point.neighbours(map),
         |point| point.cost(dest_x, dest_y),

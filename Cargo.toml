@@ -31,7 +31,7 @@ image = "*"
 rodio = "*"
 
 # OpenGl!
-glium = "*"
+glium = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}
 
 ## For `retain_mut`
 [dependencies.odds]

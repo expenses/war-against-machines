@@ -6,42 +6,29 @@ mod drawer;
 mod tiles;
 mod paths;
 mod animations;
-mod ai;
+//mod ai;
 mod commands;
 mod walls;
 mod iter_2d;
+mod networking;
+mod messages;
 
-use glutin::{VirtualKeyCode, MouseButton};
+use *;
 
-use std::fmt;
+use std::thread::*;
 
-use self::drawer::{draw_battle, tile_under_cursor, Camera};
-use self::paths::{pathfind, PathPoint};
-use self::animations::{Animations, UpdateAnimations};
-use self::commands::{CommandQueue, FireCommand, WalkCommand, ThrowItemCommand, TurnCommand};
-use self::units::{Unit, UnitSide, UnitFacing};
-use self::map::Map;
-use resources::{ImageSource, Image};
-use context::Context;
-use ui::{UI, Button, TextDisplay, TextInput, Vertical, Horizontal, Menu, MenuItem};
-use utils::distance_under;
-use settings::{Settings, SkirmishSettings};
+use self::drawer::*;
+use self::paths::*;
+use self::units::*;
+use self::map::*;
+use self::networking::*;
+use self::animations::*;
 
-// Whose turn is it
-#[derive(Debug, PartialEq)]
-enum Controller {
-    Player,
-    AI
-}
-
-impl fmt::Display for Controller {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match *self {
-            Controller::Player => "Player",
-            Controller::AI => "AI"
-        })
-    }
-}
+use resources::*;
+use context::*;
+use ui::*;
+use utils::*;
+use settings::*;
 
 #[derive(Default)]
 struct Keys {
@@ -56,21 +43,22 @@ struct Keys {
 
 // The main Battle struct the handles actions
 pub struct Battle {
-    pub map: Map,
+    pub camera: Camera,
+    pub client: Client,
+    pub server: JoinHandle<()>,
     pub cursor: Option<(usize, usize)>,
     pub selected: u8,
     pub path: Option<Vec<PathPoint>>,
-    pub animations: Animations,
-    pub command_queue: CommandQueue,
     keys: Keys,
     ui: UI,
     inventory: UI,
-    controller: Controller,
 }
+
+// todo: clean up all these `self.client.map` etc calls
 
 impl Battle {
     // Create a new Battle
-    pub fn new(skirmish_settings: &SkirmishSettings, map: Option<Map>) -> Battle {
+    pub fn new(skirmish_settings: SkirmishSettings, map: Option<&Path>) -> Option<Battle> {
         let width_offset = -Image::EndTurnButton.width();
 
         // Create the base UI
@@ -110,38 +98,17 @@ impl Battle {
             Menu::new(75.0, 62.5, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
         ]);
 
-
-        // Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
-        let map = map.unwrap_or_else(|| {
-            let mut map = Map::new(skirmish_settings.cols, skirmish_settings.rows, skirmish_settings.light);
-
-            // Add player units
-            for x in 0 .. skirmish_settings.player_units {
-                map.units.add(skirmish_settings.player_unit_type, UnitSide::Player, x, 0, UnitFacing::Bottom);
-            }
-
-            // Add ai units
-            for y in skirmish_settings.cols - skirmish_settings.ai_units .. skirmish_settings.cols {
-                map.units.add(skirmish_settings.ai_unit_type, UnitSide::AI, y, skirmish_settings.rows - 1, UnitFacing::Top);
-            }
-            
-            // Generate tiles
-            map.tiles.generate(&map.units);
-
-            map
-        });
+        let (client, server) = client_and_server(skirmish_settings, map)?;
 
         // Create the battle
-        Battle {
-            map, ui, inventory,
+        Some(Battle {
+            client, server, ui, inventory,
             cursor: None,
             keys: Keys::default(),
             selected: 0,
             path: None,
-            animations: Animations::new(),
-            command_queue: CommandQueue::new(),
-            controller: Controller::Player,
-        }
+            camera: Camera::new(),
+        })
     }
 
     // Handle keypresses
@@ -167,7 +134,7 @@ impl Battle {
             if key == VirtualKeyCode::Return {
                 let filename = self.ui.text_input(0).text();
 
-                if let Some(save) = self.map.save(filename, settings) {
+                if let Some(save) = self.client.map.save(filename, settings) {
                     self.ui.text_display(1).append(&format!("Saved to '{}'", save.display()));
                 } else {
                     self.ui.text_display(1).append("Failed to save game");
@@ -203,29 +170,19 @@ impl Battle {
                 VirtualKeyCode::Return => {
                     let index = self.inventory.menu(active).selection;
 
-                    if let Some(unit) = self.map.units.get_mut(self.selected) {
-                        // Was the item transferred?
-                        let transferred = if active == 0 {
-                            unit.drop_item(&mut self.map.tiles, index)
-                        } else {
-                            unit.pick_up_item(&mut self.map.tiles, index)
-                        };
-
-                        if transferred {
-                            self.inventory.menu(active).fit_selection();
-                        }
+                    if active == 0 {
+                        self.client.drop_item(self.selected, index);
+                    } else {
+                        self.client.pickup_item(self.selected, index);
                     }
+
+                    self.inventory.menu(active).fit_selection();
                 },
                 // Use an item
                 VirtualKeyCode::E => {
                     if active == 0 {
                         let index = self.inventory.menu(active).selection;
-
-                        if let Some(unit) = self.map.units.get_mut(self.selected) {
-                            if unit.use_item(index) {
-                                self.inventory.menu(active).fit_selection();
-                            }
-                        }
+                        self.client.use_item(self.selected, index);
                     }
                 },
                 VirtualKeyCode::T => {
@@ -233,7 +190,7 @@ impl Battle {
                         if !empty && active == 0 {
                             if let Some((cursor_x, cursor_y)) = self.cursor {
                                 if distance_under(x, y, cursor_x, cursor_y, throw) {
-                                    self.command_queue.push(ThrowItemCommand::new(id, self.inventory.menu(active).selection, cursor_x, cursor_y));
+                                    self.client.throw_item(id, self.inventory.menu(active).selection, cursor_x, cursor_y);
                                     self.inventory.menu(active).fit_selection();
                                 }
                             }
@@ -265,28 +222,32 @@ impl Battle {
     // Update the battle
     pub fn update(&mut self, ctx: &mut Context, dt: f32) {
         // Change camera variables if a key is being pressed
-        if self.keys.up       { self.map.camera.y += Camera::SPEED * dt; }
-        if self.keys.down     { self.map.camera.y -= Camera::SPEED * dt; }
-        if self.keys.left     { self.map.camera.x -= Camera::SPEED * dt; }
-        if self.keys.right    { self.map.camera.x += Camera::SPEED * dt; }
-        if self.keys.zoom_out { self.map.camera.zoom(-Camera::ZOOM_SPEED * dt); }
-        if self.keys.zoom_in  { self.map.camera.zoom( Camera::ZOOM_SPEED * dt); }
+        if self.keys.up       { self.camera.y += Camera::SPEED * dt; }
+        if self.keys.down     { self.camera.y -= Camera::SPEED * dt; }
+        if self.keys.left     { self.camera.x -= Camera::SPEED * dt; }
+        if self.keys.right    { self.camera.x += Camera::SPEED * dt; }
+        if self.keys.zoom_out { self.camera.zoom(-Camera::ZOOM_SPEED * dt); }
+        if self.keys.zoom_in  { self.camera.zoom( Camera::ZOOM_SPEED * dt); }
+
+        self.client.recv();
+
+        process_animations(&mut self.client.animations, dt, &mut self.client.map, ctx, &mut self.ui.text_display(1));
 
         // If the controller is the AI and the command queue and animations are empty, make a ai move
         // If that returns false, switch control back to the player
-        if self.controller == Controller::AI && self.command_queue.is_empty() && self.animations.is_empty() {
-            let more_moves = ai::make_move(&self.map, &mut self.command_queue);
+        /*if self.controller == Controller::AI && self.command_queue.is_empty() && self.animations.is_empty() {
+            let more_moves = ai::make_move(&self.client.map, &mut self.command_queue);
             
             if !more_moves {
                 self.controller = Controller::Player;
                 // Update the turn
-                self.map.turn += 1;
+                self.client.map.turn += 1;
                 // Log to the text display
-                self.ui.text_display(1).append(&format!("Turn {} started", self.map.turn));
+                self.ui.text_display(1).append(&format!("Turn {} started", self.client.map.turn));
 
                 // Get the number of alive units on both sides
-                let player_count = self.map.units.count(&UnitSide::Player);
-                let ai_count = self.map.units.count(&UnitSide::AI);
+                let player_count = self.client.map.units.count(&UnitSide::Player);
+                let ai_count = self.client.map.units.count(&UnitSide::AI);
 
                 // If one side has lost all their units, Set the score screen menu
                 if player_count == 0 || ai_count == 0 {
@@ -294,18 +255,13 @@ impl Battle {
                     self.ui.menu(0).selection = 3;
                     self.ui.menu(0).list = vec![
                         item!("Skirmish Ended", false),
-                        item!("Units lost: {}", self.map.units.total_player_units - player_count, false),
-                        item!("Units killed: {}", self.map.units.total_ai_units - ai_count, false),
+                        item!("Units lost: {}", self.client.map.units.total_player_units - player_count, false),
+                        item!("Units killed: {}", self.client.map.units.total_ai_units - ai_count, false),
                         item!("Close")
                     ];
                 }
             }
-        }
-
-        // Update the command queue (if there are no animations in progress)
-        self.command_queue.update(&mut self.map, &mut self.animations, &mut self.ui.text_display(1));
-        // Update the animations
-        self.animations.update(ctx, dt);
+        }*/
     }
 
     // Draw both the map and the UI
@@ -332,7 +288,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.map.turn, self.controller, selected);
+        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.client.map.turn, self.client.map.controller, selected);
 
         // Set the inventory
         if self.inventory.active {
@@ -344,7 +300,7 @@ impl Battle {
                     .collect();
 
                 // Collect the items on the ground into a vec
-                let ground: Vec<MenuItem> = self.map.tiles.at(unit.x, unit.y).items.iter()
+                let ground: Vec<MenuItem> = self.client.map.tiles.at(unit.x, unit.y).items.iter()
                     .map(|item| item!(item))
                     .collect();
                 
@@ -375,10 +331,10 @@ impl Battle {
     // Move the cursor on the screen
     pub fn move_cursor(&mut self, x: f32, y: f32) {
         // Get the position where the cursor should be
-        let (x, y) = tile_under_cursor(x, y, &self.map.camera);
+        let (x, y) = tile_under_cursor(x, y, &self.camera);
 
         // Set cursor position if it is on the map and visible
-        self.cursor = if x < self.map.tiles.cols && y < self.map.tiles.rows {
+        self.cursor = if x < self.client.map.tiles.cols && y < self.client.map.tiles.rows {
             Some((x, y))
         } else {
             None
@@ -386,7 +342,7 @@ impl Battle {
     }
 
     fn perform_actions(&mut self, x: usize, y: usize) {
-        match self.map.units.at(x, y) {
+        match self.client.map.units.at(x, y) {
             Some(unit) => {
                 self.path = None;
 
@@ -394,25 +350,26 @@ impl Battle {
                     // Select a unit
                     UnitSide::Player => self.selected = unit.id,
                     // Fire on a unit
-                    UnitSide::AI => self.command_queue.push(FireCommand::new(self.selected, x, y))
+                    UnitSide::AI => self.client.fire(self.selected, x, y)
                 }
             },
             // Force fire on a tile
-            None if self.keys.force_fire => self.command_queue.push(FireCommand::new(self.selected, x, y)),
+            None if self.keys.force_fire => self.client.fire(self.selected, x, y),
             // Move the current unit
-            None => if let Some(unit) = self.map.units.get(self.selected) {
+            None => if let Some(unit) = self.client.map.units.get(self.selected) {
                 // return if the target location is taken
-                if self.map.taken(x, y) {
+                if self.client.map.taken(x, y) {
                     self.path = None;
                     return;
                 }
 
                 self.path = match self.path {
                     Some(ref path) if path[path.len() - 1].at(x, y) => {
-                        self.command_queue.push(WalkCommand::new(unit, &self.map, path.clone()));
+                        self.client.walk(self.selected, path.clone());
+                        //self.command_queue.push(WalkCommand::new(unit, &self.client.map, path.clone()));
                         None
                     },
-                    _ => pathfind(unit, x, y, &self.map).map(|(path, _)| path)
+                    _ => pathfind(unit, x, y, &self.client.map).map(|(path, _)| path)
                 }
             }
         }
@@ -420,8 +377,7 @@ impl Battle {
 
     // Respond to mouse presses
     pub fn mouse_button(&mut self, button: MouseButton, mouse: (f32, f32), ctx: &Context) {
-        // Don't do anything if it's the AI's turn or if there is a command in progress
-        if self.controller == Controller::AI || !self.command_queue.is_empty() {
+        if !self.waiting_for_command() {
             return;
         }
 
@@ -438,37 +394,35 @@ impl Battle {
                     self.perform_actions(x, y)
                 }
             },
-            MouseButton::Right => {
-                if let Some((x, y)) = self.cursor {
-                    if let Some(unit) = self.map.units.get_mut(self.selected) {
-                        self.command_queue.push(TurnCommand::new(self.selected, UnitFacing::from_points(unit.x, unit.y, x, y)));
-                    }
+            MouseButton::Right => if let Some((x, y)) = self.cursor {
+                if let Some(unit) = self.selected() {
+                    self.client.turn(self.selected, UnitFacing::from_points(unit.x, unit.y, x, y));
                 }
             }
             _ => {}
         }
     }
 
+    fn waiting_for_command(&self) -> bool {
+        self.client.map.controller == Controller::Player && self.client.animations.is_empty()
+    }
+
     // Get a reference to the unit that is selected
     fn selected(&self) -> Option<&Unit> {
-        self.map.units.get(self.selected)
+        self.client.map.units.get(self.selected)
     }
 
     // Work out if the cursor is on an ai unit
     fn cursor_active(&self) -> bool {
         self.keys.force_fire ||
-        self.cursor.map(|(x, y)| self.map.units.on_side(x, y, &UnitSide::AI)).unwrap_or(false)
+        self.cursor.map(|(x, y)| self.client.map.units.on_side(x, y, &UnitSide::AI)).unwrap_or(false)
     }
 
     // End the current turn
     fn end_turn(&mut self) {
-        if self.controller == Controller::Player {
-            for unit in self.map.units.iter_mut() {
-                unit.moves = unit.tag.moves();
-            }
-
-            self.controller = Controller::AI;
-        }   
+        if self.waiting_for_command() {
+            self.client.end_turn();
+        }
     }
 }
 
@@ -476,35 +430,33 @@ impl Battle {
 fn battle_operations() {
     let skirmish_settings = SkirmishSettings::default();
 
-    let mut battle = Battle::new(&skirmish_settings, None);
+    let mut battle = Battle::new(skirmish_settings.clone(), None).unwrap();
 
     // It should be on the first turn and it should be the player's turn
 
-    assert_eq!(battle.map.turn, 1);
-    assert_eq!(battle.controller, Controller::Player);
+    assert_eq!(battle.client.map.turn, 1);
+    assert_eq!(battle.client.map.controller, Controller::Player);
 
     // The cols and rows are equal
-    assert_eq!(battle.map.tiles.cols, skirmish_settings.cols);
-    assert_eq!(battle.map.tiles.rows, skirmish_settings.rows);
+    assert_eq!(battle.client.map.tiles.cols, skirmish_settings.cols);
+    assert_eq!(battle.client.map.tiles.rows, skirmish_settings.rows);
 
-    // The unit counts are equal
-    assert_eq!(battle.map.units.count(&UnitSide::Player) as usize, skirmish_settings.player_units);
-    assert_eq!(battle.map.units.count(&UnitSide::AI) as usize, skirmish_settings.ai_units);
+    // The player unit counts are equal
+    assert_eq!(battle.client.map.units.count(&UnitSide::Player) as usize, skirmish_settings.player_units);
+    
+    // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
+    assert_eq!(battle.client.map.units.count(&UnitSide::AI) as usize, 0);
 
     // The unit types are correct
 
-    assert!(battle.map.units.iter()
+    assert!(battle.client.map.units.iter()
         .filter(|unit| unit.side == UnitSide::Player)
         .all(|unit| unit.tag == skirmish_settings.player_unit_type));
-
-    assert!(battle.map.units.iter()
-        .filter(|unit| unit.side == UnitSide::AI)
-        .all(|unit| unit.tag == skirmish_settings.ai_unit_type));
 
     {
         // The first unit should be a player unit at (0, 0)
 
-        let unit = battle.map.units.get_mut(0).unwrap();
+        let unit = battle.client.map.units.get_mut(0).unwrap();
 
         assert_eq!(unit.side, UnitSide::Player);
         assert_eq!(unit.tag, skirmish_settings.player_unit_type);

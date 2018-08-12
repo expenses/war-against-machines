@@ -1,8 +1,7 @@
-use glutin::EventsLoop;
-
 mod renderer;
 mod audio;
 
+use glutin::*;
 use colours;
 use settings::Settings;
 use resources::{ImageSource, Image, SoundEffect, CHARACTER_GAP};

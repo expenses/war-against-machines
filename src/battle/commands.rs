@@ -1,466 +1,204 @@
-// The commands that can be issued to units
+use super::map::*;
+use super::units::*;
+use super::paths::*;
+use super::walls::*;
+use super::animations::*;
 
-// `Command::new` functions return a `Command` instead
-// of `Self` for convenience, so turn the clippy lint off
-#![cfg_attr(feature = "cargo-clippy", allow(new_ret_no_self))]
+use utils::*;
+use resources::*;
+use rand::*;
 
-use rand;
+use std::collections::*;
 
-use super::map::Map;
-use super::units::{Unit, UnitSide, UnitFacing};
-use super::paths::PathPoint;
-use super::animations::{Walk, Bullet, ThrowItem, Explosion, Animations};
-use super::walls::WallSide;
-use items::Item;
-use resources::Image;
-use ui::TextDisplay;
-use utils::distance_under;
-
-use std::collections::HashSet;
-
-// A response returned by a command
-#[derive(Default)]
-struct Response {
-    keep: bool,
-    wait: bool,
-    follow_up: Vec<Command>
+struct VisibleEnemies {
+    positions: Vec<(usize, usize)>
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Command {
-    Finished(FinishedCommand),
-    Fire(FireCommand),
-    Walk(WalkCommand),
-    UseItem(UseItemCommand),
-    DamageTile(DamageTileCommand),
-    DamageWall(DamageWallCommand),
-    ThrowItem(ThrowItemCommand),
-    Explosion(ExplosionCommand),
-    Turn(TurnCommand)
-}
-
-impl Command {
-    fn process(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) -> Response {
-        match *self {
-            Command::Fire(ref mut command) => command.process(map, animations),
-            Command::Walk(ref mut command) => command.process(map, animations, log),
-            Command::Finished(ref mut command) => command.process(map),
-            Command::UseItem(ref mut command) => command.process(map),
-            Command::DamageTile(ref mut command) => command.process(map),
-            Command::DamageWall(ref mut command) => command.process(map),
-            Command::ThrowItem(ref mut command) => command.process(map, animations),
-            Command::Explosion(ref mut command) => command.process(map, animations),
-            Command::Turn(ref mut command) => command.process(map)
+impl VisibleEnemies {
+    fn new(unit: &Unit, map: &Map) -> Self {
+        Self {
+            positions: map.visible(unit.side.enemies()).map(|unit| (unit.x, unit.y)).collect()
         }
     }
-}
 
-// Finish a units moves for a turn by setting them to 0
-#[derive(Debug, PartialEq)]
-pub struct FinishedCommand {
-    id: u8
-}
-
-impl FinishedCommand {
-    // Create a new finished command
-    pub fn new(id: u8) -> Command {
-        Command::Finished(FinishedCommand {
-            id
-        })
-    }
-
-    // Process the command, setting the units moves to 0 if it exists
-    fn process(&self, map: &mut Map) -> Response {
-        if let Some(unit) = map.units.get_mut(self.id) {
-            unit.moves = 0;
-        }
-
-        Response::default()
-    }
-}
-
-// Get one unit to fire on another
-#[derive(Debug, PartialEq)]
-pub struct FireCommand {
-    id: u8,
-    x: usize,
-    y: usize
-}
-
-impl FireCommand {
-    // Create a new fire command
-    pub fn new(id: u8, x: usize, y: usize) -> Command {
-        Command::Fire(FireCommand {
-            id, x, y
-        })
-    }
-
-    // Process the fire command, checking if the firing unit has the moves to fire,
-    // if it hits, and adding the bullet to Animations
-    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Response {
-        let mut response = Response::default();
-
-        // Fire the unit's weapon and get if the bullet will hit and the damage it will do
-        let (will_hit, damage, unit_x, unit_y) = match map.units.get_mut(self.id) {
-            Some(unit) => if unit.fire_weapon() {
-                (unit.chance_to_hit(self.x, self.y) > rand::random::<f32>(), unit.weapon.tag.damage(), unit.x, unit.y)
-            } else {
-                return response;
-            },   
-            _ => return response
-        };
-
-        if will_hit {
-            // If the bullet will hit a wall, return a damage wall command
-            if let Some(((x, y), side)) = map.tiles.line_of_fire(unit_x, unit_y, self.x, self.y) {
-                self.x = x as usize;
-                self.y = y as usize;
-                response.follow_up.push(DamageWallCommand::new(side, self.x, self.y, damage));
-            // If the bullet will hit at enemy, return a followup damage command
-            } else {
-                response.follow_up.push(DamageTileCommand::new(self.x, self.y, damage));
+    fn new_enemy(&self, unit: &Unit, map: &Map) -> Option<(usize, usize)> {
+        for enemy in map.visible(unit.side.enemies()) {
+            let position = (enemy.x, enemy.y);
+            if !self.positions.contains(&position) {
+                return Some(position);
             }
         }
 
-        // Push a bullet to the animation queue
-        if let Some(unit) = map.units.get(self.id) {
-            animations.push(Bullet::new(unit, self.x, self.y, will_hit, map));
-            response.wait = true;
-        }
-
-        response
+        None
     }
 }
 
-// Move a unit along a path, checking if it spots an enemy unit along the way
-#[derive(Debug, PartialEq)]
-pub struct WalkCommand {
-    id: u8,
-    visible_enemies: usize,
-    path: Vec<PathPoint>,
+pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, animations: &mut Vec<Animation>) {
+    let visible_enemies = VisibleEnemies::new(&map.units.get(id).unwrap(), map);
+
+    // Todo: turning should have a cost
+    map.units.get_mut(id).unwrap().facing = new_facing;
+
+    animations.push(Animation::new_state(map));
+
+    if let Some((x, y)) = visible_enemies.new_enemy(map.units.get(id).unwrap(), map) {
+        animations.push(Animation::EnemySpotted {x, y});
+    }
 }
 
-impl WalkCommand {
-    // Create a new walk command
-    pub fn new(unit: &Unit, map: &Map, path: Vec<PathPoint>) -> Command {
-        Command::Walk(WalkCommand {
-            path,
-            id: unit.id,
-            // Calculate the number of visible enemy units
-            visible_enemies: map.visible(&unit.side.enemies())
-        })
-    }
-    
-    // Process the walk command, moving the unit one tile along the path and checking
-    // if it spots an enemy unit
-    fn process(&mut self, map: &mut Map, animation_queue: &mut Animations, log: &mut TextDisplay) -> Response {
-        let mut response = Response::default();
+// todo: decide to do unit verification in commands or beforehand
 
-        if let Some(point) = self.path.first() {
-            let moves = match map.units.get(self.id) {
-                Some(unit) => {
-                    // If there are more visible enemies than there were when the walk started, end it
-                    if map.visible(&unit.side.enemies()) > self.visible_enemies {
-                        // Log a message to the player that an enemy was spotted
-                        if unit.side == UnitSide::Player {
-                            log.append("Enemy spotted!");
-                        }
+pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mut Vec<Animation>) {
+    let visible_enemies = VisibleEnemies::new(map.units.get(id).unwrap(), map);
 
-                        return response;
-                    }
-
-                    unit.moves
-                },
-                _ => return response
-            };
-
-            // If the move costs too much or if the tile is taken, end the walk
-            if moves < point.cost || map.taken(point.x, point.y) {
-                return response;
-            } else {
-                // Move the unit
-                if let Some(unit) = map.units.get_mut(self.id) {
-                    unit.move_to(point);
-                    map.tiles.at_mut(point.x, point.y).walk_on();
-                }
-
-                // Update the visibility of the tiles
-                map.tiles.update_visibility(&map.units);
-
-                // Add a walk to the animation queue (so that there is a delay and a footstep sound)
-                animation_queue.push(Walk::new());
-                response.wait = true;
+    for point in path {
+        if let Some(unit) = map.units.get(id) {
+            if let Some((x, y)) = visible_enemies.new_enemy(unit, map) {
+                animations.push(Animation::EnemySpotted {x, y});
+                return;
             }
         }
 
-        // Remove the point from the path
-        self.path.remove(0);
-        // Return whether there are still path points to process
-        response.keep = !self.path.is_empty();
+        let moves = map.units.get(id).unwrap().moves;
 
-        response
-    }
-}
-
-// Get a unit to use an item
-#[derive(Debug, PartialEq)]
-pub struct UseItemCommand {
-    id: u8,
-    item: usize
-}
-
-impl UseItemCommand {
-    pub fn new(id: u8, item: usize) -> Command {
-        Command::UseItem(UseItemCommand {
-            id, item
-        })
-    }
-    
-    fn process(&self, map: &mut Map) -> Response {
-        if let Some(unit) = map.units.get_mut(self.id) {
-            unit.use_item(self.item);
+        if moves < point.cost || map.taken(point.x, point.y) {
+            return;
         }
 
-        Response::default()
+        // Move the unit
+        if let Some(unit) = map.units.get_mut(id) {
+            unit.move_to(&point);
+            map.tiles.at_mut(point.x, point.y).walk_on();
+        }
+
+        animations.push(Animation::new_state(map));
+        animations.push(Animation::Walk(0.0));
     }
 }
 
-// Damage a unit
-#[derive(Debug, PartialEq)]
-pub struct DamageTileCommand {
-    x: usize,
-    y: usize,
-    damage: i16
+pub fn use_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Vec<Animation>) {
+    map.units.get_mut(id).unwrap().use_item(item);
+    animations.push(Animation::new_state(map));
 }
 
-impl DamageTileCommand {
-    fn new(x: usize, y: usize, damage: i16) -> Command {
-        Command::DamageTile(DamageTileCommand {
-            x, y, damage
-        })
+pub fn pickup_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Vec<Animation>) {
+    map.units.get_mut(id).unwrap().pickup_item(&mut map.tiles, item);
+    animations.push(Animation::new_state(map));
+}
+
+pub fn drop_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Vec<Animation>) {
+    map.units.get_mut(id).unwrap().drop_item(&mut map.tiles, item);
+    animations.push(Animation::new_state(map));
+}
+
+pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize, animations: &mut Vec<Animation>) {
+    let item = {
+        let unit = map.units.get_mut(id).unwrap();
+        let item = unit.inventory_remove(item).unwrap();
+        animations.push(Animation::new_thrown_item(item.image(), unit.x, unit.y, x, y));
+        item
+    };
+
+    if let Some((damage, radius)) = item.as_explosive() {
+        explosion(map, x, y, damage, radius, animations);
+    } else {
+        map.tiles.drop(x, y, item);
     }
-    
-    fn process(&self, map: &mut Map) -> Response {
-        let response = Response::default();
 
-        // Deal damage to the unit and get whether it is lethal
-        let info = map.units.at_mut(self.x, self.y).map(|unit| {
-            unit.health -= self.damage;
-            (unit.id, unit.health <= 0)
-        });
+    animations.push(Animation::new_state(map));
+}
 
-        if let Some((id, lethal)) = info {
-            // If the damage is lethal, kill the unit
-            if lethal {
-                map.units.kill(&mut map.tiles, id);
-            }
+pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: usize, animations: &mut Vec<Animation>) {
+
+    // Fire the unit's weapon and get if the bullet will hit and the damage it will do
+    let (will_hit, damage, unit_x, unit_y) = match map.units.get_mut(id) {
+        Some(unit) => if unit.fire_weapon() {
+            (unit.chance_to_hit(target_x, target_y) > random::<f32>(), unit.weapon.tag.damage(), unit.x, unit.y)
         } else {
-            map.tiles.at_mut(self.x, self.y).decoration = Some(Image::Crater);
-        }
+            return;
+        },   
+        _ => return
+    };
 
-        response
-    }
-}
+    if will_hit {
+        // If the bullet will hit a wall, return a damage wall command
+        if let Some(((x, y), side)) = map.tiles.line_of_fire(unit_x, unit_y, target_x, target_y) {
+            target_x = x as usize;
+            target_y = y as usize;
 
-// Damage a wall
-#[derive(Debug, PartialEq)]
-pub struct DamageWallCommand {
-    side: WallSide,
-    x: usize,
-    y: usize,
-    damage: i16
-}
-
-impl DamageWallCommand {
-    fn new(side: WallSide, x: usize, y: usize, damage: i16) -> Command {
-        Command::DamageWall(DamageWallCommand {
-            side, x, y, damage
-        })
-    }
-
-    fn process(&self, map: &mut Map) -> Response {
-        let destroyed = {
-            let walls = &mut map.tiles.at_mut(self.x, self.y).walls;
-
-            let destroyed = match self.side {
-                WallSide::Left => walls.left.as_mut(),
-                WallSide::Top => walls.top.as_mut()
-            }.map(|wall| {
-                wall.health -= self.damage;
-                wall.health <= 0
-            })
-            .unwrap_or(false);
-
-            if destroyed {
-                match self.side {
-                    WallSide::Left => walls.left = None,
-                    WallSide::Top => walls.top = None
-                }
-            }
-
-            destroyed
-        };
-        
-        if destroyed {
-            map.tiles.update_visibility(&map.units);
-        }
-
-        Response::default()
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ThrowItemCommand {
-    id: u8,
-    index: usize,
-    x: usize,
-    y: usize,
-    item: Option<Item>,
-}
-
-impl ThrowItemCommand {
-    pub fn new(id: u8, index: usize, x: usize, y: usize) -> Command {
-        Command::ThrowItem(ThrowItemCommand {
-            id, index, x, y,
-            item: None
-        })
-    }
-
-    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Response {
-        let mut response = Response::default();
-        
-        if let Some(item) = self.item {
-            if let Some((damage, radius)) = item.as_explosive() {
-                response.follow_up.push(ExplosionCommand::new(self.x, self.y, damage, radius, map));
-            } else {
-                map.tiles.drop(self.x, self.y, item);
-            }
-        } else if let Some(unit) = map.units.get_mut(self.id) {
-            if let Some(item) = unit.inventory.get(self.index).cloned() {
-                self.item = Some(item);
-                // Otherwise push an animation
-                unit.inventory.remove(self.index);
-                animations.push(ThrowItem::new(item.image(), unit.x, unit.y, self.x, self.y));
-                response.wait = true;
-                response.keep = true;
-            }
-        }
-
-        response
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ExplosionCommand {
-    x: usize,
-    y: usize,
-    damage: i16,
-    radius: f32,
-    tiles: HashSet<(usize, usize)>,
-    exploded: bool
-}
-
-impl ExplosionCommand {
-    fn new(x: usize, y: usize, damage: i16, radius: f32, map: &mut Map) -> Command {
-        Command::Explosion(ExplosionCommand {
-            x, y, damage, radius,
-            exploded: false,
-            tiles: map.tiles.iter().filter(|&(tile_x, tile_y)| distance_under(x, y, tile_x, tile_y, radius)).collect(),
-        })
-    }
-
-    fn process(&mut self, map: &mut Map, animations: &mut Animations) -> Response {
-        let mut response = Response::default();
-
-        if !self.exploded {
-            for &(x, y) in &self.tiles {
-                animations.push(Explosion::new(x, y, self.x, self.y));
-                response.keep = true;
-                response.wait = true;
-                self.exploded = true;
-            }
+            damage_wall(map, target_x, target_y, damage, side);
+        // If the bullet will hit at enemy, return a followup damage command
         } else {
-            for &(x, y) in &self.tiles {
-                response.follow_up.push(DamageTileCommand::new(x, y, self.damage));
-
-                if !map.tiles.horizontal_clear(x, y) && (x == 0 || self.tiles.contains(&(x - 1, y))) {
-                    response.follow_up.push(DamageWallCommand::new(WallSide::Left, x, y, self.damage));
-                }
-
-                if !map.tiles.vertical_clear(x, y) && (y == 0 || self.tiles.contains(&(x, y - 1))) {
-                    response.follow_up.push(DamageWallCommand::new(WallSide::Top, x, y, self.damage));
-                }
-            }
-        }
-
-        response
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct TurnCommand {
-    id: u8,
-    facing: UnitFacing
-}
-
-impl TurnCommand {
-    pub fn new(id: u8, facing: UnitFacing) -> Command {
-        Command::Turn(Self {
-            id, facing
-        })
-    }
-
-    fn process(&self, map: &mut Map) -> Response {
-        if let Some(unit) = map.units.get_mut(self.id) {
-            unit.facing = self.facing;
-        }
-
-        map.tiles.update_visibility(&map.units);
-
-        Response::default()
-    }
-}
-
-pub struct CommandQueue {
-    pub commands: Vec<Command>,
-    wait_for_animations: bool
-}
-
-impl CommandQueue {
-    pub fn new() -> CommandQueue {
-        CommandQueue {
-            commands: Vec::new(),
-            wait_for_animations: false
+            damage_tile(map, target_x, target_y, damage);
         }
     }
 
-    // Push a new command onto the queue
-    pub fn push(&mut self, command: Command) {
-        self.commands.push(command);
+    // Push a bullet to the animation queue
+    if let Some(unit) = map.units.get(id) {
+        animations.push(Animation::new_bullet(unit, target_x, target_y, will_hit, map));
     }
 
-    pub fn update(&mut self, map: &mut Map, animations: &mut Animations, log: &mut TextDisplay) {
-        while !self.is_empty() && (!self.wait_for_animations || animations.is_empty()) {
-            // Get the command response
-            let mut response = self.commands[0].process(map, animations, log);
-            // If there are follow-up commands, insert them after the first command
-            if !response.follow_up.is_empty() {
-                let mut split = self.commands.split_off(1);
-                self.commands.append(&mut response.follow_up);
-                self.commands.append(&mut split);
-            }
+    animations.push(Animation::new_state(map));
+}
 
-            // Remove the command if it's not wanted
-            if !response.keep {
-                self.commands.remove(0);
-            }
+fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, animations: &mut Vec<Animation>) {
+    let tiles: HashSet<_> = map.tiles.iter().filter(|&(tile_x, tile_y)| distance_under(x, y, tile_x, tile_y, radius)).collect();
 
-            self.wait_for_animations = response.wait;
+
+    for (i, &(tile_x, tile_y)) in tiles.iter().enumerate() {
+        let last = i == tiles.len() - 1;
+        animations.push(Animation::new_explosion(tile_x, tile_y, x, y, last));
+    }
+
+    for &(x, y) in &tiles {
+        damage_tile(map, x, y, damage);
+
+        if !map.tiles.horizontal_clear(x, y) && (x == 0 || tiles.contains(&(x - 1, y))) {
+            damage_wall(map, x, y, damage, WallSide::Left);
+        }
+
+        if !map.tiles.vertical_clear(x, y) && (y == 0 || tiles.contains(&(x, y - 1))) {
+            damage_wall(map, x, y, damage, WallSide::Top);
         }
     }
+}
 
-    // Is the queue empty
-    pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
+
+fn damage_tile(map: &mut Map, x: usize, y: usize, damage: i16) {
+    // Deal damage to the unit and get whether it is lethal
+    let info = map.units.at_mut(x, y).map(|unit| {
+        unit.health -= damage;
+        (unit.id, unit.health <= 0)
+    });
+
+    if let Some((id, lethal)) = info {
+        // If the damage is lethal, kill the unit
+        if lethal {
+            map.units.kill(&mut map.tiles, id);
+        }
+    } else {
+        map.tiles.at_mut(x, y).decoration = Some(Image::Crater);
+    }
+}
+
+fn damage_wall(map: &mut Map, x: usize, y: usize, damage: i16, side: WallSide) {
+    let walls = &mut map.tiles.at_mut(x, y).walls;
+
+    let destroyed = match side {
+        WallSide::Left => walls.left.as_mut(),
+        WallSide::Top => walls.top.as_mut()
+    }.map(|wall| {
+        wall.health -= damage;
+        wall.health <= 0
+    })
+    .unwrap_or(false);
+
+
+
+    if destroyed {
+        match side {
+            WallSide::Left => walls.left = None,
+            WallSide::Top => walls.top = None
+        }
     }
 }
