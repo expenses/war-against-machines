@@ -80,24 +80,27 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
     format!("SK{}", serial)
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Side(u8);
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum Side {
+    PlayerA,
+    PlayerB
+}
 
 impl Side {
-    // Multiplayer
-    pub const PLAYER_A: Side = Side(0);
-    pub const PLAYER_B: Side = Side(1);
-
-    // Singleplayer
-    pub const PLAYER: Side = Side(0);
-    pub const AI: Side = Side(1);
-
     pub fn enemies(self) -> Side {
-        Side(1 - self.0)
+        match self {
+            Side::PlayerA => Side::PlayerB,
+            Side::PlayerB => Side::PlayerA
+        }
     }
+}
 
-    pub fn inner(self) -> u8 {
-        self.0
+impl fmt::Display for Side {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Side::PlayerA => write!(f, "Player A"),
+            Side::PlayerB => write!(f, "Player B")
+        }
     }
 }
 
@@ -430,8 +433,8 @@ impl Unit {
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Units {
-    pub max_player_units: u8,
-    pub max_ai_units: u8,
+    pub max_player_a_units: u8,
+    pub max_player_b_units: u8,
     index: u8,
     units: HashMap<u8, Unit>
 }
@@ -441,18 +444,17 @@ impl Units {
     pub fn new() -> Units {
         Units {
             index: 0,
-            max_player_units: 0,
-            max_ai_units: 0,
+            max_player_a_units: 0,
+            max_player_b_units: 0,
             units: HashMap::new()
         }
     }
 
     // Add a unit to the struct
     pub fn add(&mut self, tag: UnitType, side: Side, x: usize, y: usize, facing: UnitFacing) {
-        if side == Side::PLAYER {
-            self.max_player_units += 1;
-        } else {
-            self.max_ai_units += 1;
+        match side {
+            Side::PlayerA => self.max_player_a_units += 1,
+            Side::PlayerB => self.max_player_b_units += 1,
         }
 
         self.units.insert(self.index, Unit::new(tag, side, x, y, facing, self.index));
@@ -525,21 +527,20 @@ impl Units {
 
 impl FromIterator<Unit> for Units {
     fn from_iter<I: IntoIterator<Item=Unit>>(iterator: I) -> Self {
-        let mut max_player_units = 0;
-        let mut max_ai_units = 0;
+        let mut max_player_a_units = 0;
+        let mut max_player_b_units = 0;
 
         let units = iterator.into_iter().inspect(|unit| {
-                if unit.side == Side::PLAYER {
-                    max_player_units += 1;
-                } else {
-                    max_ai_units += 1;
+                match unit.side {
+                    Side::PlayerA => max_player_a_units += 1,
+                    Side::PlayerB => max_player_b_units += 1
                 }
             })
             .map(|unit| (unit.id, unit))
             .collect();
 
         Self {
-            max_player_units, max_ai_units, units,
+            max_player_a_units, max_player_b_units, units,
             index: 0
         }
     }
@@ -556,10 +557,10 @@ fn unit_actions() {
     // After adding 10 units, there should be 10 ai units into total
 
     for i in 0 .. 10 {
-        units.add(UnitType::Machine, Side::AI, i, i, UnitFacing::Bottom);
+        units.add(UnitType::Machine, Side::PlayerB, i, i, UnitFacing::Bottom);
     }
 
-    assert_eq!(units.count(Side::AI), 10);
+    assert_eq!(units.count(Side::PlayerB), 10);
 
     // Iterating over the units should work as expected
 
@@ -610,7 +611,7 @@ fn unit_actions() {
 
     units.kill(&mut tiles, 0);
 
-    assert_eq!(units.count(Side::AI), 9);
+    assert_eq!(units.count(Side::PlayerB), 9);
 
     // And the tile under the unit should have items on it
 

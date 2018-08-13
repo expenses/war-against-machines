@@ -145,11 +145,17 @@ impl Tiles {
     }
 
     pub fn visibility_at(&self, x: usize, y: usize, side: Side) -> Visibility {
-        *self.visibility_grids[side.inner() as usize].at(x, y)
+        match side {
+            Side::PlayerA => *self.visibility_grids[0].at(x, y),
+            Side::PlayerB => *self.visibility_grids[1].at(x, y)
+        }
     }
 
     pub fn set_visibility_at(&mut self, x: usize, y: usize, side: Side, visibility: Visibility) {
-        *self.visibility_grids[side.inner() as usize].at_mut(x, y) = visibility;
+        match side {
+            Side::PlayerA => *self.visibility_grids[0].at_mut(x, y) = visibility,
+            Side::PlayerB => *self.visibility_grids[1].at_mut(x, y) = visibility
+        }
     }
 
     pub fn width(&self) -> usize {
@@ -273,22 +279,22 @@ impl Tiles {
     // Update the visibility of the map
     pub fn update_visibility(&mut self, units: &Units) {
         for (x, y) in self.iter() {
-            let player_a_visible = self.tile_visible(units, Side::PLAYER_A, x, y);
-            let player_b_visible = self.tile_visible(units, Side::PLAYER_B, x, y);
+            let player_a_visible = self.tile_visible(units, Side::PlayerA, x, y);
+            let player_b_visible = self.tile_visible(units, Side::PlayerB, x, y);
             
-            let player_a_already_visible = self.visibility_at(x, y, Side::PLAYER_A).is_visible();
-            let player_b_already_visible = self.visibility_at(x, y, Side::PLAYER_B).is_visible();
+            let player_a_already_visible = self.visibility_at(x, y, Side::PlayerA).is_visible();
+            let player_b_already_visible = self.visibility_at(x, y, Side::PlayerB).is_visible();
 
             if let Some(distance) = player_a_visible {
-                self.set_visibility_at(x, y, Side::PLAYER_A, Visibility::Visible(distance));
+                self.set_visibility_at(x, y, Side::PlayerA, Visibility::Visible(distance));
             } else if player_a_already_visible {
-                self.set_visibility_at(x, y, Side::PLAYER_A, Visibility::Foggy);
+                self.set_visibility_at(x, y, Side::PlayerA, Visibility::Foggy);
             }
             
             if let Some(distance) = player_b_visible {
-                self.set_visibility_at(x, y, Side::PLAYER_B, Visibility::Visible(distance));
+                self.set_visibility_at(x, y, Side::PlayerB, Visibility::Visible(distance));
             } else if player_b_already_visible {
-                self.set_visibility_at(x, y, Side::PLAYER_B, Visibility::Foggy);
+                self.set_visibility_at(x, y, Side::PlayerB, Visibility::Foggy);
             }
         }
     }
@@ -383,20 +389,20 @@ fn unit_visibility() {
 
     let mut tiles = Tiles::new(30, 30);
     let mut units = Units::new();
-    units.add(UnitType::Squaddie, Side::PLAYER, 0, 0, UnitFacing::Bottom);
+    units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
     tiles.update_visibility(&units);
 
     // A tile a unit is standing on should be visible with a distance of 0
-    assert_eq!(tiles.visibility_at(0, 0, Side::PLAYER), Visibility::Visible(0));
+    assert_eq!(tiles.visibility_at(0, 0, Side::PlayerA), Visibility::Visible(0));
     // A far away tile should be invisible
-    assert_eq!(tiles.visibility_at(29, 29, Side::PLAYER), Visibility::Invisible);
+    assert_eq!(tiles.visibility_at(29, 29, Side::PlayerA), Visibility::Invisible);
 
     // A tile that was visible but is no longer should be foggy
 
     units.get_mut(0).unwrap().move_to(&PathPoint::new(29, 0, 0, UnitFacing::Top));
     tiles.update_visibility(&units);
 
-    assert_eq!(tiles.visibility_at(0, 0, Side::PLAYER), Visibility::Foggy);
+    assert_eq!(tiles.visibility_at(0, 0, Side::PlayerA), Visibility::Foggy);
 
     // If the unit is boxed into a corner, only it's tile should be visible
 
@@ -406,11 +412,11 @@ fn unit_visibility() {
     tiles.update_visibility(&units);
 
     for (x, y) in tiles.iter() {
-        let visibility = tiles.visibility_at(x, y, Side::PLAYER);
+        let visibility = tiles.visibility_at(x, y, Side::PlayerA);
 
         if x == 29 && y == 0 {
             assert_eq!(visibility, Visibility::Visible(0));
-            assert!(tiles.visibility_at(x, y, Side::PLAYER).not_invisible());
+            assert!(tiles.visibility_at(x, y, Side::PlayerA).not_invisible());
         } else {
             assert!(!visibility.is_visible());
         }

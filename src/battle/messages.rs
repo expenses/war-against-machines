@@ -3,7 +3,7 @@ use super::map::*;
 use super::units::*;
 use super::animations::*;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
 	EndTurn,
 	Command {
@@ -12,13 +12,25 @@ pub enum ClientMessage {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
 	Animations(Vec<Animation>),
-	State(Map)
+	InitialState {
+		map: Map,
+		side: Side
+	}
 }
 
-#[derive(Debug)]
+impl ServerMessage {
+	pub fn initial_state(map: &mut Map, side: Side) -> Self {
+		ServerMessage::InitialState {
+			side,
+			map: map.clone_visible(side),
+		}
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
 	Walk(Vec<PathPoint>),
 	Fire {

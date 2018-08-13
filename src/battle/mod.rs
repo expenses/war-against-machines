@@ -17,7 +17,6 @@ use std::thread::*;
 use self::drawer::*;
 use self::paths::*;
 use self::units::*;
-use self::map::*;
 use self::networking::*;
 use self::animations::*;
 
@@ -42,21 +41,21 @@ struct Keys {
 pub struct Battle {
     pub camera: Camera,
     pub client: Client,
-    pub server: JoinHandle<()>,
     pub cursor: Option<(usize, usize)>,
+    // todo: selected should really be a Option<u8>
     pub selected: u8,
     pub path: Option<Vec<PathPoint>>,
+    server: Option<JoinHandle<()>>,
+    ai: Option<JoinHandle<()>>,
     keys: Keys,
     ui: UI,
     inventory: UI,
-    side: Side
 }
 
 // todo: clean up all these `self.client.map` etc calls
 
 impl Battle {
-    // Create a new Battle
-    pub fn new(skirmish_settings: SkirmishSettings, map: Option<&Path>) -> Option<Battle> {
+    fn create_uis() -> (UI, UI) {
         let width_offset = -Image::EndTurnButton.width();
 
         // Create the base UI
@@ -96,17 +95,56 @@ impl Battle {
             Menu::new(75.0, 62.5, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
         ]);
 
-        let (client, server) = client_and_server(skirmish_settings, map)?;
+        (ui, inventory)
+    }
+
+    // Create a new Battle
+    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>) -> Option<Self> {
+        let (ui, inventory) = Self::create_uis();
+        let (client, server) = client_and_server(map)?;
 
         // Create the battle
-        Some(Battle {
-            client, server, ui, inventory,
+        Some(Self {
+            client, ui, inventory,
+            server: Some(server),
             cursor: None,
+            ai: None,
             keys: Keys::default(),
             selected: 0,
             path: None,
             camera: Camera::new(),
-            side: Side::PLAYER
+        })
+    }
+
+    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>) -> Option<Self> {
+        let (ui, inventory) = Self::create_uis();
+        let (client, server) = client_and_multiplayer_server(addr, map)?;
+
+        Some(Self {
+            client, ui, inventory,
+            server: Some(server),
+            cursor: None,
+            ai: None,
+            keys: Keys::default(),
+            selected: 0,
+            path: None,
+            camera: Camera::new()
+        })
+    }
+
+    pub fn new_multiplayer_connect(addr: &str) -> Option<Self> {
+        let (ui, inventory) = Self::create_uis();
+        let client = client(addr)?;
+
+        Some(Self {
+            client, ui, inventory,
+            server: None,
+            cursor: None,
+            ai: None,
+            keys: Keys::default(),
+            selected: 0,
+            path: None,
+            camera: Camera::new()
         })
     }
 
@@ -133,6 +171,7 @@ impl Battle {
             if key == VirtualKeyCode::Return {
                 let filename = self.ui.text_input(0).text();
 
+                // todo: currently saving the client map is useless, should send a request to the server to save instead.
                 if let Some(save) = self.client.map.save(filename, settings) {
                     self.ui.text_display(1).append(&format!("Saved to '{}'", save.display()));
                 } else {
@@ -287,7 +326,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.client.map.turn, self.client.map.controller, selected);
+        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.client.map.turn, self.client.map.side, selected);
 
         // Set the inventory
         if self.inventory.active {
@@ -345,7 +384,7 @@ impl Battle {
             Some(unit) => {
                 self.path = None;
 
-                if unit.side == self.side {
+                if unit.side == self.client.side {
                     self.selected = unit.id;
                 } else {
                     self.client.fire(self.selected, x, y);
@@ -402,7 +441,7 @@ impl Battle {
     }
 
     fn waiting_for_command(&self) -> bool {
-        self.client.map.controller == Controller::Player && self.client.animations.is_empty()
+        self.client.map.side == self.client.side && self.client.animations.is_empty()
     }
 
     // Get a reference to the unit that is selected
@@ -413,7 +452,7 @@ impl Battle {
     // Work out if the cursor is on an ai unit
     fn cursor_active(&self) -> bool {
         self.keys.force_fire ||
-        self.cursor.map(|(x, y)| self.client.map.units.on_side(x, y, self.side.enemies())).unwrap_or(false)
+        self.cursor.map(|(x, y)| self.client.map.units.on_side(x, y, self.client.side.enemies())).unwrap_or(false)
     }
 
     // End the current turn
@@ -428,27 +467,27 @@ impl Battle {
 fn battle_operations() {
     let skirmish_settings = SkirmishSettings::default();
 
-    let mut battle = Battle::new(skirmish_settings.clone(), None).unwrap();
+    let mut battle = Battle::new_singleplayer(Left(skirmish_settings.clone())).unwrap();
 
     // It should be on the first turn and it should be the player's turn
 
     assert_eq!(battle.client.map.turn, 1);
-    assert_eq!(battle.client.map.controller, Controller::Player);
+    assert_eq!(battle.client.map.side, Side::PlayerA);
 
     // The cols and rows are equal
     assert_eq!(battle.client.map.tiles.width(), skirmish_settings.cols);
     assert_eq!(battle.client.map.tiles.height(), skirmish_settings.rows);
 
     // The player unit counts are equal
-    assert_eq!(battle.client.map.units.count(Side::PLAYER) as usize, skirmish_settings.player_units);
+    assert_eq!(battle.client.map.units.count(Side::PlayerA) as usize, skirmish_settings.player_units);
     
     // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
-    assert_eq!(battle.client.map.units.count(Side::AI) as usize, 0);
+    assert_eq!(battle.client.map.units.count(Side::PlayerB) as usize, 0);
 
     // The unit types are correct
 
     assert!(battle.client.map.units.iter()
-        .filter(|unit| unit.side == Side::PLAYER)
+        .filter(|unit| unit.side == Side::PlayerA)
         .all(|unit| unit.tag == skirmish_settings.player_unit_type));
 
     {
@@ -456,7 +495,7 @@ fn battle_operations() {
 
         let unit = battle.client.map.units.get_mut(0).unwrap();
 
-        assert_eq!(unit.side, Side::PLAYER);
+        assert_eq!(unit.side, Side::PlayerA);
         assert_eq!(unit.tag, skirmish_settings.player_unit_type);
 
         assert_eq!((unit.x, unit.y), (0, 0));

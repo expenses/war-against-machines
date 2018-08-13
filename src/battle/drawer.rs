@@ -54,6 +54,9 @@ impl Camera {
     }
 }
 
+// todo: remove visibility checks in here as all known map info should be shown.
+// Any info that leaks out is the fault of the server and should be fixed on that side, not client
+
 // If a tile is visible, get it's location on the screen
 fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32; 2]> {
     // Get the maximum x and y values (given that (0, 0) is at the center)
@@ -83,7 +86,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     let camera = &battle.camera;
     let animations = &battle.client.animations;
     let light = battle.client.map.light;
-    let side = battle.side;
+    let side = battle.client.side;
 
     // Get the tile
     let visibility = tiles.visibility_at(x, y, side);
@@ -191,7 +194,7 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
     let width = map.tiles.width();
     let height = map.tiles.height();
     let light = map.light;
-    let side = battle.side;
+    let side = battle.client.side;
 
     // Draw all the tiles
     for (x, y) in map.tiles.iter() {
@@ -227,7 +230,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     let map = &battle.client.map;
     let camera = &battle.camera;
     let animations = &battle.client.animations;
-    let side = battle.side;
+    let side = battle.client.side;
     
     draw_map(ctx, battle);
 

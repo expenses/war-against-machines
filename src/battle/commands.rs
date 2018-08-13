@@ -9,6 +9,8 @@ use rand::*;
 
 use std::collections::*;
 
+// todo: rename animations 'responses'
+// todo: send sounds to both clients no matter what as it creates atmosphere
 pub struct ServerAnimations {
     player_a: Vec<Animation>,
     player_b: Vec<Animation>
@@ -22,22 +24,31 @@ impl ServerAnimations {
         }
     }
 
+    fn push_if_predicate<P: Fn(Side) -> bool>(&mut self, animation: Animation, predicate: P) {
+        if predicate(Side::PlayerA) {
+            self.push(Side::PlayerA, animation.clone());
+        }
+
+        if predicate(Side::PlayerB) {
+            self.push(Side::PlayerB, animation);
+        }
+    }
+
     fn push(&mut self, side: Side, animation: Animation) {
-        if side == Side::PLAYER_A {
-            self.player_a.push(animation);
-        } else {
-            self.player_b.push(animation);
+        match side {
+            Side::PlayerA => self.player_a.push(animation),
+            Side::PlayerB => self.player_b.push(animation)
         }
     }
 
     fn push_both(&mut self, animation: Animation) {
-        self.push(Side::PLAYER_A, animation.clone());
-        self.push(Side::PLAYER_B, animation);
+        self.push(Side::PlayerA, animation.clone());
+        self.push(Side::PlayerB, animation);
     }
 
-    fn push_state(&mut self, map: &mut Map) {
-        self.push(Side::PLAYER_A, Animation::new_state(map, Side::PLAYER_A));
-        self.push(Side::PLAYER_B, Animation::new_state(map, Side::PLAYER_B));
+    pub fn push_state(&mut self, map: &mut Map) {
+        self.push(Side::PlayerA, Animation::new_state(map, Side::PlayerA));
+        self.push(Side::PlayerB, Animation::new_state(map, Side::PlayerB));
     }
 
     pub fn split(self) -> (Vec<Animation>, Vec<Animation>) {
@@ -133,9 +144,21 @@ pub fn drop_item_command(map: &mut Map, id: u8, item: usize, animations: &mut Se
 
 pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize, animations: &mut ServerAnimations) {
     let item = {
-        let unit = map.units.get_mut(id).unwrap();
-        let item = unit.inventory_remove(item).unwrap();
-        animations.push_both(Animation::new_thrown_item(item.image(), unit.x, unit.y, x, y));
+        let (item, unit_x, unit_y) = {
+            let unit = map.units.get_mut(id).unwrap();
+            let item = unit.inventory_remove(item).unwrap();
+
+            (item, unit.x, unit.y)
+        };
+
+        animations.push_if_predicate(
+            Animation::new_thrown_item(item.image(), unit_x, unit_y, x, y),
+            |side| {
+                map.tiles.visibility_at(unit_x, unit_y, side).is_visible() ||
+                map.tiles.visibility_at(x, y, side).is_visible()
+            }
+        );
+
         item
     };
 
@@ -173,9 +196,15 @@ pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: us
         }
     }
 
-    // Push a bullet to the animation queue
+    // Push a bullet to the sides that can see it
     if let Some(unit) = map.units.get(id) {
-        animations.push_both(Animation::new_bullet(unit, target_x, target_y, will_hit, map));
+        animations.push_if_predicate(
+            Animation::new_bullet(unit, target_x, target_y, will_hit, map),
+            |side| {
+                map.tiles.visibility_at(unit.x, unit.y, side).is_visible() ||
+                map.tiles.visibility_at(target_x, target_y, side).is_visible()
+            }
+        );
     }
 
     animations.push_state(map);
@@ -187,7 +216,12 @@ fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, animat
 
     for (i, &(tile_x, tile_y)) in tiles.iter().enumerate() {
         let last = i == tiles.len() - 1;
-        animations.push_both(Animation::new_explosion(tile_x, tile_y, x, y, last));
+
+        // push explosion to sides that can see it
+        animations.push_if_predicate(
+            Animation::new_explosion(tile_x, tile_y, x, y, last),
+            |side| map.tiles.visibility_at(tile_x, tile_y, side).is_visible()
+        );     
     }
 
     for &(x, y) in &tiles {

@@ -46,3 +46,25 @@ impl<T> Grid<T> {
         x < self.width() && y < self.height()
     }
 }
+
+#[test]
+fn grid_tests() {
+    use bincode;
+
+    let grid = Grid::new(5, 6, || 55_u8);
+    assert_eq!(grid.width(), 5);
+    assert_eq!(grid.height(), 6);
+    assert_eq!(&grid.inner, &[55_u8; 30]);
+    assert!(grid.in_bounds(4, 5));
+
+    let buffer = bincode::serialize(&grid).unwrap();
+
+    assert!(buffer.len() > 0);
+
+    let grid_2 = bincode::deserialize::<Grid<u8>>(&buffer).unwrap();
+
+    assert_eq!(grid_2.width(), 5);
+    assert_eq!(grid_2.height(), 6);
+    assert!(grid_2.in_bounds(4, 5));
+    assert_eq!(&grid_2.inner, &[55_u8; 30]);
+}

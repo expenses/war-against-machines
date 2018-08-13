@@ -201,6 +201,22 @@ impl MenuItem {
             text, enabled
         }
     }
+
+    pub fn content(&self) -> String {
+        self.text.clone()
+    }
+
+    // Handle key presses
+    pub fn handle_key(&mut self, key: VirtualKeyCode) {
+        if key == VirtualKeyCode::Back {
+            self.text.pop();
+        } else {
+            self.text.push(match key.to_char() {
+                '�' => return,
+                character => character
+            });
+        }
+    }
 }
 
 macro_rules! item {

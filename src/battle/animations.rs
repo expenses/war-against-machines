@@ -37,10 +37,10 @@ struct Status {
     blocking: bool
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Animation {
     Walk(f32),
-    NewState(Box<Map>),
+    NewState(Map),
     EnemySpotted {
         x: usize,
         y: usize
@@ -52,7 +52,7 @@ pub enum Animation {
 
 impl Animation {
     pub fn new_state(map: &mut Map, side: Side) -> Self {
-        Animation::NewState(Box::new(map.clone_visible(side)))
+        Animation::NewState(map.clone_visible(side))
     }
 
     pub fn new_explosion(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
@@ -115,7 +115,7 @@ impl Animation {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Explosion {
     x: usize,
     y: usize,
@@ -162,7 +162,7 @@ impl Explosion {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThrownItem {
     image: Image,
     start_x: f32,
@@ -247,7 +247,7 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
 }
 
 // A bullet animation for drawing on the screen
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bullet {
     x: f32,
     y: f32,

@@ -3,11 +3,10 @@
 
 use super::units::*;
 use super::animations::*;
-use settings::Settings;
+use settings::*;
 
 use std::fs::*;
 use std::path::*;
-use std::fmt;
 
 mod grid;
 mod iter_2d;
@@ -25,24 +24,6 @@ use bincode;
 
 const EXTENSION: &str = ".sav";
 
-
-// Whose turn is it
-#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
-pub enum Controller {
-    Player,
-    AI
-}
-
-impl fmt::Display for Controller {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match *self {
-            Controller::Player => "Player",
-            Controller::AI => "AI"
-        })
-    }
-}
-
-
 // The Map struct
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Map {
@@ -50,7 +31,7 @@ pub struct Map {
     pub tiles: Tiles,
     pub turn: u8,
     pub light: f32,
-    pub controller: Controller
+    pub side: Side
 }
 
 impl Map {
@@ -61,8 +42,27 @@ impl Map {
             units: Units::new(),
             tiles: Tiles::new(cols, rows),
             turn: 1,
-            controller: Controller::Player
+            side: Side::PlayerA
         }
+    }
+
+    pub fn new_from_settings(settings: SkirmishSettings) -> Self {
+        let mut map = Self::new(settings.cols, settings.rows, settings.light);
+
+        // Add player units
+        for x in 0 .. settings.player_units {
+            map.units.add(settings.player_unit_type, Side::PlayerA, x, 0, UnitFacing::Bottom);
+        }
+
+        // Add ai units
+        for y in settings.cols - settings.ai_units .. settings.cols {
+            map.units.add(settings.ai_unit_type, Side::PlayerB, y, settings.rows - 1, UnitFacing::Top);
+        }
+        
+        // Generate tiles
+        map.tiles.generate(&map.units);
+
+        map
     }
     
     // Work out if a tile is taken or not
@@ -118,18 +118,22 @@ impl Map {
         animations.split()
     }
 
-    pub fn end_turn(&mut self) {
+    pub fn end_turn(&mut self) -> (Vec<Animation>, Vec<Animation>) {
         for unit in self.units.iter_mut() {
             unit.moves = unit.tag.moves();
         }
 
-        match self.controller {
-            Controller::Player => self.controller = Controller::AI,
-            Controller::AI => {
+        match self.side {
+            Side::PlayerA => self.side = Side::PlayerB,
+            Side::PlayerB => {
                 self.turn += 1;
-                self.controller = Controller::Player;
+                self.side = Side::PlayerA;
             }
         }
+
+        let mut animations = ServerAnimations::new();
+        animations.push_state(self);
+        animations.split()
     }
 
     pub fn clone_visible(&mut self, side: Side) -> Self {
@@ -139,8 +143,9 @@ impl Map {
         Self {
             light: self.light,
             turn: self.turn,
-            controller: self.controller,
+            side: self.side,
             units: self.tiles.visible_units(&self.units, side).cloned().collect(),
+            // todo: should only clone the info of visible tiles and not clone the enemy vision
             tiles: self.tiles.clone()
 
         }
@@ -158,7 +163,7 @@ fn load_save() {
     output.push("test.sav");
 
     let mut map = Map::new(20, 20, 0.5);
-    map.units.add(UnitType::Squaddie, Side::PLAYER, 0, 0, UnitFacing::Bottom);
+    map.units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
     assert_eq!(map.save("test".into(), &settings), Some(output.clone()));

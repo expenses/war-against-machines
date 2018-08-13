@@ -23,6 +23,8 @@ serde_derive = "*"
 toml = "*"
 ## Efficiently-serialized data
 bincode = "*"
+## Useful enum
+either = "*"
 
 # Resource loading
 ## Loading images

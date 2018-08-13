@@ -9,6 +9,8 @@ use resources::Image;
 use settings::{Settings, SkirmishSettings};
 use ui::{Menu, MenuItem, Vertical, Horizontal};
 
+// Look into alternative ui systems, potentially a lib, because this is pretty messy
+
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
 const VOLUME_CHANGE: u8 = 5;
@@ -16,13 +18,16 @@ const LIGHT_LEVEL_CHANGE: f32 = 0.2;
 
 const MAIN: usize = 0;
 const SKIRMISH: usize = 1;
-const SETTINGS: usize = 2;
-const SKIRMISH_SAVES: usize = 3;
+const MULTIPLAYER: usize = 2;
+const SETTINGS: usize = 3;
+const SKIRMISH_SAVES: usize = 4;
 
 // Callbacks that can be returned from key presses
 pub enum MenuCallback {
     NewSkirmish,
     LoadSkirmish(String),
+    HostServer(String),
+    ConnectServer(String),
     Resume,
     Quit
 }
@@ -31,7 +36,7 @@ pub enum MenuCallback {
 pub struct MainMenu {
     pub skirmish_settings: SkirmishSettings,
     submenu: usize,
-    submenus: [Menu; 4]
+    submenus: [Menu; 5]
 }
 
 impl MainMenu {
@@ -44,6 +49,7 @@ impl MainMenu {
             submenus: [
                 menu!(
                     item!("Skirmish"),
+                    item!("Multiplayer"),
                     item!("Settings"),
                     item!("Quit")
                 ),
@@ -60,6 +66,13 @@ impl MainMenu {
                     item!(),
                     item!(),
                     item!()
+                ),
+                menu!(
+                    item!("Back"),
+                    item!("Host"),
+                    item!("Connect"),
+                    item!("--Address--", false),
+                    item!("0.0.0.0:6666")
                 ),
                 menu!(
                     item!("Back"),
@@ -139,8 +152,9 @@ impl MainMenu {
             VirtualKeyCode::Return => match self.submenu {
                 MAIN => match self.submenus[MAIN].selection {
                     0 => self.submenu = SKIRMISH,
-                    1 => self.submenu = SETTINGS,
-                    2 => return Some(MenuCallback::Quit),
+                    1 => self.submenu = MULTIPLAYER,
+                    2 => self.submenu = SETTINGS,
+                    3 => return Some(MenuCallback::Quit),
                     _ => {}
                 },
                 SKIRMISH => match self.submenus[SKIRMISH].selection {
@@ -152,6 +166,13 @@ impl MainMenu {
                         self.refresh_skirmish_saves(settings);
                     }
                     _ => {}
+                },
+                MULTIPLAYER => match self.submenus[MULTIPLAYER].selection {
+                    0 => self.submenu = MAIN,
+                    1 => return Some(MenuCallback::HostServer(self.submenus[MULTIPLAYER].list[4].content())),
+                    2 => return Some(MenuCallback::ConnectServer(self.submenus[MULTIPLAYER].list[4].content())),
+                    _ => {}
+
                 },
                 SETTINGS => match self.submenus[SETTINGS].selection {
                     0 => {
@@ -223,7 +244,9 @@ impl MainMenu {
                 }
                 _ => {}
             },
-            _ => {}
+            key => if self.submenu == MULTIPLAYER && self.submenus[MULTIPLAYER].selection == 4 {
+                self.submenus[MULTIPLAYER].list[4].handle_key(key);
+            }
         }
 
         None

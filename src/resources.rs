@@ -302,6 +302,9 @@ impl ToChar for VirtualKeyCode {
             VirtualKeyCode::Minus => '-',
             VirtualKeyCode::Period => '.',
             VirtualKeyCode::Space => ' ',
+            // todo: this is super gross but saves me from having to use modifier keys when typing in addresses
+            // please fix
+            VirtualKeyCode::Semicolon => ':',
             _ => '�'
         }
     }

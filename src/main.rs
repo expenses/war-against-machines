@@ -6,6 +6,7 @@ extern crate line_drawing;
 #[macro_use]
 extern crate derive_is_enum_variant;
 extern crate toml;
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate bincode;
@@ -13,12 +14,15 @@ extern crate image;
 extern crate rodio;
 #[macro_use]
 extern crate glium;
+extern crate either;
 
 use std::path::*;
 use std::time::*;
 
 // Lazy way to pretend glutin is a direct dependency
 pub use glium::glutin;
+
+pub use either::*;
 
 use glutin::*;
 use glutin::dpi::LogicalPosition;
@@ -90,19 +94,39 @@ impl App {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish = Battle::new(self.menu.skirmish_settings, None);
+                        self.skirmish = Battle::new_singleplayer(Left(self.menu.skirmish_settings));
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => {
                         let path = Path::new(&self.ctx.settings.savegames).join(&filename);
 
-                        self.skirmish = Battle::new(self.menu.skirmish_settings, Some(&path.as_path()));
+                        self.skirmish = Battle::new_singleplayer(Right(&path.as_path()));
                         if self.skirmish.is_some() {
                             self.mode = Mode::Skirmish;
                         } else {
-                            println!("File '{}' could not be read", filename);
+                            println!("File '{}' could not be read", path.display());
                         }
                     },
+                    MenuCallback::HostServer(addr) => {
+                        self.skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings));
+
+                        if self.skirmish.is_some() {
+                            self.mode = Mode::Skirmish;
+                        } else {
+                            // todo: print an error here
+                            println!("Something went wrong in trying to host the server.");
+                        }
+                    },
+                    MenuCallback::ConnectServer(addr) => {
+                        self.skirmish = Battle::new_multiplayer_connect(&addr);
+
+                        if self.skirmish.is_some() {
+                            self.mode = Mode::Skirmish;
+                        } else {
+                            // todo: print an error here
+                            println!("Something went wrong in trying to connect to the server.");
+                        }
+                    }
                     MenuCallback::Resume => self.mode = Mode::Skirmish,
                     // Quit
                     MenuCallback::Quit => return false

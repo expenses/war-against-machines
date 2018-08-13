@@ -23,8 +23,10 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
     })
 }
 
+// todo: make sure you cant cheat with this
+
 // A point in the path
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct PathPoint {
     pub x: usize,
     pub y: usize,
@@ -125,7 +127,7 @@ fn pathfinding() {
     use super::map::*;
 
     let size = 30;
-    let unit = Unit::new(UnitType::Squaddie, Side::PLAYER, 0, 0, UnitFacing::Bottom, 0);
+    let unit = Unit::new(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom, 0);
     let mut map = Map::new(size, size, 0.5);
 
     // A path between (0, 0) and (29, 29) should be a straight diagonal
