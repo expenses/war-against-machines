@@ -41,7 +41,7 @@ impl ServerAnimations {
         }
     }
 
-    fn push_both(&mut self, animation: Animation) {
+    pub fn push_both(&mut self, animation: Animation) {
         self.push(Side::PlayerA, animation.clone());
         self.push(Side::PlayerB, animation);
     }

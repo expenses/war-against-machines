@@ -6,6 +6,7 @@ use super::animations::*;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
 	EndTurn,
+	SaveGame(String),
 	Command {
 		unit: u8,
 		command: Command

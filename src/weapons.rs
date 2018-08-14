@@ -7,7 +7,7 @@ use resources::{Image, SoundEffect};
 use items::Item;
 
 // The type of weapon
-#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum WeaponType {
     Rifle,
     MachineGun,
@@ -75,7 +75,7 @@ impl fmt::Display for WeaponType {
 }
 
 // The struct for a weapon
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Weapon {
     pub tag: WeaponType,
     pub ammo: u8

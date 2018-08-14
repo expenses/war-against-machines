@@ -67,7 +67,9 @@ struct App {
 
 impl App {
     // Create a new state, starting on the menu
-    fn new(mut ctx: Context) -> App {
+    fn new(events_loop: &EventsLoop, settings: Settings) -> App {
+        let mut ctx = Context::new(events_loop, settings);
+
         App {
             mode: Mode::Menu,
             menu: MainMenu::new(&mut ctx.settings),
@@ -95,13 +97,13 @@ impl App {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
                         self.mode = Mode::Skirmish;
-                        self.skirmish = Battle::new_singleplayer(Left(self.menu.skirmish_settings));
+                        self.skirmish = Battle::new_singleplayer(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => {
                         let path = Path::new(&self.ctx.settings.savegames).join(&filename);
 
-                        self.skirmish = Battle::new_singleplayer(Right(&path.as_path()));
+                        self.skirmish = Battle::new_singleplayer(Right(&path.as_path()), self.ctx.settings.clone());
                         if self.skirmish.is_some() {
                             self.mode = Mode::Skirmish;
                         } else {
@@ -109,7 +111,7 @@ impl App {
                         }
                     },
                     MenuCallback::HostServer(addr) => {
-                        self.skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings));
+                        self.skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings), self.ctx.settings.clone());
 
                         if self.skirmish.is_some() {
                             self.mode = Mode::Skirmish;
@@ -135,7 +137,7 @@ impl App {
             },
             // If the skirmish returns false for a key press, switch to the menu
             Mode::Skirmish => if let Some(ref mut skirmish) = self.skirmish {
-                if !skirmish.handle_key(&self.ctx.settings, key, true) {
+                if !skirmish.handle_key(key, true) {
                     self.mode = Mode::Menu;
                     self.menu.refresh(true);
                 }
@@ -149,7 +151,7 @@ impl App {
     fn handle_key_release(&mut self, key: VirtualKeyCode) {
         if let Mode::Skirmish = self.mode {
             if let Some(ref mut skirmish) = self.skirmish {
-                skirmish.handle_key(&self.ctx.settings, key, false);
+                skirmish.handle_key(key, false);
             }
         }
     }
@@ -206,19 +208,19 @@ fn main() {
         .filter_level(log::LevelFilter::Info)
         .init();
 
-    // Generate the event loop and the context
+    // Create the app
+    let settings = Settings::load();
     let mut events_loop = EventsLoop::new();
-    let ctx = Context::new(&events_loop, Settings::load());
-
-    let mut app = App::new(ctx);
-    let mut running = true;
+    let mut app = App::new(&events_loop, settings);
+    
     let mut start = Instant::now();
-
+    let mut running = true;
     while running {
         // Poll the window events
         events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
             match event {
                 WindowEvent::CloseRequested => running = false,
+                // Respond to key presses / releases
                 WindowEvent::KeyboardInput {input: KeyboardInput {state, virtual_keycode: Some(key), ..}, ..} => {
                     match state {
                         ElementState::Pressed => running = app.handle_key_press(key),
@@ -226,23 +228,24 @@ fn main() {
                     }
                 },
 
+                // Respond to cursor movements
                 WindowEvent::CursorMoved {position: LogicalPosition {x, y}, ..} => app.handle_mouse_motion(x as f32, y as f32),
+                // Respond to mouse clicks
                 WindowEvent::MouseInput {state: ElementState::Pressed, button, ..} => app.handle_mouse_button(button),
+                // Respond to resize events
                 WindowEvent::Resized(size) => app.resize(size.width as u32, size.height as u32),
                 _ => {},
             };
         });
 
-        // Update the game with the delta time in seconds (divided by 1 billion)
-
+        // Get delta time
         let now = Instant::now();
         let ns = now.duration_since(start).subsec_nanos();
+        // Convert nanoseconds to milliseconds
+        let ms = ns as f32 / 1_000_000_000.0;
         start = now;
 
-        app.update(ns as f32 / 1_000_000_000.0);
-
-        // Render the game
-
+        app.update(ms);
         app.render();
     }
 }

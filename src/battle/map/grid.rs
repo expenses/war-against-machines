@@ -1,4 +1,4 @@
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct Grid<T> {
     width: usize,
     inner: Vec<T>

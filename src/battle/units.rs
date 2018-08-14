@@ -225,7 +225,7 @@ impl fmt::Display for UnitType {
 // todo: lock down on public fields
 
 // A struct for a unit in the game
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Unit {
     pub id: u8,
     pub tag: UnitType,
@@ -431,7 +431,7 @@ impl Unit {
 }
 
 // A struct for containing all of the units
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Units {
     pub max_player_a_units: u8,
     pub max_player_b_units: u8,

@@ -25,7 +25,7 @@ use bincode;
 const EXTENSION: &str = ".sav";
 
 // The Map struct
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Map {
     pub units: Units,
     pub tiles: Tiles,
@@ -83,26 +83,40 @@ impl Map {
     }
 
     // Save the skirmish
-    pub fn save(&self, mut filename: String, settings: &Settings) -> Option<PathBuf> {
+    pub fn save(&self, mut filename: String, settings: &Settings) -> ServerAnimations {
         filename.push_str(EXTENSION);
-        
         let directory = Path::new(&settings.savegames);
+        let mut animations = ServerAnimations::new();
 
-        // Don't save invisible files and return if the directory fails to be created
+        // todo: error handling
         if filename.starts_with('.') || (!directory.exists() && create_dir_all(&directory).is_err()) {
-            return None;
+            return animations;
         }
 
-        // Save the game and return the path
+        let savegame = directory.join(&filename);
 
-        let save = directory.join(filename);
+        let result = File::create(&savegame)
+            .map_err(|error| Box::new(bincode::ErrorKind::Io(error)))
+            .and_then(|mut file| bincode::serialize_into(&mut file, self));
 
-        File::create(&save).ok()
-            .and_then(|mut file| bincode::serialize_into(&mut file, self).ok())
-            .map(|_| save)
+        let message = match result {
+            Ok(()) => format!("Game saved to '{}'", savegame.display()),
+            Err(error) => format!("Error recieved while trying to save to '{}': {}", savegame.display(), error)
+        };
+
+        animations.push_both(Animation::Message(message));
+        animations
     }
 
-    pub fn perform_command(&mut self, id: u8, command: Command) -> (Vec<Animation>, Vec<Animation>) {
+    pub fn handle_message(&mut self, message: ClientMessage, settings: &Settings) -> (Vec<Animation>, Vec<Animation>) {
+        match message {
+            ClientMessage::EndTurn => self.end_turn(),
+            ClientMessage::SaveGame(filename) => self.save(filename, settings),
+            ClientMessage::Command {unit, command} => self.perform_command(unit, command)
+        }.split()
+    }
+
+    pub fn perform_command(&mut self, id: u8, command: Command) -> ServerAnimations {
         let mut animations = ServerAnimations::new();
 
         match command {
@@ -115,10 +129,10 @@ impl Map {
             Command::Fire {x, y} => fire_command(self, id, x, y, &mut animations),
         }
 
-        animations.split()
+        animations
     }
 
-    pub fn end_turn(&mut self) -> (Vec<Animation>, Vec<Animation>) {
+    pub fn end_turn(&mut self) -> ServerAnimations {
         for unit in self.units.iter_mut() {
             unit.moves = unit.tag.moves();
         }
@@ -133,7 +147,7 @@ impl Map {
 
         let mut animations = ServerAnimations::new();
         animations.push_state(self);
-        animations.split()
+        animations
     }
 
     pub fn clone_visible(&mut self, side: Side) -> Self {
@@ -146,7 +160,7 @@ impl Map {
             side: self.side,
             units: self.tiles.visible_units(&self.units, side).cloned().collect(),
             // todo: should only clone the info of visible tiles and not clone the enemy vision
-            tiles: self.tiles.clone()
+            tiles: self.tiles.clone_visible(side)
 
         }
     }
@@ -166,6 +180,9 @@ fn load_save() {
     map.units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
-    assert_eq!(map.save("test".into(), &settings), Some(output.clone()));
+    let (player_a_animations, player_b_animations) = map.save("test".into(), &settings).split();
+
+    assert_eq!(player_a_animations, player_b_animations);
+    assert_eq!(player_a_animations, vec![Animation::Message("Game saved to 'savegames/test.sav'".into())]);
     Map::load(&output).unwrap();
 }

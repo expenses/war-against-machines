@@ -14,30 +14,12 @@ use utils::*;
 use resources::*;
 use std::f32::consts::PI;
 
-pub fn process_animations(animations: &mut Vec<Animation>, dt: f32, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) {
-    let mut i = 0;
-
-    while i < animations.len() {
-        let status = animations[i].step(dt, map, ctx, log);
-
-        if status.finished {
-            animations.remove(0);
-        } else {
-            i += 1;
-        }
-
-        if status.blocking {
-            break;
-        }
-    }
+pub struct Status {
+    pub finished: bool,
+    pub blocking: bool
 }
 
-struct Status {
-    finished: bool,
-    blocking: bool
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Animation {
     Walk(f32),
     NewState(Map),
@@ -47,7 +29,8 @@ pub enum Animation {
     },
     ThrownItem(ThrownItem),
     Explosion(Explosion),
-    Bullet(Bullet)
+    Bullet(Bullet),
+    Message(String)
 }
 
 impl Animation {
@@ -67,7 +50,7 @@ impl Animation {
         Animation::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
     }
 
-    fn step(&mut self, dt: f32, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) -> Status {
+    pub fn step(&mut self, dt: f32, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) -> Status {
         match *self {
             Animation::NewState(ref new_map) => {
                 map.clone_from(&new_map);
@@ -87,9 +70,13 @@ impl Animation {
 
                 Status {finished: *time > 0.2, blocking: true}
             },
+            Animation::Message(ref string) => {
+                log.append(string);
+                Status {finished: true, blocking: false}
+            },
             Animation::Explosion(ref mut explosion) => explosion.step(dt),
             Animation::ThrownItem(ref mut item) => item.step(dt),
-            Animation::Bullet(ref mut bullet) => bullet.step(ctx, dt)
+            Animation::Bullet(ref mut bullet) => bullet.step(ctx, dt),
         }
     }
 
@@ -115,7 +102,7 @@ impl Animation {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Explosion {
     x: usize,
     y: usize,
@@ -162,7 +149,7 @@ impl Explosion {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ThrownItem {
     image: Image,
     start_x: f32,
@@ -247,7 +234,7 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
 }
 
 // A bullet animation for drawing on the screen
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
     x: f32,
     y: f32,

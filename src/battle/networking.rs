@@ -4,6 +4,7 @@ use std::time::*;
 use std::net::*;
 
 use networking::*;
+use ui::*;
 use super::map::*;
 use super::units::*;
 use super::messages::*;
@@ -18,18 +19,18 @@ type ClientConn = Connection<ClientMessage, ServerMessage>;
 // A connection from a server to a client
 type ServerConn = Connection<ServerMessage, ClientMessage>;
 
-pub fn client_and_server(map: Either<SkirmishSettings, &Path>) -> Option<(Client, JoinHandle<()>)> {
+pub fn client_and_server(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<(Client, JoinHandle<()>)> {
 	let (client_conn, server_conn) = make_connections();
 
-	let mut server = Server::new(map, server_conn)?;
+	let mut server = Server::new(map, settings, server_conn)?;
 	let server = spawn(move || server.run());
 	let client = Client::new(client_conn);
 
 	Some((client, server))
 }
 
-pub fn client_and_multiplayer_server(addr: &str, map: Either<SkirmishSettings, &Path>) -> Option<(Client, JoinHandle<()>)> {
-	let mut server = MultiplayerServer::new(addr, map)?;
+pub fn client_and_multiplayer_server(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<(Client, JoinHandle<()>)> {
+	let mut server = MultiplayerServer::new(addr, map, settings)?;
 	let addr = server.addr();
 	let server = spawn(move || server.run());
 
@@ -47,13 +48,16 @@ pub fn client(addr: &str) -> Option<Client> {
 	Some(client)
 }
 
+// todo: it would be great to be able to use the multiplayer server for everything
+
 struct Server {
 	connection: ServerConn,
+	settings: Settings,
 	map: Map
 }
 
 impl Server {
-	fn new(map: Either<SkirmishSettings, &Path>, connection: ServerConn) -> Option<Self> {
+	fn new(map: Either<SkirmishSettings, &Path>, settings: Settings, connection: ServerConn) -> Option<Self> {
 		// Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
 		let mut map = match map {
 			Left(settings) => Map::new_from_settings(settings),
@@ -67,14 +71,14 @@ impl Server {
         connection.send(ServerMessage::initial_state(&mut map, Side::PlayerA)).unwrap();
 
         Some(Self {
-        	connection, map
+        	connection, map, settings
         })
 	}
 
 	fn run(&mut self) {
 		loop {
 			while let Some(message) = self.connection.recv() {
-				let (player_a_animations, _player_b_animations) = match message {
+				let animations = match message {
 					ClientMessage::EndTurn => {
 						let mut messages = self.map.end_turn();
 
@@ -85,9 +89,11 @@ impl Server {
 
 						messages
 					},
-					ClientMessage::Command {unit, command} => self.map.perform_command(unit, command)
+					ClientMessage::Command {unit, command} => self.map.perform_command(unit, command),
+					ClientMessage::SaveGame(filename) => self.map.save(filename, &self.settings)
 				};
 
+				let player_a_animations = animations.split().0;
 				self.connection.send(ServerMessage::Animations(player_a_animations)).unwrap();
 			}
 
@@ -132,6 +138,24 @@ impl Client {
 		}
 	}
 
+	pub fn process_animations(&mut self, dt: f32, ctx: &mut Context, log: &mut TextDisplay) {
+		let mut i = 0;
+
+	    while i < self.animations.len() {
+	        let status = self.animations[i].step(dt, &mut self.map, ctx, log);
+
+	        if status.finished {
+	            self.animations.remove(0);
+	        } else {
+	            i += 1;
+	        }
+
+	        if status.blocking {
+	            break;
+	        }
+	    }
+	}
+
 	fn send_command(&self, unit: u8, command: Command) {
 		self.connection.send(ClientMessage::Command {unit, command}).unwrap();
 	}
@@ -167,12 +191,17 @@ impl Client {
 	pub fn end_turn(&self) {
 		self.connection.send(ClientMessage::EndTurn).unwrap();
 	}
+
+	pub fn save(&self, filename: String) {
+		self.connection.send(ClientMessage::SaveGame(filename)).unwrap();
+	}
 }
 
 struct MultiplayerServer {
 	player_a: Option<ServerConn>,
 	player_b: Option<ServerConn>,
 	listener: TcpListener,
+	settings: Settings,
 	map: Map
 }
 
@@ -181,7 +210,7 @@ impl MultiplayerServer {
 		self.listener.local_addr().unwrap()
 	}
 
-	fn new(addr: &str, map: Either<SkirmishSettings, &Path>) -> Option<Self> {
+	fn new(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<Self> {
 		let map = match map {
 			Left(settings) => Map::new_from_settings(settings),
 			Right(path) => match Map::load(path) {
@@ -197,7 +226,7 @@ impl MultiplayerServer {
 		Some(Self {
 			player_a: None,
 			player_b: None,
-			map, listener
+			map, listener, settings
 		})
 	}
 
@@ -225,7 +254,7 @@ impl MultiplayerServer {
 				match self.map.side {
 					Side::PlayerA => {
 						while let Some(message) = player_a.recv() {
-							handle_message(Side::PlayerA, &mut self.map, &player_a, &player_b, message);
+							handle_message(Side::PlayerA, &mut self.map, &player_a, &player_b, &self.settings, message);
 						}
 
 						while let Some(_) = player_b.recv() {
@@ -234,7 +263,7 @@ impl MultiplayerServer {
 					},
 					Side::PlayerB => {
 						while let Some(message) = player_b.recv() {
-							handle_message(Side::PlayerB, &mut self.map, &player_a, &player_b, message);
+							handle_message(Side::PlayerB, &mut self.map, &player_a, &player_b, &self.settings, message);
 						}
 
 						while let Some(_) = player_a.recv() {
@@ -249,13 +278,10 @@ impl MultiplayerServer {
 	}
 }
 
-fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, message: ClientMessage) {
+fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, settings: &Settings, message: ClientMessage) {
 	info!("Handling message from {}: {:?}", side, message);
 
-	let (player_a_animations, player_b_animations) = match message {
-		ClientMessage::EndTurn => map.end_turn(),
-		ClientMessage::Command {unit, command} => map.perform_command(unit, command)
-	};
+	let (player_a_animations, player_b_animations) = map.handle_message(message, settings);
 
 	if !player_a_animations.is_empty() {
 		player_a.send(ServerMessage::Animations(player_a_animations)).unwrap();

@@ -23,7 +23,7 @@ fn to_table(value: Value) -> Option<Table> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Settings {
     pub volume: u8,
     pub ui_scale: u8,
@@ -72,7 +72,7 @@ impl Settings {
                     Entry::Occupied(mut entry) => {
                         entry.insert(value);
                     },
-                    Entry::Vacant(entry) => eprintln!("Warning: '{}' key '{}' does not exist.", Self::FILENAME, entry.key())
+                    Entry::Vacant(entry) => error!("Warning: '{}' key '{}' does not exist.", Self::FILENAME, entry.key())
                 }
             }
 
@@ -102,11 +102,11 @@ impl Settings {
             // Save the rest
             if let Ok(buffer) = toml::to_vec(&Value::from(settings)) {
                 if file.write_all(&buffer).is_err() {
-                    eprintln!("Warnings: Failed to write to '{}'", Self::FILENAME);
+                    error!("Warnings: Failed to write to '{}'", Self::FILENAME);
                 }
             }
         } else {
-            eprintln!("Warning: Failed to open '{}'", Self::FILENAME);
+            error!("Warning: Failed to open '{}'", Self::FILENAME);
         }
     }
 

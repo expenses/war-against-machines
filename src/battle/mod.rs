@@ -18,7 +18,7 @@ use self::drawer::*;
 use self::paths::*;
 use self::units::*;
 use self::networking::*;
-use self::animations::*;
+use self::map::*;
 
 use resources::*;
 use context::*;
@@ -51,8 +51,6 @@ pub struct Battle {
     ui: UI,
     inventory: UI,
 }
-
-// todo: clean up all these `self.client.map` etc calls
 
 impl Battle {
     fn create_uis() -> (UI, UI) {
@@ -99,9 +97,9 @@ impl Battle {
     }
 
     // Create a new Battle
-    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>) -> Option<Self> {
+    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<Self> {
         let (ui, inventory) = Self::create_uis();
-        let (client, server) = client_and_server(map)?;
+        let (client, server) = client_and_server(map, settings)?;
 
         // Create the battle
         Some(Self {
@@ -116,9 +114,9 @@ impl Battle {
         })
     }
 
-    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>) -> Option<Self> {
+    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<Self> {
         let (ui, inventory) = Self::create_uis();
-        let (client, server) = client_and_multiplayer_server(addr, map)?;
+        let (client, server) = client_and_multiplayer_server(addr, map, settings)?;
 
         Some(Self {
             client, ui, inventory,
@@ -149,7 +147,7 @@ impl Battle {
     }
 
     // Handle keypresses
-    pub fn handle_key(&mut self, settings: &Settings, key: VirtualKeyCode, pressed: bool) -> bool {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
         // Respond to key presses on the score screen            
         if self.ui.menu(0).active {
             if pressed {
@@ -170,14 +168,7 @@ impl Battle {
         if self.ui.text_input(0).active && pressed {
             if key == VirtualKeyCode::Return {
                 let filename = self.ui.text_input(0).text();
-
-                // todo: currently saving the client map is useless, should send a request to the server to save instead.
-                if let Some(save) = self.client.map.save(filename, settings) {
-                    self.ui.text_display(1).append(&format!("Saved to '{}'", save.display()));
-                } else {
-                    self.ui.text_display(1).append("Failed to save game");
-                }
-
+                self.client.save(filename);
                 self.ui.text_input(0).toggle();
             } else {
                 self.ui.text_input(0).handle_key(key);
@@ -268,37 +259,20 @@ impl Battle {
         if self.keys.zoom_in  { self.camera.zoom( Camera::ZOOM_SPEED * dt); }
 
         self.client.recv();
+        self.client.process_animations(dt, ctx, &mut self.ui.text_display(1));
 
-        process_animations(&mut self.client.animations, dt, &mut self.client.map, ctx, &mut self.ui.text_display(1));
+        // todo: game overs
+        /*        
+        let stats = ...
 
-        // If the controller is the AI and the command queue and animations are empty, make a ai move
-        // If that returns false, switch control back to the player
-        /*if self.controller == Controller::AI && self.command_queue.is_empty() && self.animations.is_empty() {
-            let more_moves = ai::make_move(&self.client.map, &mut self.command_queue);
-            
-            if !more_moves {
-                self.controller = Controller::Player;
-                // Update the turn
-                self.client.map.turn += 1;
-                // Log to the text display
-                self.ui.text_display(1).append(&format!("Turn {} started", self.client.map.turn));
-
-                // Get the number of alive units on both sides
-                let player_count = self.client.map.units.count(&UnitSide::Player);
-                let ai_count = self.client.map.units.count(&UnitSide::AI);
-
-                // If one side has lost all their units, Set the score screen menu
-                if player_count == 0 || ai_count == 0 {
-                    self.ui.menu(0).active = true;
-                    self.ui.menu(0).selection = 3;
-                    self.ui.menu(0).list = vec![
-                        item!("Skirmish Ended", false),
-                        item!("Units lost: {}", self.client.map.units.total_player_units - player_count, false),
-                        item!("Units killed: {}", self.client.map.units.total_ai_units - ai_count, false),
-                        item!("Close")
-                    ];
-                }
-            }
+        self.ui.menu(0).active = true;
+        self.ui.menu(0).selection = 3;
+        self.ui.menu(0).list = vec![
+            item!("Skirmish Ended", false),
+            item!("Units lost: {}", stats.units_lost, false),
+            item!("Units killed: {}", stats.units_killed, false),
+            item!("Close")
+        ];
         }*/
     }
 
@@ -326,7 +300,7 @@ impl Battle {
         };
 
         // Set the text of the UI text display
-        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.client.map.turn, self.client.map.side, selected);
+        self.ui.text_display(0).text = format!("Turn {} - {}\n{}", self.map().turn, self.map().side, selected);
 
         // Set the inventory
         if self.inventory.active {
@@ -338,7 +312,7 @@ impl Battle {
                     .collect();
 
                 // Collect the items on the ground into a vec
-                let ground: Vec<MenuItem> = self.client.map.tiles.at(unit.x, unit.y).items.iter()
+                let ground: Vec<MenuItem> = self.map().tiles.at(unit.x, unit.y).items.iter()
                     .map(|item| item!(item))
                     .collect();
                 
@@ -372,7 +346,7 @@ impl Battle {
         let (x, y) = tile_under_cursor(x, y, &self.camera);
 
         // Set cursor position if it is on the map and visible
-        self.cursor = if x < self.client.map.tiles.width() && y < self.client.map.tiles.height() {
+        self.cursor = if x < self.map().tiles.width() && y < self.map().tiles.height() {
             Some((x, y))
         } else {
             None
@@ -395,7 +369,7 @@ impl Battle {
             // Move the current unit
             None => if let Some(unit) = self.client.map.units.get(self.selected) {
                 // return if the target location is taken
-                if self.client.map.taken(x, y) {
+                if self.map().taken(x, y) {
                     self.path = None;
                     return;
                 }
@@ -403,10 +377,9 @@ impl Battle {
                 self.path = match self.path {
                     Some(ref path) if path[path.len() - 1].at(x, y) => {
                         self.client.walk(self.selected, path.clone());
-                        //self.command_queue.push(WalkCommand::new(unit, &self.client.map, path.clone()));
                         None
                     },
-                    _ => pathfind(unit, x, y, &self.client.map).map(|(path, _)| path)
+                    _ => pathfind(unit, x, y, &self.map()).map(|(path, _)| path)
                 }
             }
         }
@@ -440,19 +413,23 @@ impl Battle {
         }
     }
 
+    fn map(&self) -> &Map {
+        &self.client.map
+    }
+
     fn waiting_for_command(&self) -> bool {
-        self.client.map.side == self.client.side && self.client.animations.is_empty()
+        self.map().side == self.client.side && self.client.animations.is_empty()
     }
 
     // Get a reference to the unit that is selected
     fn selected(&self) -> Option<&Unit> {
-        self.client.map.units.get(self.selected)
+        self.map().units.get(self.selected)
     }
 
     // Work out if the cursor is on an ai unit
     fn cursor_active(&self) -> bool {
         self.keys.force_fire ||
-        self.cursor.map(|(x, y)| self.client.map.units.on_side(x, y, self.client.side.enemies())).unwrap_or(false)
+        self.cursor.map(|(x, y)| self.map().units.on_side(x, y, self.client.side.enemies())).unwrap_or(false)
     }
 
     // End the current turn
@@ -466,8 +443,9 @@ impl Battle {
 #[test]
 fn battle_operations() {
     let skirmish_settings = SkirmishSettings::default();
+    let settings = Settings::default();
 
-    let mut battle = Battle::new_singleplayer(Left(skirmish_settings.clone())).unwrap();
+    let mut battle = Battle::new_singleplayer(Left(skirmish_settings.clone()), settings).unwrap();
 
     // It should be on the first turn and it should be the player's turn
 

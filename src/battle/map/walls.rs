@@ -9,7 +9,7 @@ pub enum WallSide {
 }
 
 // The type of wall
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum WallType {
     Ruin1,
     Ruin2
@@ -38,7 +38,7 @@ impl WallType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wall {
     pub tag: WallType,
     pub health: i16
@@ -53,7 +53,7 @@ impl Wall {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Walls {
     pub left: Option<Wall>,
     pub top: Option<Wall>

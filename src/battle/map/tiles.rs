@@ -31,17 +31,33 @@ impl Visibility {
 
     // Get the corresponding colour for a visibility
     pub fn colour(self, light: f32) -> [f32; 4] {
+        // todo: visual debugging
+        let debug = false;
+
         // Get the rate at which tiles get darker
         let rate = lerp(Self::NIGHT_DARKNESS_RATE, Self::DAY_DARKNESS_RATE, light);
 
-        // Use the distance if the tile is visible
-        let alpha = if let Visibility::Visible(distance) = self {
-            f32::from(distance) * rate
-        // Or use the maximum darkness + 0.1
-        } else if self.is_foggy() {
-            rate * (Unit::SIGHT * f32::from(Unit::WALK_LATERAL_COST)) + 0.1
-        } else {
-            0.0
+        let alpha = match self {
+            Visibility::Visible(distance) => {
+                if debug {
+                    return [1.0, 0.0, 0.0, 0.25];
+                }
+
+                f32::from(distance) * rate
+            },
+            Visibility::Foggy => {
+                if debug {
+                    return [0.0, 1.0, 0.0, 0.25];
+                }
+
+                rate * (Unit::SIGHT * f32::from(Unit::WALK_LATERAL_COST)) + 0.1
+            }
+            Visibility::Invisible => {
+                if debug {
+                    return [0.0, 0.0, 1.0, 0.25];
+                }
+                1.0
+            }
         };
 
         [0.0, 0.0, 0.0, alpha]
@@ -54,10 +70,6 @@ impl Visibility {
         } else {
             u8::max_value()
         }
-    }
-
-    pub fn not_invisible(self) -> bool {
-        !self.is_invisible()
     }
 }
 
@@ -73,7 +85,7 @@ fn combine_visibilities(a: Visibility, b: Visibility) -> Visibility {
     }
 }
 
-#[derive(Serialize, Deserialize, is_enum_variant, Debug, Clone)]
+#[derive(Serialize, Deserialize, is_enum_variant, Debug, Clone, PartialEq)]
 pub enum Obstacle {
     Object(Image),
     Pit(Image),
@@ -81,7 +93,7 @@ pub enum Obstacle {
 }
 
 // A tile in the map
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Tile {
     pub base: Image,
     pub obstacle: Obstacle,
@@ -126,7 +138,7 @@ impl Tile {
 }
 
 // A 2D array of tiles
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Tiles {
     tiles: Grid<Tile>,
     visibility_grids: [Grid<Visibility>; 2]
@@ -380,6 +392,32 @@ impl Tiles {
     pub fn visible_units<'a>(&'a self, units: &'a Units, side: Side) -> impl Iterator<Item=&'a Unit> {
         units.iter().filter(move |unit| self.visibility_at(unit.x, unit.y, side).is_visible())
     }
+
+    pub fn clone_visible(&self, side: Side) -> Self {
+        let mut tiles = self.tiles.clone();
+
+        for (x, y) in self.iter() {
+            let tile = tiles.at_mut(x, y);
+            match self.visibility_at(x, y, side) {
+                Visibility::Invisible => *tile = Tile::new(Image::Base1),
+                // todo: foggy tile should be how the tile was last remembered
+                // this should be done client side though
+                Visibility::Foggy => *tile = Tile::new(tile.base),
+                Visibility::Visible(_) => {}
+            }
+        }
+
+        let grids = if side == Side::PlayerA {
+            [self.visibility_grids[0].clone(), Grid::new(0, 0, || Visibility::Invisible)]
+        } else {
+            [Grid::new(0, 0, || Visibility::Invisible), self.visibility_grids[1].clone()]
+        };
+
+        Self {
+            tiles,
+            visibility_grids: grids
+        }
+    }
 }
 
 #[test]
@@ -416,7 +454,7 @@ fn unit_visibility() {
 
         if x == 29 && y == 0 {
             assert_eq!(visibility, Visibility::Visible(0));
-            assert!(tiles.visibility_at(x, y, Side::PlayerA).not_invisible());
+            assert!(!tiles.visibility_at(x, y, Side::PlayerA).is_invisible());
         } else {
             assert!(!visibility.is_visible());
         }
