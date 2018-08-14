@@ -164,6 +164,12 @@ impl Map {
 
         }
     }
+
+    pub fn update_from(&mut self, mut new: Map, side: Side) {
+        self.tiles.update_from(new.tiles, side);
+        new.tiles = self.tiles.clone();
+        *self = new;
+    }
 }
 
 #[test]

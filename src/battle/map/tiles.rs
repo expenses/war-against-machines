@@ -397,13 +397,9 @@ impl Tiles {
         let mut tiles = self.tiles.clone();
 
         for (x, y) in self.iter() {
-            let tile = tiles.at_mut(x, y);
-            match self.visibility_at(x, y, side) {
-                Visibility::Invisible => *tile = Tile::new(Image::Base1),
-                // todo: foggy tile should be how the tile was last remembered
-                // this should be done client side though
-                Visibility::Foggy => *tile = Tile::new(tile.base),
-                Visibility::Visible(_) => {}
+            // Wipe the info of tiles that are not visible
+            if !self.visibility_at(x, y, side).is_visible() {
+                *tiles.at_mut(x, y) = Tile::new(Image::Base1);
             }
         }
 
@@ -417,6 +413,17 @@ impl Tiles {
             tiles,
             visibility_grids: grids
         }
+    }
+
+    pub fn update_from(&mut self, mut new: Self, side: Side) {
+        for (x, y) in self.iter() {
+            // Replace foggy tiles with what they look like currently to make sure no infomation is lost
+            if new.visibility_at(x, y, side).is_foggy() {
+                *new.at_mut(x, y) = self.at(x, y).clone();
+            }
+        }
+
+        *self = new;
     }
 }
 

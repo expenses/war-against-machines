@@ -142,7 +142,7 @@ impl Client {
 		let mut i = 0;
 
 	    while i < self.animations.len() {
-	        let status = self.animations[i].step(dt, &mut self.map, ctx, log);
+	        let status = self.animations[i].step(dt, self.side, &mut self.map, ctx, log);
 
 	        if status.finished {
 	            self.animations.remove(0);

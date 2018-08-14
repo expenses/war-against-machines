@@ -50,10 +50,10 @@ impl Animation {
         Animation::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
     }
 
-    pub fn step(&mut self, dt: f32, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) -> Status {
+    pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) -> Status {
         match *self {
             Animation::NewState(ref new_map) => {
-                map.clone_from(&new_map);
+                map.update_from(new_map.clone(), side);
                 Status {finished: true, blocking: false}
             },
             Animation::EnemySpotted {x, y} => {
