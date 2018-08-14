@@ -15,6 +15,9 @@ extern crate rodio;
 #[macro_use]
 extern crate glium;
 extern crate either;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 use std::path::*;
 use std::time::*;
@@ -201,6 +204,10 @@ impl App {
 
 // The main function
 fn main() {
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
     // Generate the event loop and the context
     let mut events_loop = EventsLoop::new();
     let ctx = Context::new(

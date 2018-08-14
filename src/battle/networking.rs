@@ -192,7 +192,7 @@ impl MultiplayerServer {
 
 		let listener = TcpListener::bind(addr).unwrap();
 		listener.set_nonblocking(true).unwrap();
-		println!("Listening for incoming connections on '{}'", listener.local_addr().unwrap());
+		info!("Listening for incoming connections on '{}'", listener.local_addr().unwrap());
 
 		Some(Self {
 			player_a: None,
@@ -210,11 +210,11 @@ impl MultiplayerServer {
 
 					if self.player_a.is_none() {
 						connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerA)).unwrap();
-						println!("Player A connected from '{}'", connection.peer_addr().unwrap());
+						info!("Player A connected from '{}'", connection.peer_addr().unwrap());
 						self.player_a = Some(connection);
 					} else if self.player_b.is_none() {
 						connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerB)).unwrap();
-						println!("Player B connected from '{}'", connection.peer_addr().unwrap());
+						info!("Player B connected from '{}'", connection.peer_addr().unwrap());
 						self.player_b = Some(connection);
 					}
 				}
@@ -225,7 +225,7 @@ impl MultiplayerServer {
 				match self.map.side {
 					Side::PlayerA => {
 						while let Some(message) = player_a.recv() {
-							handle_message(&mut self.map, &player_a, &player_b, message);
+							handle_message(Side::PlayerA, &mut self.map, &player_a, &player_b, message);
 						}
 
 						while let Some(_) = player_b.recv() {
@@ -234,7 +234,7 @@ impl MultiplayerServer {
 					},
 					Side::PlayerB => {
 						while let Some(message) = player_b.recv() {
-							handle_message(&mut self.map, &player_a, &player_b, message);
+							handle_message(Side::PlayerB, &mut self.map, &player_a, &player_b, message);
 						}
 
 						while let Some(_) = player_a.recv() {
@@ -249,7 +249,9 @@ impl MultiplayerServer {
 	}
 }
 
-fn handle_message(map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, message: ClientMessage) {
+fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, message: ClientMessage) {
+	info!("Handling message from {}: {:?}", side, message);
+
 	let (player_a_animations, player_b_animations) = match message {
 		ClientMessage::EndTurn => map.end_turn(),
 		ClientMessage::Command {unit, command} => map.perform_command(unit, command)
