@@ -183,6 +183,6 @@ fn load_save() {
     let (player_a_animations, player_b_animations) = map.save("test".into(), &settings).split();
 
     assert_eq!(player_a_animations, player_b_animations);
-    assert_eq!(player_a_animations, vec![Animation::Message("Game saved to 'savegames/test.sav'".into())]);
+    assert_eq!(player_a_animations, vec![Animation::Message(format!("Game saved to '{}'", output.display()))]);
     Map::load(&output).unwrap();
 }
