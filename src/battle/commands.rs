@@ -51,6 +51,10 @@ impl ServerAnimations {
         self.push(Side::PlayerB, Animation::new_state(map, Side::PlayerB));
     }
 
+    pub fn push_message(&mut self, message: String) {
+        self.push_both(Animation::Message(message));
+    }
+
     pub fn split(self) -> (Vec<Animation>, Vec<Animation>) {
         (self.player_a, self.player_b)
     }
@@ -246,10 +250,7 @@ fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, animat
 
 fn damage_tile(map: &mut Map, x: usize, y: usize, damage: i16) {
     // Deal damage to the unit and get whether it is lethal
-    let info = map.units.at_mut(x, y).map(|unit| {
-        unit.health -= damage;
-        (unit.id, unit.health <= 0)
-    });
+    let info = map.units.at_mut(x, y).map(|unit| (unit.id, unit.damage(damage)));
 
     if let Some((id, lethal)) = info {
         // If the damage is lethal, kill the unit
@@ -267,10 +268,7 @@ fn damage_wall(map: &mut Map, x: usize, y: usize, damage: i16, side: WallSide) {
     let destroyed = match side {
         WallSide::Left => walls.left.as_mut(),
         WallSide::Top => walls.top.as_mut()
-    }.map(|wall| {
-        wall.health -= damage;
-        wall.health <= 0
-    })
+    }.map(|wall| wall.damage(damage))
     .unwrap_or(false);
 
     if destroyed {

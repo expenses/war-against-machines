@@ -18,15 +18,14 @@ extern crate either;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+#[macro_use]
+extern crate error_chain;
 
 use std::path::*;
 use std::time::*;
 
-// Lazy way to pretend glutin is a direct dependency
-pub use glium::glutin;
-
-pub use either::*;
-
+use either::*;
+use glium::glutin;
 use glutin::*;
 use glutin::dpi::LogicalPosition;
 
@@ -44,11 +43,13 @@ mod colours;
 mod context;
 mod battle;
 mod networking;
+mod error;
 
 use context::Context;
 use settings::*;
 use menu::*;
 use battle::*;
+use error::*;
 
 // Which mode the game is in
 enum Mode {
@@ -88,6 +89,16 @@ impl App {
         }
     }
 
+    fn set_skirmish(&mut self, skirmish: Result<Battle>) {
+        match skirmish {
+            Ok(skirmish) => {
+                self.mode = Mode::Skirmish;
+                self.skirmish = Some(skirmish);
+            },
+            Err(error) => display_error(&error)
+        }
+    }
+
     // Handle key presses
     fn handle_key_press(&mut self, key: VirtualKeyCode) -> bool {
         match self.mode {
@@ -96,39 +107,22 @@ impl App {
                 match callback {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
-                        self.mode = Mode::Skirmish;
-                        self.skirmish = Battle::new_singleplayer(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
+                        let skirmish = Battle::new_singleplayer(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
+                        self.set_skirmish(skirmish);
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => {
                         let path = Path::new(&self.ctx.settings.savegames).join(&filename);
-
-                        self.skirmish = Battle::new_singleplayer(Right(&path.as_path()), self.ctx.settings.clone());
-                        if self.skirmish.is_some() {
-                            self.mode = Mode::Skirmish;
-                        } else {
-                            println!("File '{}' could not be read", path.display());
-                        }
+                        let skirmish = Battle::new_singleplayer(Right(&path.as_path()), self.ctx.settings.clone());
+                        self.set_skirmish(skirmish);
                     },
                     MenuCallback::HostServer(addr) => {
-                        self.skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings), self.ctx.settings.clone());
-
-                        if self.skirmish.is_some() {
-                            self.mode = Mode::Skirmish;
-                        } else {
-                            // todo: print an error here
-                            println!("Something went wrong in trying to host the server.");
-                        }
+                        let skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings), self.ctx.settings.clone());
+                        self.set_skirmish(skirmish);
                     },
                     MenuCallback::ConnectServer(addr) => {
-                        self.skirmish = Battle::new_multiplayer_connect(&addr);
-
-                        if self.skirmish.is_some() {
-                            self.mode = Mode::Skirmish;
-                        } else {
-                            // todo: print an error here
-                            println!("Something went wrong in trying to connect to the server.");
-                        }
+                        let skirmish = Battle::new_multiplayer_connect(&addr);
+                        self.set_skirmish(skirmish);
                     }
                     MenuCallback::Resume => self.mode = Mode::Skirmish,
                     // Quit
@@ -201,6 +195,8 @@ impl App {
         self.ctx.resize(width, height);
     }
 }
+
+
 
 // The main function
 fn main() {

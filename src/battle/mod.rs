@@ -13,14 +13,13 @@ mod ui;
 
 use *;
 
-use std::thread::*;
-
 use self::drawer::*;
 use self::paths::*;
 use self::units::*;
 use self::networking::*;
 use self::map::*;
 use self::ui::*;
+use super::error::*;
 
 use context::*;
 use settings::*;
@@ -39,23 +38,23 @@ struct Keys {
 // The main Battle struct the handles actions
 pub struct Battle {
     pub camera: Camera,
-    pub client: Client,
     pub cursor: Option<(usize, usize)>,
     pub selected: Option<u8>,
     pub path: Option<Vec<PathPoint>>,
-    server: Option<JoinHandle<()>>,
-    ai: Option<JoinHandle<()>>,
+    client: Client,
+    server: Option<ThreadHandle>,
+    ai: Option<ThreadHandle>,
     keys: Keys,
     interface: Interface
 }
 
 impl Battle {
     // Create a new Battle
-    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<Self> {
+    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
         let (client, server) = client_and_server(map, settings)?;
 
         // Create the battle
-        Some(Self {
+        Ok(Self {
             client,
             server: Some(server),
             cursor: None,
@@ -68,10 +67,10 @@ impl Battle {
         })
     }
 
-    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Option<Self> {
+    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
         let (client, server) = client_and_multiplayer_server(addr, map, settings)?;
 
-        Some(Self {
+        Ok(Self {
             client,
             server: Some(server),
             cursor: None,
@@ -84,10 +83,10 @@ impl Battle {
         })
     }
 
-    pub fn new_multiplayer_connect(addr: &str) -> Option<Self> {
-        let client = client(addr)?;
+    pub fn new_multiplayer_connect(addr: &str) -> Result<Self> {
+        let client = Client::new_from_addr(addr)?;
 
-        Some(Self {
+        Ok(Self {
             client,
             server: None,
             cursor: None,
@@ -154,13 +153,13 @@ impl Battle {
 
     // Update the battle
     pub fn update(&mut self, ctx: &mut Context, dt: f32) {
-        // Change camera variables if a key is being pressed
-        if self.keys.up       { self.camera.y += Camera::SPEED * dt; }
-        if self.keys.down     { self.camera.y -= Camera::SPEED * dt; }
-        if self.keys.left     { self.camera.x -= Camera::SPEED * dt; }
-        if self.keys.right    { self.camera.x += Camera::SPEED * dt; }
-        if self.keys.zoom_out { self.camera.zoom(-Camera::ZOOM_SPEED * dt); }
-        if self.keys.zoom_in  { self.camera.zoom( Camera::ZOOM_SPEED * dt); }
+        // Move the camera
+        if self.keys.up       { self.camera.move_y(dt); }
+        if self.keys.down     { self.camera.move_y(-dt); }
+        if self.keys.left     { self.camera.move_x(-dt); }
+        if self.keys.right    { self.camera.move_x(dt); }
+        if self.keys.zoom_out { self.camera.zoom(-dt); }
+        if self.keys.zoom_in  { self.camera.zoom(dt); }
 
         self.client.recv();
         self.client.process_animations(dt, ctx, &mut self.interface.get_log());
@@ -304,35 +303,33 @@ fn battle_operations() {
 
     let mut battle = Battle::new_singleplayer(Left(skirmish_settings.clone()), settings).unwrap();
 
-    // It should be on the first turn and it should be the player's turn
-
-    assert_eq!(battle.client.map.turn, 1);
-    assert_eq!(battle.client.map.side, Side::PlayerA);
-
-    // The cols and rows are equal
-    assert_eq!(battle.client.map.tiles.width(), skirmish_settings.cols);
-    assert_eq!(battle.client.map.tiles.height(), skirmish_settings.rows);
-
-    // The player unit counts are equal
-    assert_eq!(battle.client.map.units.count(Side::PlayerA) as usize, skirmish_settings.player_units);
-    
-    // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
-    assert_eq!(battle.client.map.units.count(Side::PlayerB) as usize, 0);
-
-    // The unit types are correct
-
-    assert!(battle.client.map.units.iter()
-        .filter(|unit| unit.side == Side::PlayerA)
-        .all(|unit| unit.tag == skirmish_settings.player_unit_type));
-
     {
-        // The first unit should be a player unit at (0, 0)
+        let map = &battle.client.map;
+        assert_eq!(&map.info(), "Turn 1 - Player A");
 
-        let unit = battle.client.map.units.get_mut(0).unwrap();
+        // The cols and rows are equal
+        assert_eq!(map.tiles.width(), skirmish_settings.cols);
+        assert_eq!(map.tiles.height(), skirmish_settings.rows);
 
-        assert_eq!(unit.side, Side::PlayerA);
-        assert_eq!(unit.tag, skirmish_settings.player_unit_type);
+        // The player unit counts are equal
+        assert_eq!(map.units.count(Side::PlayerA) as usize, skirmish_settings.player_units);
+        
+        // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
+        assert_eq!(map.units.count(Side::PlayerB) as usize, 0);
 
-        assert_eq!((unit.x, unit.y), (0, 0));
+        // The unit types are correct
+
+        assert!(map.units.iter()
+            .filter(|unit| unit.side == Side::PlayerA)
+            .all(|unit| unit.tag == skirmish_settings.player_unit_type));
     }
+
+    // The first unit should be a player unit at (0, 0)
+
+    let unit = battle.client.map.units.get_mut(0).unwrap();
+
+    assert_eq!(unit.side, Side::PlayerA);
+    assert_eq!(unit.tag, skirmish_settings.player_unit_type);
+
+    assert_eq!((unit.x, unit.y), (0, 0));
 }

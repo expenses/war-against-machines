@@ -41,7 +41,7 @@ impl WallType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wall {
     pub tag: WallType,
-    pub health: i16
+    health: i16
 }
 
 impl Wall {
@@ -50,6 +50,11 @@ impl Wall {
             health: tag.health(),
             tag
         }
+    }
+
+    pub fn damage(&mut self, damage: i16) -> bool {
+        self.health -= damage;
+        self.health <= 0
     }
 }
 

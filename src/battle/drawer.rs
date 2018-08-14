@@ -30,8 +30,8 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub const SPEED: f32 = 10.0;
-    pub const ZOOM_SPEED: f32 = 1.0;
+    const SPEED: f32 = 10.0;
+    const ZOOM_SPEED: f32 = 1.0;
     const DEFAULT_ZOOM: f32 = 2.0;
     const ZOOM_MAX: f32 = 10.0;
     const ZOOM_MIN: f32 = 1.0;
@@ -45,9 +45,17 @@ impl Camera {
         }
     }
 
+    pub fn move_x(&mut self, dt: f32) {
+        self.x += dt * Self::SPEED
+    }
+
+    pub fn move_y(&mut self, dt: f32) {
+        self.y += dt * Self::SPEED
+    }
+
     // Zoom in the camera by a particular amount, checking if it's zoomed in/out too far
     pub fn zoom(&mut self, amount: f32) {
-        self.zoom += amount * self.zoom;
+        self.zoom += amount * self.zoom * Self::ZOOM_SPEED;
 
         if self.zoom > Self::ZOOM_MAX { self.zoom = Self::ZOOM_MAX; }
         if self.zoom < Self::ZOOM_MIN { self.zoom = Self::ZOOM_MIN; }

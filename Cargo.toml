@@ -25,6 +25,8 @@ toml = "*"
 bincode = "*"
 ## Useful enum
 either = "*"
+## Error handling
+error-chain = "*"
 
 # Resource loading
 ## Loading images

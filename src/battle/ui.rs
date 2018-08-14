@@ -23,7 +23,7 @@ struct InventoryInfo {
 impl InventoryInfo {
 	fn new(unit: &Unit, map: &Map) -> Self {
 		// Collect the unit's items into a vec
-        let items = unit.inventory.iter()
+        let items = unit.inventory().iter()
             .map(|item| item!(item))
             .collect();
 
@@ -34,8 +34,7 @@ impl InventoryInfo {
         
         Self {
             items, ground,
-        	string: format!("{}\n{} - {} kg\nCarry Capacity: {}/{} kg",
-                			unit.name, unit.weapon, unit.weapon.tag.weight(), unit.carrying(), unit.tag.capacity())
+        	string: unit.carrying_info()
         }
 	}
 }
@@ -200,13 +199,13 @@ impl Interface {
 
 	pub fn draw(&mut self, ctx: &mut Context, selected_id: Option<u8>, map: &Map) {
 		// Get a string of info about the selected unit
-        let selected = match selected_id.and_then(|selected| map.units.get(selected)) {
-            Some(unit) => format!("Name: {}, Moves: {}, Health: {}, Weapon: {}", unit.name, unit.moves, unit.health, unit.weapon),
-            _ => String::new()
-        };
+        let selected = selected_id
+            .and_then(|selected| map.units.get(selected))
+            .map(|unit| unit.info())
+            .unwrap_or_else(String::new);
 
         // Set the text of the UI text display
-        self.general.text_display_mut(0).text = format!("Turn {} - {}\n{}", map.turn, map.side, selected);
+        self.general.text_display_mut(0).text = format!("{}\n{}", map.info(), selected);
 
         // Set the inventory
         if self.inventory.active {

@@ -222,22 +222,20 @@ impl fmt::Display for UnitType {
 }
 
 
-// todo: lock down on public fields
-
 // A struct for a unit in the game
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Unit {
     pub id: u8,
-    pub tag: UnitType,
-    pub side: Side,
     pub x: usize,
     pub y: usize,
+    pub tag: UnitType,
+    pub side: Side,
     pub weapon: Weapon,
-    pub name: String,
+    pub facing: UnitFacing,
     pub moves: u16,
-    pub health: i16,
-    pub inventory: Vec<Item>,
-    pub facing: UnitFacing
+    health: i16,
+    name: String,
+    inventory: Vec<Item>
 }
 
 impl Unit {
@@ -284,12 +282,21 @@ impl Unit {
         }
     }
 
+    pub fn inventory(&self) -> &[Item] {
+        &self.inventory
+    }
+
     // The weight of the items that the units is carrying
     pub fn carrying(&self) -> f32 {
         self.inventory.iter().fold(
             self.weapon.tag.weight(),
             |total, item| total + item.weight()
         )
+    }
+
+    pub fn damage(&mut self, damage: i16) -> bool {
+        self.health -= damage;
+        self.health <= 0
     }
 
     // Move the unit to a location with a specific cost
@@ -428,13 +435,24 @@ impl Unit {
 
         can_fire
     }
+
+    pub fn info(&self) -> String {
+        format!("Name: {}, Moves: {}, Health: {}, Weapon: {}", self.name, self.moves, self.health, self.weapon)
+    }
+
+    pub fn carrying_info(&self) -> String {
+        format!(
+            "{}\n{} - {} kg\nCarry Capacity: {}/{} kg",
+            self.name, self.weapon, self.weapon.tag.weight(), self.carrying(), self.tag.capacity()
+        )
+    }
 }
 
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Units {
-    pub max_player_a_units: u8,
-    pub max_player_b_units: u8,
+    max_player_a_units: u8,
+    max_player_b_units: u8,
     index: u8,
     units: HashMap<u8, Unit>
 }

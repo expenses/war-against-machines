@@ -29,9 +29,9 @@ const EXTENSION: &str = ".sav";
 pub struct Map {
     pub units: Units,
     pub tiles: Tiles,
-    pub turn: u8,
     pub light: f32,
-    pub side: Side
+    pub side: Side,
+    turn: u8
 }
 
 impl Map {
@@ -77,9 +77,10 @@ impl Map {
     }
 
     // Load a skirmish if possible
-    pub fn load(path: &Path) -> Option<Map> {
-        File::open(path).ok()
-            .and_then(|mut file| bincode::deserialize_from(&mut file).ok())
+    pub fn load(path: &Path) -> Result<Map, bincode::Error> {
+        File::open(path)
+            .map_err(|error| Box::new(bincode::ErrorKind::Io(error)))
+            .and_then(|mut file| bincode::deserialize_from(&mut file))
     }
 
     // Save the skirmish
@@ -88,9 +89,14 @@ impl Map {
         let directory = Path::new(&settings.savegames);
         let mut animations = ServerAnimations::new();
 
-        // todo: error handling
-        if filename.starts_with('.') || (!directory.exists() && create_dir_all(&directory).is_err()) {
+        if filename.starts_with('.') {
+            animations.push_message(format!("Error: '{}' is invalid name for a savegame", filename));
             return animations;
+        } else if !directory.exists() {
+            if let Err(error) = create_dir_all(&directory) {
+                animations.push_message(format!("Error '{}' recieved while attemping to create directory '{}", error, directory.display()));
+                return animations;
+            }
         }
 
         let savegame = directory.join(&filename);
@@ -104,7 +110,7 @@ impl Map {
             Err(error) => format!("Error recieved while trying to save to '{}': {}", savegame.display(), error)
         };
 
-        animations.push_both(Animation::Message(message));
+        animations.push_message(message);
         animations
     }
 
@@ -159,9 +165,7 @@ impl Map {
             turn: self.turn,
             side: self.side,
             units: self.tiles.visible_units(&self.units, side).cloned().collect(),
-            // todo: should only clone the info of visible tiles and not clone the enemy vision
             tiles: self.tiles.clone_visible(side)
-
         }
     }
 
@@ -169,6 +173,10 @@ impl Map {
         self.tiles.update_from(new.tiles, side);
         new.tiles = self.tiles.clone();
         *self = new;
+    }
+
+    pub fn info(&self) -> String {
+        format!("Turn {} - {}", self.turn, self.side)
     }
 }
 
