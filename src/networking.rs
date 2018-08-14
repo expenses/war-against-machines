@@ -6,6 +6,8 @@ use std::io::Read;
 use bincode;
 use serde::*;
 
+pub const DEFAULT_ADDR: &str = "127.0.0.1:6666";
+
 
 #[derive(Debug)]
 pub enum Connection<S, R> {
@@ -27,6 +29,14 @@ impl<S, R> Connection<S, R>
 		stream.set_nonblocking(true).unwrap();
 		stream.set_nodelay(true).unwrap();
 		Connection::Tcp(BufferedTcp::new(stream))
+	}
+
+
+	pub fn peer_addr(&self) -> Option<SocketAddr> {
+		match *self {
+			Connection::Local(_, _) => None,
+			Connection::Tcp(ref stream) => stream.get_inner().peer_addr().ok()
+		}
 	}
 
 	pub fn recv_blocking(&mut self) -> Option<R> {
@@ -73,6 +83,10 @@ impl BufferedTcp {
 			stream,
 			buffer: Vec::new()
 		}
+	}
+
+	fn get_inner(&self) -> &TcpStream {
+		&self.stream
 	}
 
 	fn recv<R>(&mut self) -> Option<R> where for<'de> R: Deserialize<'de> {

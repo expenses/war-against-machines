@@ -13,6 +13,11 @@ use super::animations::*;
 use *;
 use settings::*;
 
+// A connection from a client to a server
+type ClientConn = Connection<ClientMessage, ServerMessage>;
+// A connection from a server to a client
+type ServerConn = Connection<ServerMessage, ClientMessage>;
+
 pub fn client_and_server(map: Either<SkirmishSettings, &Path>) -> Option<(Client, JoinHandle<()>)> {
 	let (client_conn, server_conn) = make_connections();
 
@@ -43,12 +48,12 @@ pub fn client(addr: &str) -> Option<Client> {
 }
 
 struct Server {
-	connection: Connection<ServerMessage, ClientMessage>,
+	connection: ServerConn,
 	map: Map
 }
 
 impl Server {
-	fn new(map: Either<SkirmishSettings, &Path>, connection: Connection<ServerMessage, ClientMessage>) -> Option<Self> {
+	fn new(map: Either<SkirmishSettings, &Path>, connection: ServerConn) -> Option<Self> {
 		// Attempt to unwrap the loaded map or generate a new one based off the skirmish settings
 		let mut map = match map {
 			Left(settings) => Map::new_from_settings(settings),
@@ -92,7 +97,7 @@ impl Server {
 }
 
 pub struct Client {
-	connection: Connection<ClientMessage, ServerMessage>,
+	connection: ClientConn,
 	pub map: Map,
 	pub side: Side,
 	pub animations: Vec<Animation>
@@ -165,8 +170,8 @@ impl Client {
 }
 
 struct MultiplayerServer {
-	player_a: Option<Connection<ServerMessage, ClientMessage>>,
-	player_b: Option<Connection<ServerMessage, ClientMessage>>,
+	player_a: Option<ServerConn>,
+	player_b: Option<ServerConn>,
 	listener: TcpListener,
 	map: Map
 }
@@ -205,11 +210,11 @@ impl MultiplayerServer {
 
 					if self.player_a.is_none() {
 						connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerA)).unwrap();
-						println!("Player A connected: {:?}", connection);
+						println!("Player A connected from '{}'", connection.peer_addr().unwrap());
 						self.player_a = Some(connection);
 					} else if self.player_b.is_none() {
 						connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerB)).unwrap();
-						println!("Player B connected: {:?}", connection);
+						println!("Player B connected from '{}'", connection.peer_addr().unwrap());
 						self.player_b = Some(connection);
 					}
 				}
@@ -220,7 +225,7 @@ impl MultiplayerServer {
 				match self.map.side {
 					Side::PlayerA => {
 						while let Some(message) = player_a.recv() {
-							perform_command(&mut self.map, &player_a, &player_b, message);
+							handle_message(&mut self.map, &player_a, &player_b, message);
 						}
 
 						while let Some(_) = player_b.recv() {
@@ -229,7 +234,7 @@ impl MultiplayerServer {
 					},
 					Side::PlayerB => {
 						while let Some(message) = player_b.recv() {
-							perform_command(&mut self.map, &player_a, &player_b, message);
+							handle_message(&mut self.map, &player_a, &player_b, message);
 						}
 
 						while let Some(_) = player_a.recv() {
@@ -244,7 +249,7 @@ impl MultiplayerServer {
 	}
 }
 
-fn perform_command(map: &mut Map, player_a: &Connection<ServerMessage, ClientMessage>, player_b: &Connection<ServerMessage, ClientMessage>, message: ClientMessage) {
+fn handle_message(map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, message: ClientMessage) {
 	let (player_a_animations, player_b_animations) = match message {
 		ClientMessage::EndTurn => map.end_turn(),
 		ClientMessage::Command {unit, command} => map.perform_command(unit, command)

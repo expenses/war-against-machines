@@ -8,6 +8,7 @@ use context::Context;
 use resources::Image;
 use settings::{Settings, SkirmishSettings};
 use ui::{Menu, MenuItem, Vertical, Horizontal};
+use networking::*;
 
 // Look into alternative ui systems, potentially a lib, because this is pretty messy
 
@@ -72,7 +73,7 @@ impl MainMenu {
                     item!("Host"),
                     item!("Connect"),
                     item!("--Address--", false),
-                    item!("0.0.0.0:6666")
+                    item!(DEFAULT_ADDR)
                 ),
                 menu!(
                     item!("Back"),
