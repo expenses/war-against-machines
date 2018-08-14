@@ -1,23 +1,24 @@
 // Audio Playback
 
-use rodio::{Decoder, Sink, Device};
-use rodio::default_output_device;
+use resources::AUDIO;
+
+use rodio::*;
 
 use std::rc::Rc;
 use std::io::Cursor;
 
 // An audio player struct
 pub struct Player {
-    sources: [Rc<Vec<u8>>; 3],
+    sources: Vec<Rc<Vec<u8>>>,
     sinks: Vec<Sink>,
     endpoint: Device
 }
 
 impl Player {
-    pub fn new(sounds: [&[u8]; 3]) -> Player {
+    pub fn new() -> Player {
         Player {
             // Use reference-counting to avoid cloning the source each time
-            sources: [Rc::new(sounds[0].to_vec()), Rc::new(sounds[1].to_vec()), Rc::new(sounds[2].to_vec())],
+            sources: AUDIO.iter().map(|sound| Rc::new(sound.to_vec())).collect(),
             sinks: Vec::new(),
             endpoint: default_output_device().unwrap()
         }

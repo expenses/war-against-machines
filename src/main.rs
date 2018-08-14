@@ -50,8 +50,6 @@ use settings::*;
 use menu::*;
 use battle::*;
 
-const TITLE: &str = "War Against Machines";
-
 // Which mode the game is in
 enum Mode {
     Menu,
@@ -210,15 +208,7 @@ fn main() {
 
     // Generate the event loop and the context
     let mut events_loop = EventsLoop::new();
-    let ctx = Context::new(
-        &events_loop, Settings::load(), TITLE.into(),
-        bytes!("tileset.png"),
-        [
-            bytes!("audio/walk.ogg"),
-            bytes!("audio/regular_shot.ogg"),
-            bytes!("audio/plasma_shot.ogg")
-        ]
-    );
+    let ctx = Context::new(&events_loop, Settings::load());
 
     let mut app = App::new(ctx);
     let mut running = true;

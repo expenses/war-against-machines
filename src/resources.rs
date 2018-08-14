@@ -16,6 +16,14 @@ macro_rules! bytes {
     )
 }
 
+pub const TILESET: &[u8] = bytes!("tileset.png");
+
+pub const AUDIO: [&[u8]; 3] = [
+    bytes!("audio/walk.ogg"),
+    bytes!("audio/regular_shot.ogg"),
+    bytes!("audio/plasma_shot.ogg")
+];
+
 // Scale up a tile position for the 48 by 48 tileset
 macro_rules! tiles {
     ($x: expr, $y: expr, $width: expr, $height: expr) => (

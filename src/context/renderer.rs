@@ -6,8 +6,11 @@ use image::{load_from_memory_with_format, ImageFormat};
 use glium::texture::*;
 use glium::index::PrimitiveType::*;
 use glium::uniforms::*;
-use settings::Settings;
 
+use settings::Settings;
+use resources::TILESET;
+
+const TITLE: &str = "War Against Machines";
 const VERT: &str = include_str!("shaders/shader.vert");
 const FRAG: &str = include_str!("shaders/shader.frag");
 
@@ -65,13 +68,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(event_loop: &EventsLoop, tileset: &[u8], title: String, settings: &Settings) -> Renderer {
+    pub fn new(event_loop: &EventsLoop, settings: &Settings) -> Renderer {
         // Get the with and the height of the window from settings
         let (width, height) = (settings.window_width, settings.window_height);
 
         // Build the window
         let mut builder = WindowBuilder::new()
-            .with_title(title)
+            .with_title(TITLE)
             .with_dimensions(LogicalSize::new(f64::from(width), f64::from(height)));
 
         // Set the window to be fullscreen if that's set in settings
@@ -89,7 +92,7 @@ impl Renderer {
         let program = Program::from_source(&display, VERT, FRAG, None).unwrap();
 
         // Load the texture
-        let (tileset_size, tileset) = load_texture(&display, tileset);
+        let (tileset_size, tileset) = load_texture(&display, TILESET);
         
         Renderer {
             // Setup uniforms

@@ -18,13 +18,13 @@ pub struct Context {
 
 impl Context {
     // Create a new context
-    pub fn new(event_loop: &EventsLoop, settings: Settings, title: String, tileset: &[u8], audio: [&[u8]; 3]) -> Context {
+    pub fn new(event_loop: &EventsLoop, settings: Settings) -> Context {
         Context {
-            renderer: Renderer::new(event_loop, tileset, title, &settings),
+            renderer: Renderer::new(event_loop, &settings),
             width: settings.window_width as f32,
             height: settings.window_height as f32,
             settings,
-            player: Player::new(audio)
+            player: Player::new()
         }
     }
 
