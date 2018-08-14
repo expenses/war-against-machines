@@ -148,7 +148,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         // Draw a unit at the position
         if let Some(unit) = battle.client.map.units.at(x, y) {
             // Draw the cursor to show that the unit is selected
-            if battle.selected == unit.id {
+            if battle.selected == Some(unit.id) {
                 ctx.render_with_overlay(Image::Cursor, dest, camera.zoom, colours::ORANGE);
             }
 

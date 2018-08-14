@@ -99,7 +99,7 @@ impl MainMenu {
         ctx.render(Image::Title, dest, 1.0);
 
         // Draw the selected submenu
-        self.submenus[self.submenu].render(ctx);
+        self.submenus[self.submenu].draw(ctx);
     }
 
     // Refresh the skirmish submenu
@@ -107,13 +107,13 @@ impl MainMenu {
         let skirmish_submenu = &mut self.submenus[SKIRMISH];
         
         self.skirmish_settings.clamp();
-        skirmish_submenu.list[5]  = item!("Cols: {}", self.skirmish_settings.cols, true);
-        skirmish_submenu.list[6]  = item!("Rows: {}", self.skirmish_settings.rows, true);
-        skirmish_submenu.list[7]  = item!("Player units: {}", self.skirmish_settings.player_units, true);
-        skirmish_submenu.list[8]  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
-        skirmish_submenu.list[9]  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
-        skirmish_submenu.list[10] = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
-        skirmish_submenu.list[11] = item!("Light level: {:.1}", self.skirmish_settings.light, true)
+        *skirmish_submenu.get_item_mut(5)  = item!("Cols: {}", self.skirmish_settings.cols, true);
+        *skirmish_submenu.get_item_mut(6)  = item!("Rows: {}", self.skirmish_settings.rows, true);
+        *skirmish_submenu.get_item_mut(7)  = item!("Player units: {}", self.skirmish_settings.player_units, true);
+        *skirmish_submenu.get_item_mut(8)  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
+        *skirmish_submenu.get_item_mut(9)  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
+        *skirmish_submenu.get_item_mut(10) = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
+        *skirmish_submenu.get_item_mut(11) = item!("Light level: {:.1}", self.skirmish_settings.light, true)
     }
 
     // refresh the settings submenu
@@ -121,8 +121,8 @@ impl MainMenu {
         let settings_submenu = &mut self.submenus[SETTINGS];
 
         settings.clamp();
-        settings_submenu.list[1] = item!("Volume: {}", settings.volume, true);
-        settings_submenu.list[2] = item!("UI Scale: {}", settings.ui_scale, true);
+        *settings_submenu.get_item_mut(1) = item!("Volume: {}", settings.volume, true);
+        *settings_submenu.get_item_mut(2) = item!("UI Scale: {}", settings.ui_scale, true);
     }
 
     // refresh the saves submenu
@@ -133,8 +133,10 @@ impl MainMenu {
             .map(|entry| item!(entry))
             .collect();
 
-        self.submenus[SKIRMISH_SAVES].list = vec![item!("Back"), item!("Refresh")];
-        self.submenus[SKIRMISH_SAVES].list.append(&mut files);
+        let mut new_list = vec![item!("Back"), item!("Refresh")];
+        new_list.append(&mut files);
+
+        self.submenus[SKIRMISH_SAVES].set_list(new_list);
     }
 
     pub fn refresh(&mut self, skirmish_open: bool) {
@@ -170,8 +172,8 @@ impl MainMenu {
                 },
                 MULTIPLAYER => match self.submenus[MULTIPLAYER].selection {
                     0 => self.submenu = MAIN,
-                    1 => return Some(MenuCallback::HostServer(self.submenus[MULTIPLAYER].list[4].content())),
-                    2 => return Some(MenuCallback::ConnectServer(self.submenus[MULTIPLAYER].list[4].content())),
+                    1 => return Some(MenuCallback::HostServer(self.submenus[MULTIPLAYER].get_item(4).content())),
+                    2 => return Some(MenuCallback::ConnectServer(self.submenus[MULTIPLAYER].get_item(4).content())),
                     _ => {}
 
                 },
@@ -246,7 +248,7 @@ impl MainMenu {
                 _ => {}
             },
             key => if self.submenu == MULTIPLAYER && self.submenus[MULTIPLAYER].selection == 4 {
-                self.submenus[MULTIPLAYER].list[4].handle_key(key);
+                self.submenus[MULTIPLAYER].get_item_mut(4).handle_key(key);
             }
         }
 

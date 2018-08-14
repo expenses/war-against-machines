@@ -81,7 +81,7 @@ impl VisibleEnemies {
 }
 
 pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, animations: &mut ServerAnimations) {
-    let visible_enemies = VisibleEnemies::new(&map.units.get(id).unwrap(), map);
+    let visible_enemies = VisibleEnemies::new(&map.units.get(id).expect("failed to get unit to move"), map);
 
     let side = map.units.get(id).unwrap().side;
 
@@ -98,7 +98,7 @@ pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, animations: &
 // todo: decide to do unit verification in commands or beforehand
 
 pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mut ServerAnimations) {
-    let visible_enemies = VisibleEnemies::new(map.units.get(id).unwrap(), map);
+    let visible_enemies = VisibleEnemies::new(map.units.get(id).expect("failed to get unit to move"), map);
 
     let side = map.units.get(id).unwrap().side;
 
@@ -128,27 +128,33 @@ pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mu
 }
 
 pub fn use_item_command(map: &mut Map, id: u8, item: usize, animations: &mut ServerAnimations) {
-    map.units.get_mut(id).unwrap().use_item(item);
+    map.units.get_mut(id).expect("failed to get unit to use item with").use_item(item);
     animations.push_state(map);
 }
 
 pub fn pickup_item_command(map: &mut Map, id: u8, item: usize, animations: &mut ServerAnimations) {
-    map.units.get_mut(id).unwrap().pickup_item(&mut map.tiles, item);
+    map.units.get_mut(id).expect("failed to get unit to pick item up with").pickup_item(&mut map.tiles, item);
     animations.push_state(map);
 }
 
 pub fn drop_item_command(map: &mut Map, id: u8, item: usize, animations: &mut ServerAnimations) {
-    map.units.get_mut(id).unwrap().drop_item(&mut map.tiles, item);
+    map.units.get_mut(id).expect("failed to get unit to drop item from").drop_item(&mut map.tiles, item);
     animations.push_state(map);
 }
 
 pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize, animations: &mut ServerAnimations) {
     let item = {
         let (item, unit_x, unit_y) = {
-            let unit = map.units.get_mut(id).unwrap();
-            let item = unit.inventory_remove(item).unwrap();
+            let unit = map.units.get_mut(id).expect("failed to get unit to throw item from");
+            if let Some(item) = unit.inventory_remove(item) {
+                if !distance_under(x, y, unit.x, unit.y, unit.tag.throw_distance()) {
+                    return;
+                }
 
-            (item, unit.x, unit.y)
+                (item, unit.x, unit.y)
+            } else {
+                return;
+            }
         };
 
         animations.push_if_predicate(

@@ -245,7 +245,7 @@ pub struct Menu {
     pub selection: usize,
     // In a situation where there might be multiple menus, is this menu selected?
     pub selected: bool,
-    pub list: Vec<MenuItem>,
+    list: Vec<MenuItem>,
     pub active: bool,
     x: f32,
     y: f32,
@@ -263,7 +263,7 @@ impl Menu {
     }
 
     // Draw the items in the menu
-    pub fn render(&self, ctx: &mut Context) {
+    pub fn draw(&self, ctx: &mut Context) {
         // Get the height of the rendered text
         let height = ctx.settings.font_height() * self.list.len() as f32;
         // Get a starting y value
@@ -286,10 +286,6 @@ impl Menu {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.list.len()
-    }
-
     // Get the selected item
     pub fn selected(&self) -> String {
         self.list[self.selection].text.clone()
@@ -303,16 +299,20 @@ impl Menu {
         self.list[i].enabled
     }
 
-    // Fix the selection in anticipation of a size decrease
-    pub fn fit_selection(&mut self) {
-        let new_len = self.len() - 1;
-
-        if self.selection >= new_len {
-            self.selection = match new_len {
-                0 => 0,
-                _ => new_len - 1
-            }
+    pub fn set_list(&mut self, list: Vec<MenuItem>) {
+        self.list = list;
+        
+        if self.selection >= self.list.len() {
+            self.selection = self.list.len() - 1;
         }
+    }
+
+    pub fn get_item(&self, index: usize) -> &MenuItem {
+        &self.list[index]
+    }
+
+    pub fn get_item_mut(&mut self, index: usize) -> &mut MenuItem {
+        &mut self.list[index]
     }
 
     // Are any of the items in the list enabled?
@@ -387,18 +387,33 @@ impl UI {
         self.active = !self.active;
     }
 
+    // Get a reference to a text display
+    pub fn _text_display(&self, index: usize) -> &TextDisplay {
+        &self.text_displays[index]
+    }
+
     // Get a mutable reference to a text display
-    pub fn text_display(&mut self, index: usize) -> &mut TextDisplay {
+    pub fn text_display_mut(&mut self, index: usize) -> &mut TextDisplay {
         &mut self.text_displays[index]
     }
 
+    // Get a reference to a text input
+    pub fn text_input(&self, index: usize) -> &TextInput {
+        &self.text_inputs[index]
+    }
+
     // Get a mutable reference to a text input
-    pub fn text_input(&mut self, index: usize) -> &mut TextInput {
+    pub fn text_input_mut(&mut self, index: usize) -> &mut TextInput {
         &mut self.text_inputs[index]
     }
 
+    // Get a reference to a menu
+    pub fn menu(&self, index: usize) -> &Menu {
+        &self.menus[index]
+    }
+
     // Get a mutable reference to a menu
-    pub fn menu(&mut self, index: usize) -> &mut Menu {
+    pub fn menu_mut(&mut self, index: usize) -> &mut Menu {
         &mut self.menus[index]
     }
 
@@ -428,7 +443,7 @@ impl UI {
 
         for menu in &self.menus {
             if menu.active {
-                menu.render(ctx);
+                menu.draw(ctx);
             }
         }
     }
