@@ -34,14 +34,6 @@ pub fn clamp<T: PartialOrd>(value: T, lower: T, upper: T) -> T {
     max(min, lower)
 }
 
-// Ensure that a floating point value is between lower and upper value (as usize)
-pub fn clamp_float(value: f32, lower: usize, upper: usize) -> usize {
-    let value = value.round();
-    let value = if value < 0.0 { 0 } else { value as usize };
-
-    clamp(value, lower, upper)
-}
-
 // Calculate the direction between two points
 pub fn direction(a_x: f32, a_y: f32, b_x: f32, b_y: f32) -> f32 {
     (b_y - a_y).atan2(b_x - a_x)

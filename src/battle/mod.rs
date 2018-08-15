@@ -24,6 +24,8 @@ use super::error::*;
 use context::*;
 use settings::*;
 
+// todo: review all code & comments
+
 #[derive(Default)]
 struct Keys {
     up: bool,
@@ -45,58 +47,42 @@ pub struct Battle {
     server: Option<ThreadHandle>,
     ai: Option<ThreadHandle>,
     keys: Keys,
-    interface: Interface
+    interface: Interface,
+    visual_debugging: bool
 }
 
 impl Battle {
-    // Create a new Battle
-    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let (client, server) = client_and_server(map, settings)?;
+    fn new(client: Client, server: Option<ThreadHandle>, ai: Option<ThreadHandle>) -> Self {
+        let mut camera = Camera::new();
+        if let Some(unit) = client.map.units.iter().find(|unit| unit.side == client.side) {
+            camera.set_to(unit.x, unit.y);
+        }
 
-        // Create the battle
-        Ok(Self {
-            client,
-            server: Some(server),
+        Self {
+            client, server, ai, camera,
             cursor: None,
-            ai: None,
             keys: Keys::default(),
             selected: None,
             path: None,
-            camera: Camera::new(),
-            interface: Interface::new()
-        })
+            interface: Interface::new(),
+            visual_debugging: false
+        }
+    }
+
+    // Create a new Battle
+    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
+        let (client, server) = client_and_server(map, settings)?;
+        Ok(Self::new(client, Some(server), None))
     }
 
     pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
         let (client, server) = client_and_multiplayer_server(addr, map, settings)?;
-
-        Ok(Self {
-            client,
-            server: Some(server),
-            cursor: None,
-            ai: None,
-            keys: Keys::default(),
-            selected: None,
-            path: None,
-            camera: Camera::new(),
-            interface: Interface::new()
-        })
+        Ok(Self::new(client, Some(server), None))
     }
 
     pub fn new_multiplayer_connect(addr: &str) -> Result<Self> {
         let client = Client::new_from_addr(addr)?;
-
-        Ok(Self {
-            client,
-            server: None,
-            cursor: None,
-            ai: None,
-            keys: Keys::default(),
-            selected: None,
-            path: None,
-            camera: Camera::new(),
-            interface: Interface::new()
-        })
+        Ok(Self::new(client, None, None))
     }
 
     // Handle keypresses
@@ -145,6 +131,7 @@ impl Battle {
             VirtualKeyCode::P => self.keys.zoom_in = pressed,
             VirtualKeyCode::LControl | VirtualKeyCode::RControl => self.keys.force_fire = pressed,
             VirtualKeyCode::I if pressed => self.interface.toggle_inventory(),
+            VirtualKeyCode::Grave if pressed => self.visual_debugging = !self.visual_debugging,
             _ => {}
         }
 
@@ -162,7 +149,7 @@ impl Battle {
         if self.keys.zoom_in  { self.camera.zoom(dt); }
 
         self.client.recv();
-        self.client.process_animations(dt, ctx, &mut self.interface.get_log());
+        self.client.process_animations(dt, ctx, &mut self.interface.get_log(), &mut self.camera);
 
         // todo: game overs
         /*        
@@ -194,7 +181,7 @@ impl Battle {
     // Move the cursor on the screen
     pub fn move_cursor(&mut self, x: f32, y: f32) {
         // Get the position where the cursor should be
-        let (x, y) = tile_under_cursor(x, y, &self.camera);
+        let (x, y) = self.camera.tile_under_cursor(x, y);
 
         // Set cursor position if it is on the map and visible
         self.cursor = if x < self.map().tiles.width() && y < self.map().tiles.height() {
@@ -231,7 +218,7 @@ impl Battle {
 
                     self.path = match self.path {
                         Some(ref path) if path[path.len() - 1].at(x, y) => {
-                            self.client.walk(unit.id, path.clone());
+                            self.client.walk(unit.id, path);
                             None
                         },
                         _ => pathfind(unit, x, y, &self.map()).map(|(path, _)| path)

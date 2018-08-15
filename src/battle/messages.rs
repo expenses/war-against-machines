@@ -19,7 +19,8 @@ pub enum ServerMessage {
 	InitialState {
 		map: Map,
 		side: Side
-	}
+	},
+	GameFull
 }
 
 impl ServerMessage {
@@ -33,7 +34,7 @@ impl ServerMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
-	Walk(Vec<PathPoint>),
+	Walk(Vec<UnitFacing>),
 	Fire {
 		x: usize,
 		y: usize
@@ -46,5 +47,11 @@ pub enum Command {
 		item: usize,
 		x: usize,
 		y: usize
+	}
+}
+
+impl Command {
+	pub fn walk(path: &[PathPoint]) -> Self {
+		Command::Walk(path.iter().map(|point| point.facing).collect())
 	}
 }

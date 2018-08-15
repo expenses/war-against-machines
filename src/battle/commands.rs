@@ -10,7 +10,6 @@ use rand::*;
 use std::collections::*;
 
 // todo: rename animations 'responses'
-// todo: send sounds to both clients no matter what as it creates atmosphere
 pub struct ServerAnimations {
     player_a: Vec<Animation>,
     player_b: Vec<Animation>
@@ -101,32 +100,44 @@ pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, animations: &
 
 // todo: decide to do unit verification in commands or beforehand
 
-pub fn move_command(map: &mut Map, id: u8, path: Vec<PathPoint>, animations: &mut ServerAnimations) {
+pub fn move_command(map: &mut Map, id: u8, path: Vec<UnitFacing>, animations: &mut ServerAnimations) {
     let visible_enemies = VisibleEnemies::new(map.units.get(id).expect("failed to get unit to move"), map);
 
     let side = map.units.get(id).unwrap().side;
 
-    for point in path {
-        if let Some(unit) = map.units.get(id) {
+    for facing in path {
+        let (moves, current_point) = {
+            let unit = map.units.get(id).unwrap();
+
             if let Some((x, y)) = visible_enemies.new_enemy(unit, map) {
                 animations.push(side, Animation::EnemySpotted {x, y});
                 return;
             }
-        }
 
-        let moves = map.units.get(id).unwrap().moves;
+            (unit.moves, PathPoint::from(unit))
+        };
 
-        if moves < point.cost || map.taken(point.x, point.y) {
+        let future_point = current_point.neighbours(map).into_iter()
+            .map(|(point, _)| point)
+            .find(|point| point.facing == facing);
+
+        let future_point = match future_point {
+            Some(point) => point,
+            None => return
+        };
+
+        if moves < future_point.cost || map.taken(future_point.x, future_point.y) {
             return;
         }
 
         // Move the unit
         if let Some(unit) = map.units.get_mut(id) {
-            unit.move_to(&point);
-            map.tiles.at_mut(point.x, point.y).walk_on();
+            unit.move_to(&future_point);
+            map.tiles.at_mut(future_point.x, future_point.y).walk_on();
         }
 
         animations.push_state(map);
+        animations.push_both(Animation::SoundEffect(SoundEffect::Walk));
         animations.push_both(Animation::Walk(0.0));
     }
 }
@@ -207,7 +218,10 @@ pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: us
     }
 
     // Push a bullet to the sides that can see it
+
     if let Some(unit) = map.units.get(id) {
+        animations.push_both(Animation::SoundEffect(unit.weapon.tag.fire_sound()));
+
         animations.push_if_predicate(
             Animation::new_bullet(unit, target_x, target_y, will_hit, map),
             |side| {

@@ -67,7 +67,6 @@ impl<S, R> Connection<S, R>
 		}
 	}
 }
-
 // todo: this struct is super useful, and the implementation wasn't super obvious, so splitting off into a seperate lib seems smart
 
 #[derive(Debug)]

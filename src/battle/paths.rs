@@ -23,8 +23,6 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
     })
 }
 
-// todo: make sure you cant cheat with this
-
 // A point in the path
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct PathPoint {
@@ -43,7 +41,7 @@ impl PathPoint {
     }
 
     // Create a path point from a unit
-    fn from(unit: &Unit) -> PathPoint {
+    pub fn from(unit: &Unit) -> PathPoint {
         PathPoint {
             x: unit.x,
             y: unit.y,
@@ -67,7 +65,7 @@ impl PathPoint {
     }
 
     // Get the neighbours to a point
-    fn neighbours(&self, map: &Map) -> Vec<(PathPoint, u16)> {
+    pub fn neighbours(&self, map: &Map) -> Vec<(PathPoint, u16)> {
         let mut neighbours = Vec::new();
 
         let tiles = &map.tiles;

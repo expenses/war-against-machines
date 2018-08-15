@@ -3,15 +3,17 @@
 
 use super::map::*;
 use super::units::*;
+use super::drawer::*;
+
 use rand;
 use rand::distributions::*;
 
 use weapons::*;
-
 use ui::*;
 use context::*;
 use utils::*;
 use resources::*;
+
 use std::f32::consts::PI;
 
 pub struct Status {
@@ -22,6 +24,7 @@ pub struct Status {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Animation {
     Walk(f32),
+    SoundEffect(SoundEffect),
     NewState(Map),
     EnemySpotted {
         x: usize,
@@ -50,7 +53,7 @@ impl Animation {
         Animation::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
     }
 
-    pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay) -> Status {
+    pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) -> Status {
         match *self {
             Animation::NewState(ref new_map) => {
                 map.update_from(new_map.clone(), side);
@@ -58,16 +61,15 @@ impl Animation {
             },
             Animation::EnemySpotted {x, y} => {
                 log.append(&format!("Enemy spotted at ({}, {})!", x, y));
-                // todo: set camera location to enemy location perhaps?
+                camera.set_to(x, y);
                 Status {finished: true, blocking: false}
             },
+            Animation::SoundEffect(ref effect) => {
+                ctx.play_sound(effect);
+                Status {finished: true, blocking: false}
+            }
             Animation::Walk(ref mut time) => {
-                if *time == 0.0 {
-                    ctx.play_sound(&SoundEffect::Walk);
-                }
-
                 *time += dt;
-
                 Status {finished: *time > 0.2, blocking: true}
             },
             Animation::Message(ref string) => {
@@ -76,7 +78,7 @@ impl Animation {
             },
             Animation::Explosion(ref mut explosion) => explosion.step(dt),
             Animation::ThrownItem(ref mut item) => item.step(dt),
-            Animation::Bullet(ref mut bullet) => bullet.step(ctx, dt),
+            Animation::Bullet(ref mut bullet) => bullet.step(dt),
         }
     }
 
@@ -300,12 +302,7 @@ impl Bullet {
     }
 
     // Move the bullet a step and work out if its still going or not
-    fn step(&mut self, ctx: &mut Context, dt: f32) -> Status {
-        // If the bullet hasn't started moving, play its sound effect
-        if self.time == 0.0 {
-            ctx.play_sound(&self.weapon_type.fire_sound());
-        }
-
+    fn step(&mut self, dt: f32) -> Status {
         // Increment the time
         self.time += dt;
 

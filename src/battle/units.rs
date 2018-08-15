@@ -331,23 +331,21 @@ impl Unit {
     }
 
     // Drop an item from the unit's inventory
-    pub fn drop_item(&mut self, tiles: &mut Tiles, index: usize) -> bool {
+    pub fn drop_item(&mut self, tiles: &mut Tiles, index: usize) {
         if self.moves < ITEM_COST {
-            return false;
+            return;
         }
 
         if let Some(item) = self.inventory_remove(index) {
             tiles.drop(self.x, self.y, item);
             self.moves -= ITEM_COST;
-            return true;
+            return;
         }
-
-        false
     }
 
-    pub fn pickup_item(&mut self, tiles: &mut Tiles, index: usize) -> bool {
+    pub fn pickup_item(&mut self, tiles: &mut Tiles, index: usize) {
         if self.moves < ITEM_COST {
-            return false;
+            return;
         }
         
         let tile = tiles.at_mut(self.x, self.y);
@@ -356,20 +354,18 @@ impl Unit {
             if self.carrying() + item.weight() <= self.tag.capacity() {                        
                 self.inventory.push(item);
                 self.moves -= ITEM_COST;
-                return true;
+                return;
             } 
         }
-
-        false
     }
 
-    pub fn use_item(&mut self, index: usize) -> bool {
+    pub fn use_item(&mut self, index: usize) {
         let mut item_consumed = false;
         let mut new_item = None;
 
         // Return if the unit doesn't have the moves to use the item
         if self.moves < ITEM_COST {
-            return false;
+            return;
         }
 
         if let Some(item) = self.inventory.get(index) {
@@ -420,9 +416,6 @@ impl Unit {
         if item_consumed || new_item.is_some() {
             self.moves -= ITEM_COST;
         }
-
-        // return true if an item was consumed and no item took its place
-        item_consumed && new_item.is_none()
     }
 
     pub fn fire_weapon(&mut self) -> bool {
@@ -593,7 +586,9 @@ fn unit_actions() {
 
         tiles.at_mut(0, 0).items.push(Item::Rifle(rifle.capacity()));
 
-        assert!(unit.pickup_item(&mut tiles, 0));
+        assert_eq!(unit.inventory, Vec::new());
+        unit.pickup_item(&mut tiles, 0);
+        assert_eq!(unit.inventory, vec![Item::Rifle(rifle.capacity())]);
         assert_eq!(tiles.at(0, 0).items, Vec::new());
 
         assert_eq!(unit.inventory[0], Item::Rifle(rifle.capacity()));

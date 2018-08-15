@@ -11,6 +11,7 @@ use super::units::*;
 use super::messages::*;
 use super::paths::*;
 use super::animations::*;
+use super::drawer::*;
 
 use *;
 use settings::*;
@@ -103,6 +104,7 @@ impl Client {
 		let initial_state = connection.recv_blocking()?;
 		let (map, side) = match initial_state {
 			ServerMessage::InitialState {map, side} => (map, side),
+			ServerMessage::GameFull => return Err("Game full".into()),
 			message => return Err(format!("Wrong type of message recieved, expected initial state, got: {:?}", message).into())
 		};
 
@@ -124,16 +126,16 @@ impl Client {
 		while let Ok(message) = self.connection.recv() {
 			match message {
 				ServerMessage::Animations(mut animations) => self.animations.append(&mut animations),
-				ServerMessage::InitialState {..} => unreachable!()
+				_ => unreachable!()
 			}
 		}
 	}
 
-	pub fn process_animations(&mut self, dt: f32, ctx: &mut Context, log: &mut TextDisplay) {
+	pub fn process_animations(&mut self, dt: f32, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) {
 		let mut i = 0;
 
 	    while i < self.animations.len() {
-	        let status = self.animations[i].step(dt, self.side, &mut self.map, ctx, log);
+	        let status = self.animations[i].step(dt, self.side, &mut self.map, ctx, log, camera);
 
 	        if status.finished {
 	            self.animations.remove(0);
@@ -151,8 +153,8 @@ impl Client {
 		self.connection.send(ClientMessage::Command {unit, command}).unwrap();
 	}
 
-	pub fn walk(&self, unit: u8, path: Vec<PathPoint>) {
-		self.send_command(unit, Command::Walk(path));
+	pub fn walk(&self, unit: u8, path: &[PathPoint]) {
+		self.send_command(unit, Command::walk(path));
 	}
 
 	pub fn turn(&self, unit: u8, facing: UnitFacing) {
@@ -207,7 +209,7 @@ impl MultiplayerServer {
 			Right(path) => Map::load(path)?
 		};
 
-		let listener = TcpListener::bind(addr)?;
+		let listener = TcpListener::bind(addr).chain_err(|| "Failed to start server")?;
 		listener.set_nonblocking(true)?;
 		info!("Listening for incoming connections on '{}'", listener.local_addr()?);
 
@@ -221,21 +223,23 @@ impl MultiplayerServer {
 	fn run(&mut self) -> Result<()> {
 		loop {
 			// Accept new incoming connections if the players arent assigned yet
-			if self.player_a.is_none() || self.player_b.is_none() {
-				while let Ok((stream, _)) = self.listener.accept() {
-					let connection = Connection::new_tcp(stream)?;
+			while let Ok((stream, _)) = self.listener.accept() {
+				let connection = Connection::new_tcp(stream)?;
 
-					if self.player_a.is_none() {
-						connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerA))?;
-						info!("Player A connected from '{}'", connection.peer_addr()?);
-						self.player_a = Some(connection);
-					} else if self.player_b.is_none() {
-						connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerB))?;
-						info!("Player B connected from '{}'", connection.peer_addr()?);
-						self.player_b = Some(connection);
-					}
+				if self.player_a.is_none() {
+					connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerA))?;
+					info!("Player A connected from '{}'", connection.peer_addr()?);
+					self.player_a = Some(connection);
+				} else if self.player_b.is_none() {
+					connection.send(ServerMessage::initial_state(&mut self.map, Side::PlayerB))?;
+					info!("Player B connected from '{}'", connection.peer_addr()?);
+					self.player_b = Some(connection);
+				} else {
+					connection.send(ServerMessage::GameFull)?;
 				}
-			} else {
+			}
+			
+			if self.player_a.is_some() && self.player_b.is_some() {
 				let player_a = self.player_a.as_mut().unwrap();
 				let player_b = self.player_b.as_mut().unwrap();
 

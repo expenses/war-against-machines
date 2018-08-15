@@ -1,9 +1,9 @@
 // A Map struct that combines Tiles and Units for convenience
 // This struct contains all the stuff that is saved/loaded
 
-use super::units::*;
-use super::animations::*;
+
 use settings::*;
+use error::*;
 
 use std::fs::*;
 use std::path::*;
@@ -14,6 +14,8 @@ mod tiles;
 mod vision;
 mod walls;
 
+use super::units::*;
+use super::animations::*;
 use super::messages::*;
 use super::commands::*;
 
@@ -77,10 +79,10 @@ impl Map {
     }
 
     // Load a skirmish if possible
-    pub fn load(path: &Path) -> Result<Map, bincode::Error> {
+    pub fn load(path: &Path) -> Result<Map> {
         File::open(path)
-            .map_err(|error| Box::new(bincode::ErrorKind::Io(error)))
-            .and_then(|mut file| bincode::deserialize_from(&mut file))
+            .map_err(|error| error.into())
+            .and_then(|mut file| bincode::deserialize_from(&mut file).map_err(|err| err.into()))
     }
 
     // Save the skirmish
@@ -90,7 +92,7 @@ impl Map {
         let mut animations = ServerAnimations::new();
 
         if filename.starts_with('.') {
-            animations.push_message(format!("Error: '{}' is invalid name for a savegame", filename));
+            animations.push_message(format!("Error: '{}' is an invalid name for a savegame", filename));
             return animations;
         } else if !directory.exists() {
             if let Err(error) = create_dir_all(&directory) {

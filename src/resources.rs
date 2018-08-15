@@ -258,6 +258,7 @@ impl ImageSource for char {
 }
 
 // A sound effect
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum SoundEffect {
     Walk,
     RegularShot,

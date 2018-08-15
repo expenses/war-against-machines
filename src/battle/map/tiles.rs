@@ -30,10 +30,7 @@ impl Visibility {
     const NIGHT_DARKNESS_RATE: f32 = 0.05;
 
     // Get the corresponding colour for a visibility
-    pub fn colour(self, light: f32) -> [f32; 4] {
-        // todo: visual debugging
-        let debug = false;
-
+    pub fn colour(self, light: f32, debug: bool) -> [f32; 4] {
         // Get the rate at which tiles get darker
         let rate = lerp(Self::NIGHT_DARKNESS_RATE, Self::DAY_DARKNESS_RATE, light);
 
@@ -399,7 +396,18 @@ impl Tiles {
         for (x, y) in self.iter() {
             // Wipe the info of tiles that are not visible
             if !self.visibility_at(x, y, side).is_visible() {
-                *tiles.at_mut(x, y) = Tile::new(Image::Base1);
+                let walls = tiles.at(x, y).walls.clone();
+                
+                let tile = tiles.at_mut(x, y);
+                *tile = Tile::new(Image::Base1);
+                
+                if self.left_wall_visibility(x, y, side).is_visible() {
+                    tile.walls.left = walls.left.clone();
+                }
+
+                if self.top_wall_visibility(x, y, side).is_visible() {
+                    tile.walls.top = walls.top.clone();
+                }
             }
         }
 

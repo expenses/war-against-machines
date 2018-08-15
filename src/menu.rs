@@ -10,7 +10,7 @@ use settings::{Settings, SkirmishSettings};
 use ui::{Menu, MenuItem, Vertical, Horizontal};
 use networking::*;
 
-// Look into alternative ui systems, potentially a lib, because this is pretty messy
+// todo: Look into alternative ui systems, potentially a lib (conrod?), because this is pretty messy
 
 const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
