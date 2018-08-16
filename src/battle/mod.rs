@@ -24,8 +24,6 @@ use super::error::*;
 use context::*;
 use settings::*;
 
-// todo: review all code & comments
-
 pub enum KeyResponse {
     GameOver,
     Continue,
@@ -77,11 +75,13 @@ impl Battle {
 
     // Create a new Battle
     pub fn new_vs_ai(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
+        let map = Map::new_from_either(map)?;
         let (client, ai, server) = singleplayer(map, settings)?;
         Ok(Self::new(client, Some(server), Some(ai)))
     }
 
     pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
+        let map = Map::new_from_either(map)?;
         let (client, server) = multiplayer(addr, map, settings)?;
         Ok(Self::new(client, Some(server), None))
     }

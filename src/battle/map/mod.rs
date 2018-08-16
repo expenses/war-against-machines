@@ -2,6 +2,7 @@
 // This struct contains all the stuff that is (de)serialized
 
 use bincode;
+use either::*;
 
 use settings::*;
 use error::*;
@@ -44,6 +45,13 @@ impl Map {
             tiles: Tiles::new(cols, rows),
             turn: 1,
             side: Side::PlayerA
+        }
+    }
+
+    pub fn new_from_either(either: Either<SkirmishSettings, &Path>) -> Result<Self> {
+        match either {
+            Left(settings) => Ok(Self::new_from_settings(settings)),
+            Right(path) => Self::load(path)
         }
     }
 
@@ -134,6 +142,8 @@ impl Map {
             return responses;
         }
 
+        let moves = self.units.get(id).unwrap().moves;
+
         match command {
             Command::Walk(path)             => move_command(self, id, path, &mut responses),
             Command::Turn(facing)           => turn_command(self, id, facing, &mut responses),
@@ -142,6 +152,11 @@ impl Map {
             Command::DropItem(item)         => drop_item_command(self, id, item, &mut responses),
             Command::ThrowItem {item, x, y} => throw_item_command(self, id, item, x, y, &mut responses),
             Command::Fire {x, y}            => fire_command(self, id, x, y, &mut responses),
+        }
+
+        // All commands should have a cost, so if one doesn't, it failed
+        if self.units.get(id).unwrap().moves == moves {
+            responses.push(side, Response::InvalidCommand);
         }
 
         let player_a_units = self.units.count(Side::PlayerA);

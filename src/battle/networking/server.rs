@@ -1,7 +1,6 @@
 use super::*;
-use utils::*;
 
-pub struct MultiplayerServer {
+pub struct Server {
     player_a: Option<ServerConn>,
     player_b: Option<ServerConn>,
     listener: Option<TcpListener>,
@@ -9,17 +8,21 @@ pub struct MultiplayerServer {
     map: Map
 }
 
-impl MultiplayerServer {
-    pub fn addr(&self) -> Result<SocketAddr> {
-        self.listener.as_ref().ok_or("Not running on tcp")?.local_addr().map_err(|err| err.into())
-    }
-
-    pub fn new(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let map = match map {
-            Left(settings) => Map::new_from_settings(settings),
-            Right(path) => Map::load(path)?
+impl Server {
+    pub fn send_initial_state(&mut self, side: Side) -> Result<()> {
+        let conn = match side {
+            Side::PlayerA => self.player_a.as_ref(),
+            Side::PlayerB => self.player_b.as_ref()
         };
 
+        if let Some(conn) = conn {
+            conn.send(ServerMessage::initial_state(&mut self.map, side))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn new(addr: &str, map: Map, settings: Settings) -> Result<Self> {
         let listener = TcpListener::bind(addr).chain_err(|| "Failed to start server")?;
         listener.set_nonblocking(true)?;
         info!("Listening for incoming connections on '{}'", listener.local_addr()?);
@@ -32,21 +35,25 @@ impl MultiplayerServer {
         })
     }
 
-    pub fn new_local(map: Either<SkirmishSettings, &Path>, player_a: ServerConn, player_b: ServerConn, settings: Settings) -> Result<Self> {
-        let mut map = match map {
-            Left(settings) => Map::new_from_settings(settings),
-            Right(path) => Map::load(path)?
-        };
+    pub fn new_one_local(addr: &str, map: Map, player_a: ServerConn, settings: Settings) -> Result<Self> {
+        let mut server = Self::new(addr, map, settings)?;
+        server.player_a = Some(player_a);
+        server.send_initial_state(Side::PlayerA)?;
+        Ok(server)
+    }
 
-        player_a.send(ServerMessage::initial_state(&mut map, Side::PlayerA))?;
-        player_b.send(ServerMessage::initial_state(&mut map, Side::PlayerB))?;
-
-        Ok(Self {
+    pub fn new_local(map: Map, player_a: ServerConn, player_b: ServerConn, settings: Settings) -> Result<Self> {
+        let mut server = Self {
             player_a: Some(player_a),
             player_b: Some(player_b),
             listener: None,
             map, settings
-        })
+        };
+
+        server.send_initial_state(Side::PlayerA)?;
+        server.send_initial_state(Side::PlayerB)?;
+
+        Ok(server)
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -112,10 +119,6 @@ fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &S
     debug!("Handling message from {}: {:?}", side, message);
 
     let (player_a_responses, player_b_responses) = map.handle_message(message, settings, side);
-
-    // todo: We need to do this for ai reasons, try to fix
-    let player_a_responses = vec_or_default(player_a_responses, || Response::new_state(map, Side::PlayerA));
-    let player_b_responses = vec_or_default(player_b_responses, || Response::new_state(map, Side::PlayerB));
 
     for response in &player_a_responses {
         if let Response::GameOver(_) = response {
