@@ -4,7 +4,7 @@ pub mod units;
 pub mod map;
 mod drawer;
 mod paths;
-mod animations;
+mod responses;
 //mod ai;
 mod commands;
 mod networking;
@@ -39,10 +39,10 @@ struct Keys {
 
 // The main Battle struct the handles actions
 pub struct Battle {
-    pub camera: Camera,
-    pub cursor: Option<(usize, usize)>,
-    pub selected: Option<u8>,
-    pub path: Option<Vec<PathPoint>>,
+    camera: Camera,
+    cursor: Option<(usize, usize)>,
+    selected: Option<u8>,
+    path: Option<Vec<PathPoint>>,
     client: Client,
     server: Option<ThreadHandle>,
     ai: Option<ThreadHandle>,
@@ -149,7 +149,7 @@ impl Battle {
         if self.keys.zoom_in  { self.camera.zoom(dt); }
 
         self.client.recv();
-        self.client.process_animations(dt, ctx, &mut self.interface.get_log(), &mut self.camera);
+        self.client.process_responses(dt, ctx, &mut self.interface.get_log(), &mut self.camera);
 
         // todo: game overs
         /*        
@@ -261,7 +261,7 @@ impl Battle {
     }
 
     fn waiting_for_command(&self) -> bool {
-        self.map().side == self.client.side && self.client.animations.is_empty()
+        self.map().side == self.client.side && self.client.responses().is_empty()
     }
 
     // Get a reference to the unit that is selected

@@ -15,7 +15,7 @@ mod vision;
 mod walls;
 
 use super::units::*;
-use super::animations::*;
+use super::responses::*;
 use super::messages::*;
 use super::commands::*;
 
@@ -86,18 +86,18 @@ impl Map {
     }
 
     // Save the skirmish
-    pub fn save(&self, mut filename: String, settings: &Settings) -> ServerAnimations {
+    pub fn save(&self, mut filename: String, settings: &Settings) -> ServerResponses {
         filename.push_str(EXTENSION);
         let directory = Path::new(&settings.savegames);
-        let mut animations = ServerAnimations::new();
+        let mut responses = ServerResponses::new();
 
         if filename.starts_with('.') {
-            animations.push_message(format!("Error: '{}' is an invalid name for a savegame", filename));
-            return animations;
+            responses.push_message(format!("Error: '{}' is an invalid name for a savegame", filename));
+            return responses;
         } else if !directory.exists() {
             if let Err(error) = create_dir_all(&directory) {
-                animations.push_message(format!("Error '{}' recieved while attemping to create directory '{}", error, directory.display()));
-                return animations;
+                responses.push_message(format!("Error '{}' recieved while attemping to create directory '{}", error, directory.display()));
+                return responses;
             }
         }
 
@@ -112,35 +112,49 @@ impl Map {
             Err(error) => format!("Error recieved while trying to save to '{}': {}", savegame.display(), error)
         };
 
-        animations.push_message(message);
-        animations
+        responses.push_message(message);
+        responses
     }
 
-    pub fn handle_message(&mut self, message: ClientMessage, settings: &Settings) -> (Vec<Animation>, Vec<Animation>) {
+    pub fn handle_message(&mut self, message: ClientMessage, settings: &Settings, side: Side) -> (Vec<Response>, Vec<Response>) {
         match message {
-            ClientMessage::EndTurn => self.end_turn(),
+            ClientMessage::EndTurn => self.end_turn(side),
             ClientMessage::SaveGame(filename) => self.save(filename, settings),
-            ClientMessage::Command {unit, command} => self.perform_command(unit, command)
+            ClientMessage::Command {unit, command} => self.perform_command(unit, command, side)
         }.split()
     }
 
-    pub fn perform_command(&mut self, id: u8, command: Command) -> ServerAnimations {
-        let mut animations = ServerAnimations::new();
+    pub fn perform_command(&mut self, id: u8, command: Command, side: Side) -> ServerResponses {
+        let mut responses = ServerResponses::new();
 
-        match command {
-            Command::Walk(path) => move_command(self, id, path, &mut animations),
-            Command::Turn(facing) => turn_command(self, id, facing, &mut animations),
-            Command::UseItem(item) => use_item_command(self, id, item, &mut animations),
-            Command::PickupItem(item) => pickup_item_command(self, id, item, &mut animations),
-            Command::DropItem(item) => drop_item_command(self, id, item, &mut animations),
-            Command::ThrowItem {item, x, y} => throw_item_command(self, id, item, x, y, &mut animations),
-            Command::Fire {x, y} => fire_command(self, id, x, y, &mut animations),
+        // Checks that:
+        // A) The side is correct
+        // B) The unit exists
+        // C) The unit is on that side
+        if !(side == self.side && self.units.get(id).map(|unit| unit.side == side).unwrap_or(false)) {
+            return responses;
         }
 
-        animations
+        match command {
+            Command::Walk(path)             => move_command(self, id, path, &mut responses),
+            Command::Turn(facing)           => turn_command(self, id, facing, &mut responses),
+            Command::UseItem(item)          => use_item_command(self, id, item, &mut responses),
+            Command::PickupItem(item)       => pickup_item_command(self, id, item, &mut responses),
+            Command::DropItem(item)         => drop_item_command(self, id, item, &mut responses),
+            Command::ThrowItem {item, x, y} => throw_item_command(self, id, item, x, y, &mut responses),
+            Command::Fire {x, y}            => fire_command(self, id, x, y, &mut responses),
+        }
+
+        responses
     }
 
-    pub fn end_turn(&mut self) -> ServerAnimations {
+    pub fn end_turn(&mut self, side: Side) -> ServerResponses {
+        let mut responses = ServerResponses::new();
+
+        if side != self.side {
+            return responses;
+        }
+
         for unit in self.units.iter_mut() {
             unit.moves = unit.tag.moves();
         }
@@ -153,9 +167,8 @@ impl Map {
             }
         }
 
-        let mut animations = ServerAnimations::new();
-        animations.push_state(self);
-        animations
+        responses.push_and_update_state(self);
+        responses
     }
 
     pub fn clone_visible(&mut self, side: Side) -> Self {
@@ -196,9 +209,9 @@ fn load_save() {
     map.units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
     map.tiles.update_visibility(&map.units);
 
-    let (player_a_animations, player_b_animations) = map.save("test".into(), &settings).split();
+    let (player_a_responses, player_b_responses) = map.save("test".into(), &settings).split();
 
-    assert_eq!(player_a_animations, player_b_animations);
-    assert_eq!(player_a_animations, vec![Animation::Message(format!("Game saved to '{}'", output.display()))]);
+    assert_eq!(player_a_responses, player_b_responses);
+    assert_eq!(player_a_responses, vec![Response::Message(format!("Game saved to '{}'", output.display()))]);
     Map::load(&output).unwrap();
 }

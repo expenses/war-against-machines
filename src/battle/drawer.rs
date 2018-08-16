@@ -2,7 +2,7 @@
 
 use super::Battle;
 use super::map::*;
-use super::animations::*;
+use super::responses::*;
 use resources::Image;
 use utils::convert_rotation;
 use context::Context;
@@ -134,7 +134,7 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
     let camera = &battle.camera;
     let debugging = battle.visual_debugging;
     let map = &battle.client.map;
-    let animations = &battle.client.animations;
+    let responses = battle.client.responses();
     let side = battle.client.side;
     let tiles = &map.tiles;
     let light = map.light;
@@ -214,8 +214,8 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         }
 
         // Draw explosions on the tile
-        animations.iter()
-            .filter_map(|animation| animation.as_explosion())
+        responses.iter()
+            .filter_map(Response::as_explosion)
             .filter(|explosion| explosion.x() == x && explosion.y() == y)
             .for_each(|explosion| ctx.render(explosion.image(), dest, camera.zoom));
     }
@@ -258,7 +258,7 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     let camera = &battle.camera;
     let map = &battle.client.map;
-    let animations = &battle.client.animations;
+    let responses = &battle.client.responses();
     let side = battle.client.side;
     
     draw_map(ctx, battle);
@@ -266,18 +266,18 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     // Draw the path if there is one
     if let Some(ref points) = battle.path {
         if let Some(unit) = battle.selected() {
-            let mut total_cost = 0;
+            let mut unit_moves = unit.moves;
 
             // Draw the path tiles
             for point in points {
-                total_cost += point.cost;
+                unit_moves = unit_moves.saturating_sub(point.cost);
 
                 if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
                     // Render the path tile
 
-                    let colour = if total_cost > unit.moves {
+                    let colour = if unit_moves == 0 {
                         colours::RED
-                    } else if total_cost + unit.weapon.tag.cost() > unit.moves {
+                    } else if unit_moves < unit.weapon.tag.cost()  {
                         colours::ORANGE
                     } else {
                         colours::WHITE
@@ -289,14 +289,16 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
 
             // Draw the path costs
 
-            total_cost = 0;
+            unit_moves = unit.moves;
 
             for point in points {
-                total_cost += point.cost;
+                unit_moves = unit_moves.saturating_sub(point.cost);
 
-                if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
-                    // Render the path cost
-                    ctx.render_text(&total_cost.to_string(), dest[0], dest[1], colours::WHITE);
+                if unit_moves > 0 {
+                    if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
+                        // Render the path cost
+                        ctx.render_text(&unit_moves.to_string(), dest[0], dest[1], colours::WHITE);
+                    }
                 }
             }
         }
@@ -331,9 +333,9 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
         }
     }
 
-    // Draw all the visible bullets in the animation queue
-    animations.iter()
-        .filter_map(Animation::as_bullet)
+    // Draw all the visible bullets in the response queue
+    responses.iter()
+        .filter_map(Response::as_bullet)
         .for_each(|bullet| {
         
         // If the bullet is on screen, draw it with the right rotation      
@@ -344,8 +346,8 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
         }
     });
 
-    animations.iter()
-        .filter_map(Animation::as_thrown_item)
+    responses.iter()
+        .filter_map(Response::as_thrown_item)
         .for_each(|thrown_item| {
 
         if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {

@@ -22,7 +22,7 @@ pub struct Status {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum Animation {
+pub enum Response {
     Walk(f32),
     SoundEffect(SoundEffect),
     NewState(Map),
@@ -36,69 +36,69 @@ pub enum Animation {
     Message(String)
 }
 
-impl Animation {
+impl Response {
     pub fn new_state(map: &mut Map, side: Side) -> Self {
-        Animation::NewState(map.clone_visible(side))
+        Response::NewState(map.clone_visible(side))
     }
 
     pub fn new_explosion(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
-        Animation::Explosion(Explosion::new(x, y, center_x, center_y, blocking))
+        Response::Explosion(Explosion::new(x, y, center_x, center_y, blocking))
     }
 
     pub fn new_thrown_item(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Self {
-        Animation::ThrownItem(ThrownItem::new(image, start_x, start_y, end_x, end_y))
+        Response::ThrownItem(ThrownItem::new(image, start_x, start_y, end_x, end_y))
     }
 
     pub fn new_bullet(unit: &Unit, target_x: usize, target_y: usize, will_hit: bool, map: &Map) -> Self {
-        Animation::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
+        Response::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
     }
 
     pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) -> Status {
         match *self {
-            Animation::NewState(ref new_map) => {
+            Response::NewState(ref new_map) => {
                 map.update_from(new_map.clone(), side);
                 Status {finished: true, blocking: false}
             },
-            Animation::EnemySpotted {x, y} => {
+            Response::EnemySpotted {x, y} => {
                 log.append(&format!("Enemy spotted at ({}, {})!", x, y));
                 camera.set_to(x, y);
                 Status {finished: true, blocking: false}
             },
-            Animation::SoundEffect(ref effect) => {
+            Response::SoundEffect(ref effect) => {
                 ctx.play_sound(effect);
                 Status {finished: true, blocking: false}
             }
-            Animation::Walk(ref mut time) => {
+            Response::Walk(ref mut time) => {
                 *time += dt;
                 Status {finished: *time > 0.2, blocking: true}
             },
-            Animation::Message(ref string) => {
+            Response::Message(ref string) => {
                 log.append(string);
                 Status {finished: true, blocking: false}
             },
-            Animation::Explosion(ref mut explosion) => explosion.step(dt),
-            Animation::ThrownItem(ref mut item) => item.step(dt),
-            Animation::Bullet(ref mut bullet) => bullet.step(dt),
+            Response::Explosion(ref mut explosion) => explosion.step(dt),
+            Response::ThrownItem(ref mut item) => item.step(dt),
+            Response::Bullet(ref mut bullet) => bullet.step(dt),
         }
     }
 
     pub fn as_explosion(&self) -> Option<&Explosion> {
         match *self {
-            Animation::Explosion(ref explosion) if explosion.time > 0.0 => Some(explosion),
+            Response::Explosion(ref explosion) if explosion.time > 0.0 => Some(explosion),
             _ => None
         }
     }
 
     pub fn as_thrown_item(&self) -> Option<&ThrownItem> {
         match *self {
-            Animation::ThrownItem(ref item) => Some(item),
+            Response::ThrownItem(ref item) => Some(item),
             _ => None
         }
     }
 
     pub fn as_bullet(&self) -> Option<&Bullet> {
         match *self {
-            Animation::Bullet(ref bullet) if !bullet.finished => Some(bullet),
+            Response::Bullet(ref bullet) if !bullet.finished => Some(bullet),
             _ => None
         }
     }
@@ -235,7 +235,7 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
     )}
 }
 
-// A bullet animation for drawing on the screen
+// A bullet for drawing on the screen
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
     x: f32,

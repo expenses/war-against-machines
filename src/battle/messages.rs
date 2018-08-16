@@ -1,7 +1,7 @@
 use super::paths::*;
 use super::map::*;
 use super::units::*;
-use super::animations::*;
+use super::responses::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
@@ -15,7 +15,7 @@ pub enum ClientMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
-	Animations(Vec<Animation>),
+	Responses(Vec<Response>),
 	InitialState {
 		map: Map,
 		side: Side

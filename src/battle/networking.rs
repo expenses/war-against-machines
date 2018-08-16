@@ -10,7 +10,7 @@ use super::map::*;
 use super::units::*;
 use super::messages::*;
 use super::paths::*;
-use super::animations::*;
+use super::responses::*;
 use super::drawer::*;
 
 use *;
@@ -68,23 +68,23 @@ impl Server {
 	fn run(&mut self) -> Result<()> {
 		loop {
 			while let Ok(message) = self.connection.recv() {
-				let animations = match message {
+				let responses = match message {
 					ClientMessage::EndTurn => {
-						let mut messages = self.map.end_turn();
+						let mut messages = self.map.end_turn(Side::PlayerA);
 
 						// todo: AI
 						if self.map.side == Side::PlayerB {
-							messages = self.map.end_turn();
+							messages = self.map.end_turn(Side::PlayerB);
 						}
 
 						messages
 					},
-					ClientMessage::Command {unit, command} => self.map.perform_command(unit, command),
+					ClientMessage::Command {unit, command} => self.map.perform_command(unit, command, Side::PlayerA),
 					ClientMessage::SaveGame(filename) => self.map.save(filename, &self.settings)
 				};
 
-				let player_a_animations = animations.split().0;
-				self.connection.send(ServerMessage::Animations(player_a_animations))?;
+				let player_a_responses = responses.split().0;
+				self.connection.send(ServerMessage::Responses(player_a_responses))?;
 			}
 
 			sleep(Duration::from_millis(1));
@@ -96,7 +96,7 @@ pub struct Client {
 	connection: ClientConn,
 	pub map: Map,
 	pub side: Side,
-	pub animations: Vec<Animation>
+	response_queue: Vec<Response>
 }
 
 impl Client {
@@ -111,8 +111,12 @@ impl Client {
 		Ok(Self {
 			connection,
 			map, side,
-			animations: Vec::new()
+			response_queue: Vec::new()
 		})
+	}
+
+	pub fn responses(&self) -> &[Response] {
+		&self.response_queue
 	}
 
 	pub fn new_from_addr(addr: &str) -> Result<Self> {
@@ -125,20 +129,20 @@ impl Client {
 	pub fn recv(&mut self) {
 		while let Ok(message) = self.connection.recv() {
 			match message {
-				ServerMessage::Animations(mut animations) => self.animations.append(&mut animations),
+				ServerMessage::Responses(mut responses) => self.response_queue.append(&mut responses),
 				_ => unreachable!()
 			}
 		}
 	}
 
-	pub fn process_animations(&mut self, dt: f32, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) {
+	pub fn process_responses(&mut self, dt: f32, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) {
 		let mut i = 0;
 
-	    while i < self.animations.len() {
-	        let status = self.animations[i].step(dt, self.side, &mut self.map, ctx, log, camera);
+	    while i < self.response_queue.len() {
+	        let status = self.response_queue[i].step(dt, self.side, &mut self.map, ctx, log, camera);
 
 	        if status.finished {
-	            self.animations.remove(0);
+	            self.response_queue.remove(0);
 	        } else {
 	            i += 1;
 	        }
@@ -238,7 +242,7 @@ impl MultiplayerServer {
 					connection.send(ServerMessage::GameFull)?;
 				}
 			}
-			
+
 			if self.player_a.is_some() && self.player_b.is_some() {
 				let player_a = self.player_a.as_mut().unwrap();
 				let player_b = self.player_b.as_mut().unwrap();
@@ -273,12 +277,12 @@ impl MultiplayerServer {
 fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, settings: &Settings, message: ClientMessage) {
 	info!("Handling message from {}: {:?}", side, message);
 
-	let (player_a_animations, player_b_animations) = map.handle_message(message, settings);
+	let (player_a_responses, player_b_responses) = map.handle_message(message, settings, side);
 
-	if !player_a_animations.is_empty() {
-		player_a.send(ServerMessage::Animations(player_a_animations)).unwrap();
+	if !player_a_responses.is_empty() {
+		player_a.send(ServerMessage::Responses(player_a_responses)).unwrap();
 	}
-	if !player_b_animations.is_empty() {
-		player_b.send(ServerMessage::Animations(player_b_animations)).unwrap();
+	if !player_b_responses.is_empty() {
+		player_b.send(ServerMessage::Responses(player_b_responses)).unwrap();
 	}
 }
