@@ -5,7 +5,7 @@ pub mod map;
 mod drawer;
 mod paths;
 mod responses;
-//mod ai;
+mod ai;
 mod commands;
 mod networking;
 mod messages;
@@ -71,8 +71,8 @@ impl Battle {
 
     // Create a new Battle
     pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let (client, server) = client_and_server(map, settings)?;
-        Ok(Self::new(client, Some(server), None))
+        let (client, ai, server) = client_and_server(map, settings)?;
+        Ok(Self::new(client, Some(server), Some(ai)))
     }
 
     pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {

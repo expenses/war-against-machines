@@ -98,7 +98,7 @@ impl Response {
 
     pub fn as_bullet(&self) -> Option<&Bullet> {
         match *self {
-            Response::Bullet(ref bullet) if !bullet.finished => Some(bullet),
+            Response::Bullet(ref bullet) if !bullet.finished && bullet.time > 0.0 => Some(bullet),
             _ => None
         }
     }

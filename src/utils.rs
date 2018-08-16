@@ -1,14 +1,12 @@
 // Various utility functions
 
 // Return a vec or a default if the vec is empty
-macro_rules! vec_or_default {
-    ($vec:expr, $default:expr) => (
-        if !$vec.is_empty() {
-            $vec
-        } else {
-            $default
-        };
-    )
+pub fn vec_or_default<T, C: FnOnce() -> T>(vec: Vec<T>, constructor: C) -> Vec<T> {
+    if vec.is_empty() {
+        vec![constructor()]
+    } else {
+        vec
+    }
 }
 
 // Min using partialord

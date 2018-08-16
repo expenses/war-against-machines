@@ -4,6 +4,7 @@ use ui;
 use ui::{MenuItem, UI, TextDisplay, TextInput, Menu, Vertical, Horizontal};
 use resources::*;
 use context::*;
+use utils::*;
 use super::map::*;
 use super::units::*;
 use super::networking::*;
@@ -215,8 +216,8 @@ impl Interface {
             if let Some(info) = info {
                 self.inventory.text_display_mut(0).text = info.string;
                 self.inventory.text_display_mut(1).text = "Ground".into();
-                self.inventory.menu_mut(0).set_list(vec_or_default!(info.items, vec![item!("No items")]));
-                self.inventory.menu_mut(1).set_list(vec_or_default!(info.ground, vec![item!("No items")]));
+                self.inventory.menu_mut(0).set_list(vec_or_default(info.items, || item!("No items")));
+                self.inventory.menu_mut(1).set_list(vec_or_default(info.ground, || item!("No items")));
             }
         }
         
