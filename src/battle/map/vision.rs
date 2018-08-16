@@ -1,3 +1,5 @@
+// The line of sight tile functions are in here, because they're pretty big and kinda seperate from the other stuff
+
 use super::tiles::*;
 use super::walls::*;
 use super::super::units::*;
@@ -129,4 +131,78 @@ impl Tiles {
             None
         }
     }
+}
+
+
+#[test]
+fn unit_visibility() {
+    use super::super::units::*;
+    use super::super::paths::*;
+
+    let mut tiles = Tiles::new(30, 30);
+    let mut units = Units::new();
+    units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
+    tiles.update_visibility(&units);
+
+    // A tile a unit is standing on should be visible with a distance of 0
+    assert_eq!(tiles.visibility_at(0, 0, Side::PlayerA), Visibility::Visible(0));
+    // A far away tile should be invisible
+    assert_eq!(tiles.visibility_at(29, 29, Side::PlayerA), Visibility::Invisible);
+
+    // A tile that was visible but is no longer should be foggy
+
+    units.get_mut(0).unwrap().move_to(&PathPoint::new(29, 0, 0, UnitFacing::Top));
+    tiles.update_visibility(&units);
+
+    assert_eq!(tiles.visibility_at(0, 0, Side::PlayerA), Visibility::Foggy);
+
+    // If the unit is boxed into a corner, only it's tile should be visible
+
+    tiles.add_left_wall(29, 0, WallType::Ruin1);
+    tiles.add_top_wall(29, 1, WallType::Ruin2);
+
+    tiles.update_visibility(&units);
+
+    for (x, y) in tiles.iter() {
+        let visibility = tiles.visibility_at(x, y, Side::PlayerA);
+
+        if x == 29 && y == 0 {
+            assert_eq!(visibility, Visibility::Visible(0));
+            assert!(!tiles.visibility_at(x, y, Side::PlayerA).is_invisible());
+        } else {
+            assert!(!visibility.is_visible());
+        }
+    }
+}
+
+#[test]
+fn line_of_fire() {
+    let mut tiles = Tiles::new(5, 5);
+
+    tiles.add_left_wall(1, 0, WallType::Ruin1);
+    tiles.add_top_wall(0, 1, WallType::Ruin1);
+    tiles.add_top_wall(1, 1, WallType::Ruin1);
+    tiles.add_left_wall(1, 1, WallType::Ruin1);
+
+    let top = Some(((1, 0), WallSide::Left));
+    let left = Some(((0, 1), WallSide::Top));
+    let right = Some(((1, 1), WallSide::Top));
+    let bottom = Some(((1, 1), WallSide::Left));
+
+    // Test lateral directions
+
+    assert_eq!(tiles.line_of_fire(0, 0, 1, 0), top);
+    assert_eq!(tiles.line_of_fire(0, 0, 0, 1), left);
+
+    // Test diagonal directions
+
+    let diag_1 = tiles.line_of_fire(0, 0, 1, 1);
+    assert!(diag_1 == top || diag_1 == left);
+    let diag_2 = tiles.line_of_fire(1, 1, 0, 0);
+    assert!(diag_2 == bottom || diag_2 == right);
+    let diag_3 = tiles.line_of_fire(0, 1, 1, 0);
+    assert!(diag_3 == left || diag_3 == bottom);
+    let diag_4 = tiles.line_of_fire(1, 0, 0, 1);
+    assert!(diag_4 == right || diag_4 == top);
+
 }

@@ -1,6 +1,7 @@
 // A Map struct that combines Tiles and Units for convenience
-// This struct contains all the stuff that is saved/loaded
+// This struct contains all the stuff that is (de)serialized
 
+use bincode;
 
 use settings::*;
 use error::*;
@@ -21,8 +22,6 @@ use super::commands::*;
 
 pub use self::walls::*;
 pub use self::tiles::*;
-
-use bincode;
 
 const EXTENSION: &str = ".sav";
 
@@ -148,6 +147,7 @@ impl Map {
         let player_a_units = self.units.count(Side::PlayerA);
         let player_b_units = self.units.count(Side::PlayerB);
 
+        // Push the gameover response
         if player_a_units == 0 || player_b_units == 0 {
             let player_a_units_lost = self.units.max_player_a_units - player_a_units;
             let player_b_units_lost = self.units.max_player_b_units - player_b_units;

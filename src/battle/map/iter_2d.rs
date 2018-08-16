@@ -1,4 +1,5 @@
 // A simple 2D iterator
+// todo: this can probably be replaced with impl iterator
 
 pub struct Iter2D {
     x: usize,

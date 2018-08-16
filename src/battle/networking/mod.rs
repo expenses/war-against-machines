@@ -28,7 +28,7 @@ pub type ServerConn = Connection<ServerMessage, ClientMessage>;
 // A handle to a thread that will return a result
 pub type ThreadHandle = JoinHandle<Result<()>>;
 
-pub fn client_and_server(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<(Client, ThreadHandle, ThreadHandle)> {
+pub fn singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<(Client, ThreadHandle, ThreadHandle)> {
 	let (player_conn, server_player_conn) = make_connections();
 	let (ai_conn, server_ai_conn) = make_connections();
 
@@ -41,11 +41,14 @@ pub fn client_and_server(map: Either<SkirmishSettings, &Path>, settings: Setting
 	Ok((client, ai, server))
 }
 
-pub fn client_and_multiplayer_server(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<(Client, ThreadHandle)> {
+pub fn multiplayer(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<(Client, ThreadHandle)> {
 	let mut server = MultiplayerServer::new(addr, map, settings)?;
 	let addr = server.addr();
 	let server = spawn(move || server.run());
+	// todo: theres no point having the client connect via tcp as the server is running locally
 	let client = Client::new_from_addr(&addr?.to_string())?;
 
 	Ok((client, server))
 }
+
+// todo: should be able to host a multiplayer server with nobody connected yet

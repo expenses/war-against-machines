@@ -1,3 +1,4 @@
+// A generic 2d grid
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct Grid<T> {
     width: usize,
@@ -24,10 +25,13 @@ impl<T> Grid<T> {
     }
 
     pub fn height(&self) -> usize {
+        // Make sure we know why a panic happens if this is called on an invalid grid
+        assert_ne!(self.width(), 0, "Grid width of {} is invalid", self.width());
         self.inner.len() / self.width()
     }
 
     fn index(&self, x: usize, y: usize) -> usize {
+        // Another assert to make sure we know why this panics
         assert!(x < self.width() && y < self.height(), "Item at ({}, {}) is out of bounds", x, y);
         x * self.height() + y
     }

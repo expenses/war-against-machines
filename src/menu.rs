@@ -40,6 +40,8 @@ pub struct MainMenu {
     submenus: [Menu; 5]
 }
 
+// todo: making a server should also be under the skirmish submenu
+
 impl MainMenu {
     // Create a new Menu
     pub fn new(settings: &mut Settings) -> MainMenu {

@@ -1,3 +1,6 @@
+// A client to the server.
+// Contains its own map and response variables
+
 use super::*;
 use super::super::ui::*;
 use context::*;

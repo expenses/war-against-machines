@@ -77,12 +77,12 @@ impl Battle {
 
     // Create a new Battle
     pub fn new_vs_ai(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let (client, ai, server) = client_and_server(map, settings)?;
+        let (client, ai, server) = singleplayer(map, settings)?;
         Ok(Self::new(client, Some(server), Some(ai)))
     }
 
     pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let (client, server) = client_and_multiplayer_server(addr, map, settings)?;
+        let (client, server) = multiplayer(addr, map, settings)?;
         Ok(Self::new(client, Some(server), None))
     }
 

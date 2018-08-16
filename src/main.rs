@@ -83,7 +83,9 @@ impl App {
     // Update the game
     fn update(&mut self, dt: f32) {
         if let Some(ref mut skirmish) = self.skirmish {
-            skirmish.update(&mut self.ctx, dt);
+            if let Mode::Skirmish = self.mode {
+                skirmish.update(&mut self.ctx, dt);
+            }
         }
     }
 
