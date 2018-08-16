@@ -83,10 +83,9 @@ impl AIClient {
         })
     }
 
-    fn pathfind(&self, unit: &Unit, x: usize, y: usize) -> Option<Vec<PathPoint>> {
+    fn pathfind(&self, unit: &Unit, x: usize, y: usize) -> Option<(Vec<PathPoint>, u16)> {
         pathfind(unit, x, y, self.map())
             .filter(|(_, cost)| *cost <= unit.moves)
-            .map(|(path, _)| path)
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -96,7 +95,11 @@ impl AIClient {
                 self.waiting_for_message = false;
             }
 
-            self.client.process_state_updates();
+            let finished = self.client.process_state_updates();
+
+            if finished {
+                return Ok(());
+            }
 
             if !self.waiting_for_message && self.client.our_turn() {
                 let next_unit = self.client.map.units.iter()
@@ -135,8 +138,8 @@ impl AIClient {
             Some(target) => {
                 if !unit.weapon.can_fire() {
                     AIMove::None
-                } else if self.damage_score(unit.x, unit.y, unit, target) < 50.0 {
-                    self.maximize_damage_next_turn(unit, target)
+                } else if self.damage_score(unit.x, unit.y, 0, unit, target) < 50.0 {
+                    self.maximise_damage(unit, target)
                 } else {
                     AIMove::Fire(target)
                 }
@@ -144,8 +147,9 @@ impl AIClient {
             None => self.maximize_tile_search(unit)
         };
 
-        println!("{:?}", ai_move);
-        println!("{:?}", self.finished_units);
+        debug!("Unit: {:?}", unit);
+        debug!("Move: {:?}", ai_move);
+        debug!("Finished: {:?}", self.finished_units);
 
         match ai_move {
             AIMove::Fire(target) => {
@@ -161,16 +165,16 @@ impl AIClient {
     }
 
     // Return an path where the chance_to_hit of the nearest unit is maximized
-    fn maximize_damage_next_turn(&self, unit: &Unit, target: &Unit) -> AIMove {
+    fn maximise_damage(&self, unit: &Unit, target: &Unit) -> AIMove {
         // Create a new AIMove of the chance to hit the target
-        let mut walk = Walk::new(Vec::new(), chance_to_hit(unit.x, unit.y, target.x, target.y));
+        let mut walk = Walk::new(Vec::new(), self.damage_score(unit.x, unit.y, 0, unit, target));
 
         // Loop through the reachable tiles
         for (x, y) in self.reachable_tiles(unit) {
             // If a path to the tile has been found and there is a closest target, check its chance to hit
-            if let Some(path) = self.pathfind(unit, x, y) {
+            if let Some((path, cost)) = self.pathfind(unit, x, y) {
                 if let Some(target) = self.closest_target(unit) {
-                    walk.update(Walk::new(path, chance_to_hit(x, y, target.x, target.y)));
+                    walk.update(Walk::new(path, self.damage_score(x, y, cost, unit, target)));
                 }
             }
         }
@@ -185,7 +189,7 @@ impl AIClient {
         // Loop through the reachable tiles
         for (x, y) in self.reachable_tiles(unit) {
             // If there is a path to the tile, check its movement score
-            if let Some(path) = self.pathfind(unit, x, y) {
+            if let Some((path, _)) = self.pathfind(unit, x, y) {
                 walk.update(Walk::new(path, self.search_score(x, y, unit)));
             }
         }
@@ -194,9 +198,11 @@ impl AIClient {
     }
 
     // Calculate the damage score for a tile
-    fn damage_score(&self, x: usize, y: usize, unit: &Unit, target: &Unit) -> f32 {
+    fn damage_score(&self, x: usize, y: usize, moves_used: u16, unit: &Unit, target: &Unit) -> f32 {
+        let moves = unit.moves - moves_used;
+
         // Return if the cost is too high or if line of fire is blocked
-        if self.map().tiles.line_of_fire(x, y, target.x, target.y).is_some() {
+        if moves < unit.weapon.tag.cost() || self.map().tiles.line_of_fire(x, y, target.x, target.y).is_some() {
             return 0.0;
         }
 
@@ -204,7 +210,7 @@ impl AIClient {
         let chance_to_hit = chance_to_hit(x, y, target.x, target.y);
 
         // Return chance to hit * times the weapon can be fired * weapon damage
-        chance_to_hit * f32::from(unit.weapon.times_can_fire(unit.moves)) * f32::from(unit.weapon.tag.damage())
+        chance_to_hit * f32::from(unit.weapon.times_can_fire(moves)) * f32::from(unit.weapon.tag.damage())
     }
 
     // Calculate the search score for a tile.

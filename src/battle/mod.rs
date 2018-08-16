@@ -26,6 +26,12 @@ use settings::*;
 
 // todo: review all code & comments
 
+pub enum KeyResponse {
+    GameOver,
+    Continue,
+    OpenMenu
+}
+
 #[derive(Default)]
 struct Keys {
     up: bool,
@@ -70,7 +76,7 @@ impl Battle {
     }
 
     // Create a new Battle
-    pub fn new_singleplayer(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
+    pub fn new_vs_ai(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
         let (client, ai, server) = client_and_server(map, settings)?;
         Ok(Self::new(client, Some(server), Some(ai)))
     }
@@ -86,28 +92,28 @@ impl Battle {
     }
 
     // Handle keypresses
-    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> bool {
+    pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> KeyResponse {
         // Respond to key presses on the score screen            
         if self.interface.game_over_screen_active() {
             if pressed {
                 if let VirtualKeyCode::Return = key {
-                    return false;
+                    return KeyResponse::GameOver;
                 }
             }
 
-            return true;
+            return KeyResponse::Continue;
         }
 
-        // If the escape key was pressed, quit the game
+        // If the escape key was pressed, open the menu
         if key == VirtualKeyCode::Escape && pressed {
-            return false;
+            return KeyResponse::OpenMenu;
         }
 
         // Respond to key presses when the text input is open
         if pressed {
             let handled = self.interface.try_handle_save_game_keypress(key, &self.client);
             if handled {
-                return true;
+                return KeyResponse::Continue;
             }
         }
 
@@ -116,7 +122,7 @@ impl Battle {
             if let Some(selected) = self.selected {
                 let handled = self.interface.try_handle_inventory_keypress(key, &self.client, selected, &self.cursor);
                 if handled {
-                    return true;
+                    return KeyResponse::Continue;
                 }
             }
         }
@@ -135,7 +141,7 @@ impl Battle {
             _ => {}
         }
 
-        true
+        KeyResponse::Continue
     }
 
     // Update the battle
@@ -149,21 +155,17 @@ impl Battle {
         if self.keys.zoom_in  { self.camera.zoom(dt); }
 
         self.client.recv();
-        self.client.process_responses(dt, ctx, &mut self.interface.get_log(), &mut self.camera);
+        self.client.process_responses(dt, ctx, &mut self.interface, &mut self.camera);
 
-        // todo: game overs
-        /*        
-        let stats = ...
+        if self.interface.game_over_screen_active() {
+            if let Some(server) = self.server.take() {
+                server.join().unwrap().unwrap();
+            }
 
-        self.ui.menu(0).active = true;
-        self.ui.menu(0).selection = 3;
-        self.ui.menu(0).list = vec![
-            item!("Skirmish Ended", false),
-            item!("Units lost: {}", stats.units_lost, false),
-            item!("Units killed: {}", stats.units_killed, false),
-            item!("Close")
-        ];
-        }*/
+            if let Some(ai) = self.ai.take() {
+                ai.join().unwrap().unwrap();
+            }
+        }
     }
 
     // Draw both the map and the UI
@@ -174,7 +176,7 @@ impl Battle {
         // Otherwise draw the battle and UI
         } else {
             draw_battle(ctx, self);
-            self.interface.draw(ctx, self.selected, &self.client.map);
+            self.interface.draw(ctx, self.selected, &self.client.map, self.ai.is_some());
         }
     }
 
@@ -288,11 +290,12 @@ fn battle_operations() {
     let skirmish_settings = SkirmishSettings::default();
     let settings = Settings::default();
 
-    let mut battle = Battle::new_singleplayer(Left(skirmish_settings.clone()), settings).unwrap();
+    let mut battle = Battle::new_vs_ai(Left(skirmish_settings.clone()), settings).unwrap();
 
     {
         let map = &battle.client.map;
-        assert_eq!(&map.info(), "Turn 1 - Player A");
+        assert_eq!(map.side, Side::PlayerA);
+        assert_eq!(map.turn(), 1);
 
         // The cols and rows are equal
         assert_eq!(map.tiles.width(), skirmish_settings.cols);

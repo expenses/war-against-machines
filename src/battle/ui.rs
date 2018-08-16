@@ -8,6 +8,7 @@ use utils::*;
 use super::map::*;
 use super::units::*;
 use super::networking::*;
+use super::responses::*;
 
 pub enum Button {
     EndTurn,
@@ -97,10 +98,6 @@ impl Interface {
         	general, inventory
         }
 	}
-
-    pub fn get_log(&mut self) -> &mut ui::TextDisplay {
-        self.general.text_display_mut(1)
-    }
 
     pub fn toggle_inventory(&mut self) {
         self.inventory.toggle();
@@ -198,15 +195,21 @@ impl Interface {
         }
     }
 
-	pub fn draw(&mut self, ctx: &mut Context, selected_id: Option<u8>, map: &Map) {
+	pub fn draw(&mut self, ctx: &mut Context, selected_id: Option<u8>, map: &Map, verses_ai: bool) {
 		// Get a string of info about the selected unit
         let selected = selected_id
             .and_then(|selected| map.units.get(selected))
             .map(|unit| unit.info())
             .unwrap_or_else(String::new);
 
+        let side = if verses_ai {
+            map.side.vs_ai_string()
+        } else {
+            map.side.multiplayer_string()
+        };
+
         // Set the text of the UI text display
-        self.general.text_display_mut(0).text = format!("{}\n{}", map.info(), selected);
+        self.general.text_display_mut(0).text = format!("Turn {} - {}\n{}", map.turn(), side, selected);
 
         // Set the inventory
         if self.inventory.active {
@@ -225,4 +228,21 @@ impl Interface {
         self.general.draw(ctx);
         self.inventory.draw(ctx);
 	}
+
+    // todo: the log should probably remove items after a while
+    pub fn append_to_log(&mut self, message: &str) {
+        self.general.text_display_mut(1).append(message)
+    }
+
+    pub fn set_game_over_screen(&mut self, stats: &GameStats) {
+        self.general.menu_mut(0).active = true;
+        self.general.menu_mut(0).selection = 4;
+        self.general.menu_mut(0).set_list(vec![
+            item!("Game Over", false),
+            if stats.won {item!("You won!", false)} else {item!("You lost", false)},
+            item!("Units lost: {}", stats.units_lost, false),
+            item!("Units killed: {}", stats.units_killed, false),
+            item!("Close")
+        ]);
+    }
 }

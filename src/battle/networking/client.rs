@@ -1,5 +1,5 @@
 use super::*;
-use ui::*;
+use super::super::ui::*;
 use context::*;
 
 pub struct Client {
@@ -51,11 +51,11 @@ impl Client {
         recieved_message
     }
 
-    pub fn process_responses(&mut self, dt: f32, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) {
+    pub fn process_responses(&mut self, dt: f32, ctx: &mut Context, ui: &mut Interface, camera: &mut Camera) {
         let mut i = 0;
 
         while i < self.response_queue.len() {
-            let status = self.response_queue[i].step(dt, self.side, &mut self.map, ctx, log, camera);
+            let status = self.response_queue[i].step(dt, self.side, &mut self.map, ctx, ui, camera);
 
             if status.finished {
                 self.response_queue.remove(0);
@@ -69,12 +69,16 @@ impl Client {
         }
     }
 
-    pub fn process_state_updates(&mut self) {
+    pub fn process_state_updates(&mut self) -> bool {
         for response in self.response_queue.drain(..) {
-            if let Response::NewState(map) = response {
-                self.map = map;
+            match response {
+                Response::NewState(map) => self.map = map,
+                Response::GameOver(_) => return true,
+                _ => {}
             }
         }
+
+        false
     }
 
     pub fn visibility_at(&self, x: usize, y: usize) -> Visibility {

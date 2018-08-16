@@ -4,17 +4,24 @@
 use super::map::*;
 use super::units::*;
 use super::drawer::*;
+use super::ui::*;
 
 use rand;
 use rand::distributions::*;
 
 use weapons::*;
-use ui::*;
 use context::*;
 use utils::*;
 use resources::*;
 
 use std::f32::consts::PI;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GameStats {
+    pub won: bool,
+    pub units_lost: u8,
+    pub units_killed: u8
+}
 
 pub struct Status {
     pub finished: bool,
@@ -33,7 +40,8 @@ pub enum Response {
     ThrownItem(ThrownItem),
     Explosion(Explosion),
     Bullet(Bullet),
-    Message(String)
+    Message(String),
+    GameOver(GameStats)
 }
 
 impl Response {
@@ -53,14 +61,15 @@ impl Response {
         Response::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
     }
 
-    pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, log: &mut TextDisplay, camera: &mut Camera) -> Status {
+    pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, ui: &mut Interface, camera: &mut Camera) -> Status {
         match *self {
             Response::NewState(ref new_map) => {
                 map.update_from(new_map.clone(), side);
                 Status {finished: true, blocking: false}
             },
             Response::EnemySpotted {x, y} => {
-                log.append(&format!("Enemy spotted at ({}, {})!", x, y));
+                // todo: this should probably happen client side
+                ui.append_to_log("Enemy spotted!");
                 camera.set_to(x, y);
                 Status {finished: true, blocking: false}
             },
@@ -73,12 +82,16 @@ impl Response {
                 Status {finished: *time > 0.2, blocking: true}
             },
             Response::Message(ref string) => {
-                log.append(string);
+                ui.append_to_log(string);
                 Status {finished: true, blocking: false}
             },
             Response::Explosion(ref mut explosion) => explosion.step(dt),
             Response::ThrownItem(ref mut item) => item.step(dt),
             Response::Bullet(ref mut bullet) => bullet.step(dt),
+            Response::GameOver(ref stats) => {
+                ui.set_game_over_screen(stats);
+                Status {finished: true, blocking: false}
+            }
         }
     }
 

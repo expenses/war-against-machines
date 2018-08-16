@@ -33,7 +33,7 @@ pub struct Map {
     pub tiles: Tiles,
     pub light: f32,
     pub side: Side,
-    turn: u8
+    turn: u16
 }
 
 impl Map {
@@ -145,6 +145,26 @@ impl Map {
             Command::Fire {x, y}            => fire_command(self, id, x, y, &mut responses),
         }
 
+        let player_a_units = self.units.count(Side::PlayerA);
+        let player_b_units = self.units.count(Side::PlayerB);
+
+        if player_a_units == 0 || player_b_units == 0 {
+            let player_a_units_lost = self.units.max_player_a_units - player_a_units;
+            let player_b_units_lost = self.units.max_player_b_units - player_b_units;
+
+            responses.push(Side::PlayerA, Response::GameOver(GameStats {
+                won: player_a_units != 0,
+                units_lost: player_a_units_lost,
+                units_killed: player_b_units_lost
+            }));
+
+            responses.push(Side::PlayerB, Response::GameOver(GameStats {
+                won: player_b_units != 0,
+                units_lost: player_b_units_lost,
+                units_killed: player_a_units_lost
+            }));
+        }
+
         responses
     }
 
@@ -190,8 +210,8 @@ impl Map {
         *self = new;
     }
 
-    pub fn info(&self) -> String {
-        format!("Turn {} - {}", self.turn, self.side)
+    pub fn turn(&self) -> u16 {
+        self.turn
     }
 }
 

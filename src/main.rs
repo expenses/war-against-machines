@@ -105,13 +105,13 @@ impl App {
                 match callback {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
-                        let skirmish = Battle::new_singleplayer(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
+                        let skirmish = Battle::new_vs_ai(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
                         self.set_skirmish(skirmish);
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => {
                         let path = Path::new(&self.ctx.settings.savegames).join(&filename);
-                        let skirmish = Battle::new_singleplayer(Right(&path.as_path()), self.ctx.settings.clone());
+                        let skirmish = Battle::new_vs_ai(Right(&path.as_path()), self.ctx.settings.clone());
                         self.set_skirmish(skirmish);
                     },
                     MenuCallback::HostServer(addr) => {
@@ -128,10 +128,23 @@ impl App {
                 }  
             },
             // If the skirmish returns false for a key press, switch to the menu
-            Mode::Skirmish => if let Some(ref mut skirmish) = self.skirmish {
-                if !skirmish.handle_key(key, true) {
-                    self.mode = Mode::Menu;
-                    self.menu.refresh(true);
+            Mode::Skirmish => {
+                let key_response = self.skirmish.as_mut().map(|skirmish| skirmish.handle_key(key, true));
+
+                if let Some(response) = key_response {
+                    match response {
+                        KeyResponse::GameOver => {
+                            self.mode = Mode::Menu;
+                            self.skirmish = None;
+                            self.menu.refresh(false);
+
+                        },
+                        KeyResponse::OpenMenu => {
+                            self.mode = Mode::Menu;
+                            self.menu.refresh(true);
+                        },
+                        _ => {}
+                    }
                 }
             }
         }
@@ -198,9 +211,8 @@ impl App {
 
 // The main function
 fn main() {
-    env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Info)
-        .init();
+    let env = env_logger::Env::new().filter_or("RUST_LOG", "info");
+    env_logger::init_from_env(env);
 
     // Create the app
     let settings = Settings::load();

@@ -74,10 +74,12 @@ impl MultiplayerServer {
                 let player_a = self.player_a.as_mut().unwrap();
                 let player_b = self.player_b.as_mut().unwrap();
 
+                let mut game_over = false;
+
                 match self.map.side {
                     Side::PlayerA => {
                         while let Ok(message) = player_a.recv() {
-                            handle_message(Side::PlayerA, &mut self.map, &player_a, &player_b, &self.settings, message);
+                            game_over |= handle_message(Side::PlayerA, &mut self.map, &player_a, &player_b, &self.settings, message);
                         }
 
                         while let Ok(_) = player_b.recv() {
@@ -86,13 +88,17 @@ impl MultiplayerServer {
                     },
                     Side::PlayerB => {
                         while let Ok(message) = player_b.recv() {
-                            handle_message(Side::PlayerB, &mut self.map, &player_a, &player_b, &self.settings, message);
+                            game_over |= handle_message(Side::PlayerB, &mut self.map, &player_a, &player_b, &self.settings, message);
                         }
 
                         while let Ok(_) = player_a.recv() {
                             // Do nothing
                         }
                     }
+                }
+
+                if game_over {
+                    return Ok(())
                 }
             }
 
@@ -101,8 +107,9 @@ impl MultiplayerServer {
     }
 }
 
-fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, settings: &Settings, message: ClientMessage) {
-    info!("Handling message from {}: {:?}", side, message);
+fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &ServerConn, settings: &Settings, message: ClientMessage) -> bool {
+    let mut game_over = false;
+    debug!("Handling message from {}: {:?}", side, message);
 
     let (player_a_responses, player_b_responses) = map.handle_message(message, settings, side);
 
@@ -110,10 +117,18 @@ fn handle_message(side: Side, map: &mut Map, player_a: &ServerConn, player_b: &S
     let player_a_responses = vec_or_default(player_a_responses, || Response::new_state(map, Side::PlayerA));
     let player_b_responses = vec_or_default(player_b_responses, || Response::new_state(map, Side::PlayerB));
 
+    for response in &player_a_responses {
+        if let Response::GameOver(_) = response {
+            game_over = true;
+        }
+    }
+
     if !player_a_responses.is_empty() {
         player_a.send(ServerMessage::Responses(player_a_responses)).unwrap();
     }
     if !player_b_responses.is_empty() {
         player_b.send(ServerMessage::Responses(player_b_responses)).unwrap();
     }
+
+    game_over
 }

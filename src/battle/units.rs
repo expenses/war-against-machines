@@ -93,14 +93,25 @@ impl Side {
             Side::PlayerB => Side::PlayerA
         }
     }
+
+    pub fn vs_ai_string(self) -> &'static str {
+        match self {
+            Side::PlayerA => "Player",
+            Side::PlayerB => "AI"
+        }
+    }
+
+    pub fn multiplayer_string(self) -> &'static str {
+        match self {
+            Side::PlayerA => "Player A",
+            Side::PlayerB => "Player B"
+        }
+    }
 }
 
 impl fmt::Display for Side {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Side::PlayerA => write!(f, "Player A"),
-            Side::PlayerB => write!(f, "Player B")
-        }
+        write!(f, "{}", self.multiplayer_string())
     }
 }
 
@@ -444,8 +455,8 @@ impl Unit {
 // A struct for containing all of the units
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Units {
-    max_player_a_units: u8,
-    max_player_b_units: u8,
+    pub max_player_a_units: u8,
+    pub max_player_b_units: u8,
     index: u8,
     units: HashMap<u8, Unit>
 }

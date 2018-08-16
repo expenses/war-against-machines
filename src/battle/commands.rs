@@ -32,7 +32,7 @@ impl ServerResponses {
         }
     }
 
-    fn push(&mut self, side: Side, response: Response) {
+    pub fn push(&mut self, side: Side, response: Response) {
         match side {
             Side::PlayerA => self.player_a.push(response),
             Side::PlayerB => self.player_b.push(response)
