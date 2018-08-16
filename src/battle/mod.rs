@@ -141,10 +141,10 @@ impl Battle {
     // Update the battle
     pub fn update(&mut self, ctx: &mut Context, dt: f32) {
         // Move the camera
-        if self.keys.up       { self.camera.move_y(dt); }
-        if self.keys.down     { self.camera.move_y(-dt); }
-        if self.keys.left     { self.camera.move_x(-dt); }
-        if self.keys.right    { self.camera.move_x(dt); }
+        if self.keys.up       { self.camera.move_y(dt, &self.client.map); }
+        if self.keys.down     { self.camera.move_y(-dt, &self.client.map); }
+        if self.keys.left     { self.camera.move_x(-dt, &self.client.map); }
+        if self.keys.right    { self.camera.move_x(dt, &self.client.map); }
         if self.keys.zoom_out { self.camera.zoom(-dt); }
         if self.keys.zoom_in  { self.camera.zoom(dt); }
 
@@ -261,7 +261,7 @@ impl Battle {
     }
 
     fn waiting_for_command(&self) -> bool {
-        self.map().side == self.client.side && self.client.responses().is_empty()
+        self.client.our_turn() && self.client.responses().is_empty()
     }
 
     // Get a reference to the unit that is selected

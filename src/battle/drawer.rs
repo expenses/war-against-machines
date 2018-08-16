@@ -45,26 +45,31 @@ impl Camera {
         }
     }
 
-    pub fn move_x(&mut self, step: f32) {
+    pub fn move_x(&mut self, step: f32, map: &Map) {
         let (x, y) = self.map_location();
-        
+        let width = map.tiles.width() as f32;
+        let height = map.tiles.height() as f32;
+
+
         if step > 0.0 {
-            if x < 30.0 && y > 0.0 {
+            if x < width && y > 0.0 {
                 self.x += step * Self::SPEED;
             }
-        } else if x > 0.0 && y < 30.0 {
+        } else if x > 0.0 && y < height {
             self.x += step * Self::SPEED;
         }
     }
 
-    pub fn move_y(&mut self, step: f32) {
+    pub fn move_y(&mut self, step: f32, map: &Map) {
         let (x, y) = self.map_location();
+        let width = map.tiles.width() as f32;
+        let height = map.tiles.height() as f32;
         
         if step > 0.0 {
             if x > 0.0 && y > 0.0 {
                 self.y += step * Self::SPEED;
             }
-        } else if x < 30.0 && y < 30.0 {
+        } else if x < width && y < height {
             self.y += step * Self::SPEED;
         }
     }
@@ -266,18 +271,18 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     // Draw the path if there is one
     if let Some(ref points) = battle.path {
         if let Some(unit) = battle.selected() {
-            let mut unit_moves = unit.moves;
+            let mut unit_moves = i32::from(unit.moves);
 
             // Draw the path tiles
             for point in points {
-                unit_moves = unit_moves.saturating_sub(point.cost);
+                unit_moves -= i32::from(point.cost);
 
                 if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
                     // Render the path tile
 
-                    let colour = if unit_moves == 0 {
+                    let colour = if unit_moves < 0 {
                         colours::RED
-                    } else if unit_moves < unit.weapon.tag.cost()  {
+                    } else if unit_moves < i32::from(unit.weapon.tag.cost()) {
                         colours::ORANGE
                     } else {
                         colours::WHITE
@@ -289,12 +294,12 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
 
             // Draw the path costs
 
-            unit_moves = unit.moves;
+            unit_moves = i32::from(unit.moves);
 
             for point in points {
-                unit_moves = unit_moves.saturating_sub(point.cost);
+                unit_moves -= i32::from(point.cost);
 
-                if unit_moves > 0 {
+                if unit_moves >= 0 {
                     if let Some(dest) = draw_location(ctx, camera, point.x as f32, point.y as f32) {
                         // Render the path cost
                         ctx.render_text(&unit_moves.to_string(), dest[0], dest[1], colours::WHITE);
