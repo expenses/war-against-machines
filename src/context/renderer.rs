@@ -123,7 +123,6 @@ impl Renderer {
             .magnify_filter(MagnifySamplerFilter::Nearest);
 
         // Setup the uniforms
-        // TODO: See if properties can be supplied as a whole struct
         let uniforms = uniform! {
             tileset_size: self.uniforms.tileset_size,
             screen_resolution: self.uniforms.screen_resolution,

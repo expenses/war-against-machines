@@ -1,6 +1,5 @@
 // The units in the game, and a struct to contain them
 
-
 use rand;
 use rand::{Rng, ThreadRng};
 
@@ -14,10 +13,10 @@ use items::Item;
 use weapons::{Weapon, WeaponType};
 use utils::{chance_to_hit, distance_under};
 use resources::Image;
+use context::*;
 
 // The cost for a unit to pick up / drop / use an item
 pub const ITEM_COST: u16 = 5;
-
 
 // A list of first names to pick from
 const FIRST_NAMES: &[&str] = &[
@@ -65,19 +64,12 @@ const LAST_NAMES: &[&str] = &[
 fn generate_squaddie_name(rng: &mut ThreadRng) -> String {
     let first = rng.choose(FIRST_NAMES).unwrap();
     let last = rng.choose(LAST_NAMES).unwrap();
-
     format!("{} {}", first, last)
 }
 
 // Generate a new random machine name
 fn generate_machine_name(rng: &mut ThreadRng) -> String {
-    let mut serial = rng.gen_range(0, 100_000).to_string();
-
-    while serial.len() < 5 {
-        serial.insert(0, '0');
-    }
-
-    format!("SK{}", serial)
+    format!("SK{:05}", rng.gen_range(0, 100_000))
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -175,6 +167,54 @@ impl UnitFacing {
             target_y as isize - y as isize
         ) && distance_under(x, y, target_x, target_y, sight)
     }
+
+    pub fn rotate_cw(self) -> Self {
+        match self {
+            UnitFacing::Bottom      => UnitFacing::BottomLeft,
+            UnitFacing::BottomLeft  => UnitFacing::Left,
+            UnitFacing::Left        => UnitFacing::TopLeft,
+            UnitFacing::TopLeft     => UnitFacing::Top,
+            UnitFacing::Top         => UnitFacing::TopRight,
+            UnitFacing::TopRight    => UnitFacing::Right,
+            UnitFacing::Right       => UnitFacing::BottomRight,
+            UnitFacing::BottomRight => UnitFacing::Bottom,
+        }
+    }
+
+    pub fn rotate_ccw(self) -> Self {
+        match self {
+            UnitFacing::Bottom      => UnitFacing::BottomRight,
+            UnitFacing::BottomRight => UnitFacing::Right,
+            UnitFacing::Right       => UnitFacing::TopRight,
+            UnitFacing::TopRight    => UnitFacing::Top,
+            UnitFacing::Top         => UnitFacing::TopLeft,
+            UnitFacing::TopLeft     => UnitFacing::Left,
+            UnitFacing::Left        => UnitFacing::BottomLeft,
+            UnitFacing::BottomLeft  => UnitFacing::Bottom,
+        }
+    }
+
+    pub fn rotation_cost_and_direction(self, target: Self) -> (u16, bool) {
+        let mut facing = self;
+        let mut cw_turns = 0;
+        while facing != target {
+            facing = facing.rotate_cw();
+            cw_turns += 1;
+        }
+
+        let mut facing = self;
+        let mut ccw_turns = 0;
+        while facing != target {
+            facing = facing.rotate_ccw();
+            ccw_turns += 1;
+        }
+
+        if ccw_turns < cw_turns {
+            (ccw_turns, false)
+        } else {
+            (cw_turns, true)
+        }
+    }
 }
 
 // The type of a unit
@@ -199,13 +239,6 @@ impl UnitType {
         }
     }
 
-    pub fn image(self) -> Image {
-        match self {
-            UnitType::Squaddie => Image::Squaddie,
-            UnitType::Machine => Image::Machine
-        }
-    }
-
     pub fn capacity(self) -> f32 {
         match self {
             UnitType::Squaddie => 25.0,
@@ -220,6 +253,34 @@ impl UnitType {
     // How far the unit can throw
     pub fn throw_distance(self) -> f32 {
         self.sight() * 1.5
+    }
+
+    fn front_image(self) -> Image {
+        match self {
+            UnitType::Squaddie => Image::SquaddieFront,
+            UnitType::Machine => Image::MachineFront
+        }
+    }
+
+    fn left_image(self) -> Image {
+        match self {
+            UnitType::Squaddie => Image::SquaddieLeft,
+            UnitType::Machine => Image::MachineFront
+        }
+    }
+
+    fn right_image(self) -> Image {
+        match self {
+            UnitType::Squaddie => Image::SquaddieRight,
+            UnitType::Machine => Image::MachineFront
+        }
+    }
+
+    fn back_image(self) -> Image {
+        match self {
+            UnitType::Squaddie => Image::SquaddieBack,
+            UnitType::Machine => Image::MachineBack
+        }
     }
 }
 
@@ -450,6 +511,17 @@ impl Unit {
             self.name, self.weapon, self.weapon.tag.weight(), self.carrying(), self.tag.capacity()
         )
     }
+
+    pub fn render(&self, ctx: &mut Context, dest: [f32; 2], zoom: f32, overlay: [f32; 4]) {
+        let image = match self.facing {
+            UnitFacing::Right | UnitFacing::BottomRight => self.tag.right_image(),
+            UnitFacing::Bottom | UnitFacing::BottomLeft => self.tag.front_image(),
+            UnitFacing::Left | UnitFacing::TopLeft => self.tag.left_image(),
+            _ => self.tag.back_image()
+        };
+
+        ctx.render_with_overlay(image, dest, zoom, overlay);
+    }
 }
 
 // A struct for containing all of the units
@@ -640,4 +712,13 @@ fn unit_actions() {
     // And the tile under the unit should have items on it
 
     assert_ne!(tiles.at(0, 0).items, Vec::new());
+}
+
+#[test]
+fn test_turning() {
+    let (cost, direction) = UnitFacing::Bottom.rotation_cost_and_direction(UnitFacing::Top);
+    assert_eq!((cost, direction), (4, true));
+
+    let (cost, direction) = UnitFacing::BottomRight.rotation_cost_and_direction(UnitFacing::Top);
+    assert_eq!((cost, direction), (3, false));
 }

@@ -13,6 +13,7 @@ settings.toml
 # Editor files
 .idea
 *.iml
+*.aseprite
 
 # Misc
 .DS_Store

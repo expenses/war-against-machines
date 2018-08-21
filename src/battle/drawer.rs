@@ -210,9 +210,8 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
                 ctx.render_with_overlay(Image::Cursor, dest, camera.zoom, colours::ORANGE);
             }
 
-            ctx.render_with_overlay(unit.tag.image(), dest, camera.zoom, overlay);
+            unit.render(ctx, dest, camera.zoom, overlay);
         }
-
         // If the tile has an obstacle on it, draw it
         if let Obstacle::Object(image) = tile.obstacle {
             ctx.render_with_overlay(image, dest, camera.zoom, overlay);

@@ -42,12 +42,9 @@ impl<S, R> Connection<S, R>
 	pub fn recv_blocking(&mut self) -> Result<R> {
 		match *self {
 			Connection::Local(_, ref reciever) => reciever.recv().map_err(|err| err.to_string().into()),
-			Connection::Tcp(ref mut stream) => {
-				// Todo: might be wise to get the thread to sleep for a bit after failing to read a message				
-				loop {
-					if let Ok(message) = stream.recv() {
-						return Ok(message);
-					}
+			Connection::Tcp(ref mut stream) => loop {
+				if let Ok(message) = stream.recv() {
+					return Ok(message);
 				}
 			}
 		}

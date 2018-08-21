@@ -84,8 +84,7 @@ impl AIClient {
     }
 
     fn pathfind(&self, unit: &Unit, x: usize, y: usize) -> Option<(Vec<PathPoint>, u16)> {
-        pathfind(unit, x, y, self.map())
-            .filter(|(_, cost)| *cost <= unit.moves)
+        pathfind(unit, x, y, self.map()).filter(|(_, cost)| *cost <= unit.moves)
     }
 
     pub fn run(&mut self) -> Result<()> {

@@ -16,10 +16,6 @@ check:
 shaders:
 	cargo test compile_shaders
 
-# Optimise the resource images
-optimise: $(images)
-	@$(optipng) $^
-
 # Compile Rust source code
 target/release/%: make/%.rs
 	rustc -L target/release/deps -O $^ -o $@

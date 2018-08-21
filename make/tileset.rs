@@ -11,12 +11,13 @@ const SIZE: u32 = 480;
 const FILES: &[&[&str]] = &[
     &["base/1.png", "base/2.png", "pit/top.png", "pit/left.png", "pit/right.png", "pit/bottom.png", "pit/center.png"],
     &["object/rebar.png", "object/rubble.png", "pit/tl.png", "pit/tr.png", "pit/bl.png", "pit/br.png"],
-    &["unit/squaddie.png", "unit/machine.png", "wall/ruin1_left.png", "wall/ruin1_top.png", "wall/ruin2_left.png", "wall/ruin2_top.png"],
+    &["unit/squaddie.png", "unit/squaddie_left.png", "unit/squaddie_back.png", "unit/squaddie_right.png", "unit/machine.png", "unit/machine_back.png"],
+    &["wall/ruin1_left.png", "wall/ruin1_top.png", "wall/ruin2_left.png", "wall/ruin2_top.png"],
     &["bullet/regular.png", "bullet/plasma.png"],
     &["item/squaddie_corpse.png", "item/machine_corpse.png", "item/scrap.png", "item/weapon.png", "item/ammo_clip.png", "item/bandages.png", "item/grenade.png"],
     &["cursor/default.png", "cursor/crosshair.png", "path.png"],
     &["decoration/left_edge.png", "decoration/right_edge.png", "decoration/skeleton.png", "decoration/skeleton_cracked.png", "decoration/rubble.png",
-      "decoration/crater.png", "decoration/fire.png", "explosion/1.png", "explosion/2.png", "explosion/3.png"],
+      "decoration/crater.png", "explosion/1.png", "explosion/2.png", "explosion/3.png"],
     &["title.png"],
     &["button/end_turn.png", "button/inventory.png", "button/save_game.png"],
     &["glyphs.png"]
