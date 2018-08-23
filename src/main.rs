@@ -20,6 +20,7 @@ extern crate log;
 extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
+extern crate skynet;
 
 use std::path::*;
 use std::time::*;

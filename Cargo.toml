@@ -27,6 +27,8 @@ bincode = "*"
 either = "*"
 ## Error handling
 error-chain = "*"
+## Networking
+skynet = "*"
 
 # Resource loading
 ## Loading images
