@@ -23,12 +23,14 @@ serde_derive = "*"
 toml = "*"
 ## Efficiently-serialized data
 bincode = "*"
-## Useful enum
-either = "*"
 ## Error handling
 error-chain = "*"
 ## Networking
 skynet = "*"
+## Font rendering
+runic = {path = "../hectic-rs/runic"}
+## UI
+pedot = {path = "../hectic-rs/pedot"}
 
 # Resource loading
 ## Loading images
@@ -37,7 +39,8 @@ image = "*"
 rodio = "*"
 
 # OpenGl!
-glium = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}
+glium = "*"
+#{git = "https://github.com/expenses/glium", branch = "glutin_bump"}
 
 # Logging
 log = "*"

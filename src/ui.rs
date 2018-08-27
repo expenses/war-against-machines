@@ -120,13 +120,13 @@ impl TextDisplay {
 
     // Draw the text display on the screen
     fn draw(&self, ctx: &mut Context) {
-        let height = ctx.settings.font_height() * self.text.lines().count() as f32;
+        let height = ctx.font_height() * self.text.lines().count() as f32;
         let mut y = self.h_align.get_y(self.y, height, ctx) + height / 2.0;
         
         for line in self.text.lines() {
-            let x = self.v_align.get_x(self.x, ctx.settings.font_width(line), ctx);
+            let x = self.v_align.get_x(self.x, ctx.font_width(line), ctx);
             ctx.render_text(line, x, y, WHITE);
-            y -= ctx.settings.font_height();
+            y -= ctx.font_height();
         }
     }
 }
@@ -265,7 +265,7 @@ impl Menu {
     // Draw the items in the menu
     pub fn draw(&self, ctx: &mut Context) {
         // Get the height of the rendered text
-        let height = ctx.settings.font_height() * self.list.len() as f32;
+        let height = ctx.font_height() * self.list.len() as f32;
         // Get a starting y value
         let mut y = self.h_align.get_y(self.y, height, ctx) + height / 2.0;
 
@@ -279,10 +279,10 @@ impl Menu {
             if self.selected && i == self.selection { string.insert_str(0, "> "); }
 
             // Render the string
-            let x = self.v_align.get_x(self.x, ctx.settings.font_width(&string), ctx);
+            let x = self.v_align.get_x(self.x, ctx.font_width(&string), ctx);
             ctx.render_text(&string, x, y, colour);
             // Decrease the y value
-            y -= ctx.settings.font_height();
+            y -= ctx.font_height();
         }
     }
 

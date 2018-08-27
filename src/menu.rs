@@ -109,12 +109,12 @@ impl MainMenu {
         let skirmish_submenu = &mut self.submenus[SKIRMISH];
         
         self.skirmish_settings.clamp();
-        *skirmish_submenu.get_item_mut(5)  = item!("Cols: {}", self.skirmish_settings.cols, true);
-        *skirmish_submenu.get_item_mut(6)  = item!("Rows: {}", self.skirmish_settings.rows, true);
-        *skirmish_submenu.get_item_mut(7)  = item!("Player units: {}", self.skirmish_settings.player_units, true);
-        *skirmish_submenu.get_item_mut(8)  = item!("AI units: {}", self.skirmish_settings.ai_units, true);
-        *skirmish_submenu.get_item_mut(9)  = item!("Player unit type: {}", self.skirmish_settings.player_unit_type, true);
-        *skirmish_submenu.get_item_mut(10) = item!("AI unit type: {}", self.skirmish_settings.ai_unit_type, true);
+        *skirmish_submenu.get_item_mut(5)  = item!("Width: {}", self.skirmish_settings.width, true);
+        *skirmish_submenu.get_item_mut(6)  = item!("Height: {}", self.skirmish_settings.height, true);
+        *skirmish_submenu.get_item_mut(7)  = item!("Player A units: {}", self.skirmish_settings.player_a_units, true);
+        *skirmish_submenu.get_item_mut(8)  = item!("Player B units: {}", self.skirmish_settings.player_b_units, true);
+        *skirmish_submenu.get_item_mut(9)  = item!("Player A unit type: {}", self.skirmish_settings.player_a_unit_type, true);
+        *skirmish_submenu.get_item_mut(10) = item!("Player B unit type: {}", self.skirmish_settings.player_b_unit_type, true);
         *skirmish_submenu.get_item_mut(11) = item!("Light level: {:.1}", self.skirmish_settings.light, true)
     }
 
@@ -201,12 +201,12 @@ impl MainMenu {
             VirtualKeyCode::Left | VirtualKeyCode::A => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
-                        5  => self.skirmish_settings.cols -= MAP_SIZE_CHANGE,
-                        6  => self.skirmish_settings.rows -= MAP_SIZE_CHANGE,
-                        7  => self.skirmish_settings.player_units -= 1,
-                        8  => self.skirmish_settings.ai_units -= 1,
-                        9  => self.skirmish_settings.change_player_unit_type(),
-                        10 => self.skirmish_settings.change_ai_unit_type(),
+                        5  => self.skirmish_settings.width -= MAP_SIZE_CHANGE,
+                        6  => self.skirmish_settings.height -= MAP_SIZE_CHANGE,
+                        7  => self.skirmish_settings.player_a_units -= 1,
+                        8  => self.skirmish_settings.player_b_units -= 1,
+                        9  => self.skirmish_settings.change_player_a_unit_type(),
+                        10 => self.skirmish_settings.change_player_b_unit_type(),
                         11 => self.skirmish_settings.light -= LIGHT_LEVEL_CHANGE,
                         _ => {}
                     }
@@ -228,12 +228,12 @@ impl MainMenu {
             VirtualKeyCode::Right | VirtualKeyCode::D => match self.submenu {
                 SKIRMISH => {
                     match self.submenus[SKIRMISH].selection {
-                        5  => self.skirmish_settings.cols += MAP_SIZE_CHANGE,
-                        6  => self.skirmish_settings.rows += MAP_SIZE_CHANGE,
-                        7  => self.skirmish_settings.player_units += 1,
-                        8  => self.skirmish_settings.ai_units += 1,
-                        9  => self.skirmish_settings.change_player_unit_type(),
-                        10 => self.skirmish_settings.change_ai_unit_type(),
+                        5  => self.skirmish_settings.width += MAP_SIZE_CHANGE,
+                        6  => self.skirmish_settings.height += MAP_SIZE_CHANGE,
+                        7  => self.skirmish_settings.player_a_units += 1,
+                        8  => self.skirmish_settings.player_b_units += 1,
+                        9  => self.skirmish_settings.change_player_a_unit_type(),
+                        10 => self.skirmish_settings.change_player_b_unit_type(),
                         11 => self.skirmish_settings.light += LIGHT_LEVEL_CHANGE,
                         _ => {}
                     }

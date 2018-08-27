@@ -74,21 +74,23 @@ impl Battle {
     }
 
     // Create a new Battle
-    pub fn new_vs_ai(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let map = Map::new_from_either(map)?;
-        let (client, ai, server) = singleplayer(map, settings)?;
-        Ok(Self::new(client, Some(server), Some(ai)))
-    }
-
-    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let map = Map::new_from_either(map)?;
-        let (client, server) = multiplayer(addr, map, settings)?;
-        Ok(Self::new(client, Some(server), None))
-    }
-
-    pub fn new_multiplayer_connect(addr: &str) -> Result<Self> {
-        let client = Client::new_from_addr(addr)?;
-        Ok(Self::new(client, None, None))
+    pub fn new_from_settings(skirmish_settings: &SkirmishSettings, settings: Settings) -> Result<Self> {
+        match skirmish_settings.game_type {
+            GameType::Local => {
+                let map = Map::new_or_load(skirmish_settings)?;
+                let (client, ai, server) = singleplayer(map, settings)?;
+                Ok(Self::new(client, Some(server), Some(ai)))
+            },
+            GameType::Host => {
+                let map = Map::new_or_load(skirmish_settings)?;
+                let (client, server) = multiplayer(&skirmish_settings.address, map, settings)?;
+                Ok(Self::new(client, Some(server), None))
+            },
+            GameType::Connect => {
+                let client = Client::new_from_addr(&skirmish_settings.address)?;
+                Ok(Self::new(client, None, None))
+            }
+        }
     }
 
     // Handle keypresses
@@ -290,19 +292,19 @@ fn battle_operations() {
     let skirmish_settings = SkirmishSettings::default();
     let settings = Settings::default();
 
-    let mut battle = Battle::new_vs_ai(Left(skirmish_settings.clone()), settings).unwrap();
+    let mut battle = Battle::new_from_settings(&skirmish_settings, settings).unwrap();
 
     {
         let map = &battle.client.map;
         assert_eq!(map.side, Side::PlayerA);
         assert_eq!(map.turn(), 1);
 
-        // The cols and rows are equal
-        assert_eq!(map.tiles.width(), skirmish_settings.cols);
-        assert_eq!(map.tiles.height(), skirmish_settings.rows);
+        // The width and height are equal
+        assert_eq!(map.tiles.width(), skirmish_settings.width);
+        assert_eq!(map.tiles.height(), skirmish_settings.height);
 
         // The player unit counts are equal
-        assert_eq!(map.units.count(Side::PlayerA) as usize, skirmish_settings.player_units);
+        assert_eq!(map.units.count(Side::PlayerA) as usize, skirmish_settings.player_a_units);
         
         // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
         assert_eq!(map.units.count(Side::PlayerB) as usize, 0);
@@ -311,7 +313,7 @@ fn battle_operations() {
 
         assert!(map.units.iter()
             .filter(|unit| unit.side == Side::PlayerA)
-            .all(|unit| unit.tag == skirmish_settings.player_unit_type));
+            .all(|unit| unit.tag == skirmish_settings.player_a_unit_type));
     }
 
     // The first unit should be a player unit at (0, 0)
@@ -319,7 +321,7 @@ fn battle_operations() {
     let unit = battle.client.map.units.get_mut(0).unwrap();
 
     assert_eq!(unit.side, Side::PlayerA);
-    assert_eq!(unit.tag, skirmish_settings.player_unit_type);
+    assert_eq!(unit.tag, skirmish_settings.player_a_unit_type);
 
     assert_eq!((unit.x, unit.y), (0, 0));
 }

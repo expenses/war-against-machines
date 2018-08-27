@@ -2,14 +2,15 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use battle::units::UnitType;
-use resources::{FONT_HEIGHT, CHARACTER_GAP, ImageSource};
 use utils::clamp;
+use networking::*;
 
 use toml;
 use toml::Value;
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::path::PathBuf;
 
 
 type Table = BTreeMap<String, Value>;
@@ -120,16 +121,6 @@ impl Settings {
         self.ui_scale = clamp(self.ui_scale, 1, Self::MAX_UI_SCALE);
     }
 
-    // Get the height that a string would be rendered at
-    pub fn font_height(&self) -> f32 {
-        FONT_HEIGHT * self.ui_scale()
-    }
-
-    // Get the width that a string would be rendered at
-    pub fn font_width(&self, string: &str) -> f32 {
-        string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.ui_scale())
-    }
-
     // Reset the settings
     pub fn reset(&mut self) {
         self.volume = Self::DEFAULT_VOLUME;
@@ -143,29 +134,41 @@ impl Settings {
     }
 }
 
-// A struct for holding the initialization settings for a skirmish
 #[derive(Copy, Clone)]
+pub enum GameType {
+    Local,
+    Host,
+    Connect
+}
+
+// A struct for holding the initialization settings for a skirmish
 pub struct SkirmishSettings {
-    pub cols: usize,
-    pub rows: usize,
-    pub player_units: usize,
-    pub ai_units: usize,
-    pub player_unit_type: UnitType,
-    pub ai_unit_type: UnitType,
-    pub light: f32
+    pub width: usize,
+    pub height: usize,
+    pub player_a_units: usize,
+    pub player_b_units: usize,
+    pub player_a_unit_type: UnitType,
+    pub player_b_unit_type: UnitType,
+    pub light: f32,
+    pub game_type: GameType,
+    pub address: String,
+    pub save_game: Option<PathBuf>
 }
 
 // The default skirmish settings
 impl Default for SkirmishSettings {
     fn default() -> SkirmishSettings {
         SkirmishSettings {
-            cols: 30,
-            rows: 30,
-            player_units: 6,
-            ai_units: 4,
-            player_unit_type: UnitType::Squaddie,
-            ai_unit_type: UnitType::Machine,
-            light: 1.0
+            width: 30,
+            height: 30,
+            player_a_units: 6,
+            player_b_units: 4,
+            player_a_unit_type: UnitType::Squaddie,
+            player_b_unit_type: UnitType::Machine,
+            light: 1.0,
+            game_type: GameType::Local,
+            address: DEFAULT_ADDR.into(),
+            save_game: None
         }
     }
 }
@@ -176,24 +179,24 @@ impl SkirmishSettings {
 
     // Ensure that the settings are between their min and max values
     pub fn clamp(&mut self) {
-        self.cols = clamp(self.cols, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
-        self.rows = clamp(self.rows, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
-        self.player_units = clamp(self.player_units, 1, self.cols);
-        self.ai_units = clamp(self.ai_units, 1, self.cols);
+        self.width = clamp(self.width, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
+        self.height = clamp(self.height, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
+        self.player_a_units = clamp(self.player_a_units, 1, self.width);
+        self.player_b_units = clamp(self.player_b_units, 1, self.width);
         self.light = clamp(self.light, 0.0, 1.0);
     }
 
     // Switch the player unit type
-    pub fn change_player_unit_type(&mut self) {
-        self.player_unit_type = match self.player_unit_type {
+    pub fn change_player_a_unit_type(&mut self) {
+        self.player_a_unit_type = match self.player_a_unit_type {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
         }
     }
 
     // Switch the ai unit type
-    pub fn change_ai_unit_type(&mut self) {
-        self.ai_unit_type = match self.ai_unit_type {
+    pub fn change_player_b_unit_type(&mut self) {
+        self.player_b_unit_type = match self.player_b_unit_type {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
         }

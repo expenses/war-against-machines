@@ -1,14 +1,12 @@
 use std::sync::mpsc::*;
 use std::net::*;
 use std::fmt::Debug;
-use std::io::Read;
 
-use bincode;
 use skynet::SerializedTcpStream;
 use serde::*;
 use error::*;
 
-pub const DEFAULT_ADDR: &str = "127.0.0.1:6666";
+pub const DEFAULT_ADDR: &str = "0.0.0.0:6666";
 
 #[derive(Debug)]
 pub enum Connection<S, R> {

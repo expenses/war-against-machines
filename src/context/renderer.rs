@@ -6,6 +6,7 @@ use image::{load_from_memory_with_format, ImageFormat};
 use glium::texture::*;
 use glium::index::PrimitiveType::*;
 use glium::uniforms::*;
+use runic::pixelated_program;
 
 use settings::Settings;
 use resources::TILESET;
@@ -60,11 +61,12 @@ struct Uniforms {
 
 pub struct Renderer {
     uniforms: Uniforms,
-    target: Frame,
-    display: Display,
+    pub target: Frame,
+    pub display: Display,
     vertex_buffer: VertexBuffer<Vertex>,
     indices: IndexBuffer<u16>,
-    program: Program
+    program: Program,
+    pub text_program: Program
 }
 
 impl Renderer {
@@ -91,6 +93,8 @@ impl Renderer {
         let indices = IndexBuffer::new(&display, TrianglesList, INDICES).unwrap();
         let program = Program::from_source(&display, VERT, FRAG, None).unwrap();
 
+        let text_program = pixelated_program(&display).unwrap();
+
         // Load the texture
         let (tileset_size, tileset) = load_texture(&display, TILESET);
         
@@ -106,7 +110,8 @@ impl Renderer {
             display,
             vertex_buffer,
             indices,
-            program
+            program,
+            text_program
         }
     }
 

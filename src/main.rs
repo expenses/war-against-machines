@@ -14,18 +14,17 @@ extern crate image;
 extern crate rodio;
 #[macro_use]
 extern crate glium;
-extern crate either;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
 extern crate skynet;
+extern crate runic;
+extern crate pedot;
 
-use std::path::*;
 use std::time::*;
 
-use either::*;
 use glium::glutin;
 use glutin::*;
 use glutin::dpi::LogicalPosition;
@@ -108,21 +107,20 @@ impl App {
                 match callback {
                     // Generate a new skirmish
                     MenuCallback::NewSkirmish => {
-                        let skirmish = Battle::new_vs_ai(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
+                        let skirmish = Battle::new_from_settings(&self.menu.skirmish_settings, self.ctx.settings.clone());
                         self.set_skirmish(skirmish);
                     },
                     // Load a saved skirmish
                     MenuCallback::LoadSkirmish(filename) => {
-                        let path = Path::new(&self.ctx.settings.savegames).join(&filename);
-                        let skirmish = Battle::new_vs_ai(Right(&path.as_path()), self.ctx.settings.clone());
+                        let skirmish = Battle::new_from_settings(&self.menu.skirmish_settings, self.ctx.settings.clone());
                         self.set_skirmish(skirmish);
                     },
                     MenuCallback::HostServer(addr) => {
-                        let skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings), self.ctx.settings.clone());
+                        let skirmish = Battle::new_from_settings(&self.menu.skirmish_settings, self.ctx.settings.clone());
                         self.set_skirmish(skirmish);
                     },
                     MenuCallback::ConnectServer(addr) => {
-                        let skirmish = Battle::new_multiplayer_connect(&addr);
+                        let skirmish = Battle::new_from_settings(&self.menu.skirmish_settings, self.ctx.settings.clone());
                         self.set_skirmish(skirmish);
                     }
                     MenuCallback::Resume => self.mode = Mode::Skirmish,
@@ -227,6 +225,8 @@ fn main() {
     while running {
         // Poll the window events
         events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
+            app.ctx.push_event(&event);
+
             match event {
                 WindowEvent::CloseRequested => running = false,
                 // Respond to key presses / releases
@@ -256,5 +256,6 @@ fn main() {
 
         app.update(ms);
         app.render();
+        app.ctx.clear_events();
     }
 }

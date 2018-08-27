@@ -2,7 +2,6 @@
 // This struct contains all the stuff that is (de)serialized
 
 use bincode;
-use either::*;
 
 use settings::*;
 use error::*;
@@ -38,34 +37,34 @@ pub struct Map {
 
 impl Map {
     // Create a new map
-    pub fn new(cols: usize, rows: usize, light: f32) -> Map {
+    pub fn new(width: usize, height: usize, light: f32) -> Map {
         Map {
             light, 
             units: Units::new(),
-            tiles: Tiles::new(cols, rows),
+            tiles: Tiles::new(width, height),
             turn: 1,
             side: Side::PlayerA
         }
     }
 
-    pub fn new_from_either(either: Either<SkirmishSettings, &Path>) -> Result<Self> {
-        match either {
-            Left(settings) => Ok(Self::new_from_settings(settings)),
-            Right(path) => Self::load(path)
+    pub fn new_or_load(settings: &SkirmishSettings) -> Result<Self> {
+        match settings.save_game {
+            None => Ok(Self::new_from_settings(settings)),
+            Some(ref path) => Self::load(path)
         }
     }
 
-    pub fn new_from_settings(settings: SkirmishSettings) -> Self {
-        let mut map = Self::new(settings.cols, settings.rows, settings.light);
+    pub fn new_from_settings(settings: &SkirmishSettings) -> Self {
+        let mut map = Self::new(settings.width, settings.height, settings.light);
 
         // Add player units
-        for x in 0 .. settings.player_units {
-            map.units.add(settings.player_unit_type, Side::PlayerA, x, 0, UnitFacing::Bottom);
+        for x in 0 .. settings.player_a_units {
+            map.units.add(settings.player_a_unit_type, Side::PlayerA, x, 0, UnitFacing::Bottom);
         }
 
         // Add ai units
-        for y in settings.cols - settings.ai_units .. settings.cols {
-            map.units.add(settings.ai_unit_type, Side::PlayerB, y, settings.rows - 1, UnitFacing::Top);
+        for y in settings.width - settings.player_b_units .. settings.width {
+            map.units.add(settings.player_b_unit_type, Side::PlayerB, y, settings.height - 1, UnitFacing::Top);
         }
         
         // Generate tiles

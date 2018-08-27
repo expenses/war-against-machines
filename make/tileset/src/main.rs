@@ -20,7 +20,6 @@ const FILES: &[&[&str]] = &[
       "decoration/crater.png", "explosion/1.png", "explosion/2.png", "explosion/3.png"],
     &["title.png"],
     &["button/end_turn.png", "button/inventory.png", "button/save_game.png"],
-    &["glyphs.png"]
 ];
 
 fn main() {
