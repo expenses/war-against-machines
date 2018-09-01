@@ -55,7 +55,7 @@ impl Map {
     }
 
     pub fn new_from_settings(settings: &SkirmishSettings) -> Self {
-        let mut map = Self::new(settings.width, settings.height, settings.light);
+        let mut map = Self::new(settings.width, settings.height, f32::from(settings.light) / 10.0);
 
         // Add player units
         for x in 0 .. settings.player_a_units {

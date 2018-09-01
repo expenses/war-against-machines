@@ -1,7 +1,9 @@
 use glium::glutin::VirtualKeyCode;
 
+use pedot::*;
+
 use ui;
-use ui::{MenuItem, UI, TextDisplay, TextInput, Menu, Vertical, Horizontal};
+use ui::*;
 use resources::*;
 use context::*;
 use utils::*;
@@ -42,8 +44,10 @@ impl InventoryInfo {
 }
 
 pub struct Interface {
-	general: UI,
-	inventory: UI
+    general: UI,
+    inventory: UI,
+    game_over: List<ListItem>,
+    game_over_active: bool
 }
 
 impl Interface {
@@ -95,7 +99,9 @@ impl Interface {
         ]);
 
         Self {
-        	general, inventory
+        	general, inventory,
+            game_over: list!(),
+            game_over_active: false
         }
 	}
 
@@ -179,11 +185,11 @@ impl Interface {
     }
 
     pub fn game_over_screen_active(&self) -> bool {
-        self.general.menu(0).active
+        self.game_over_active
     }
 
     pub fn draw_game_over_screen(&self, ctx: &mut Context) {
-        self.general.menu(0).draw(ctx);
+        render_list(&self.game_over, ctx);
     }
 
     pub fn clicked(&self, ctx: &Context, mouse: (f32, f32)) -> Option<Button>{
@@ -235,14 +241,14 @@ impl Interface {
     }
 
     pub fn set_game_over_screen(&mut self, stats: &GameStats) {
-        self.general.menu_mut(0).active = true;
-        self.general.menu_mut(0).selection = 4;
-        self.general.menu_mut(0).set_list(vec![
-            item!("Game Over", false),
-            if stats.won {item!("You won!", false)} else {item!("You lost", false)},
-            item!("Units lost: {}", stats.units_lost, false),
-            item!("Units killed: {}", stats.units_killed, false),
-            item!("Close")
+        self.game_over_active = true;
+        self.game_over.set_entries(vec![
+            ListItem::new(0.0, 40.0, "Game Over").unselectable(),
+            ListItem::new(0.0, 20.0, if stats.won {"Game Over"} else {"You Lost"}).unselectable(),
+            ListItem::new(0.0, 0.0, &format!("Units lost: {}", stats.units_lost)).unselectable(),
+            ListItem::new(0.0, -20.0, &format!("Units killed: {}", stats.units_killed)).unselectable(),
+            ListItem::new(0.0, -40.0, "Close")
         ]);
+        self.game_over.set_index(4);
     }
 }

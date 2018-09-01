@@ -914,6 +914,7 @@ dependencies = [
 name = "pedot"
 version = "0.1.0"
 dependencies = [
+ "derive_is_enum_variant 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

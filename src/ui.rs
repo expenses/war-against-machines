@@ -1,5 +1,75 @@
 // A UI struct to display clickable buttons and text fields
 
+use pedot::*;
+
+macro_rules! list {
+    ($($widget: expr),*) => (
+        List::new(vec![$($widget,)*])
+    )
+}
+
+#[derive(Debug)]
+pub struct ListItem {
+    x: f32,
+    y: f32,
+    text: String,
+    selectable: bool
+}
+
+impl ListItem {
+    pub fn new(x: f32, y: f32, text: &str) -> Self {
+        Self {
+            x, y,
+            text: text.into(),
+            selectable: true
+        }
+    }
+
+    pub fn unselectable(mut self) -> Self {
+        self.selectable = false;
+        self
+    }
+
+    pub fn set_selectable(&mut self, selectable: bool) -> &mut Self {
+        self.selectable = selectable;
+        self
+    }
+
+    pub fn set_text(&mut self, text: &str) -> &mut Self {
+        self.text = text.into();
+        self
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn selectable(&self) -> bool {
+        self.selectable
+    }
+
+    pub fn render(&self, ctx: &mut Context, selected: bool) {
+        let colour = if self.selectable {WHITE} else {GREY};
+
+        if selected {
+            ctx.render_text(&format!("> {}", self.text), self.x, self.y, colour);
+        } else {
+            ctx.render_text(&self.text, self.x, self.y, colour);
+        };
+    }
+}
+
+pub fn render_list(list: &List<ListItem>, ctx: &mut Context) {
+    let index = list.index();
+
+    for (i, item) in list.as_ref().iter().enumerate() {
+        item.render(ctx, i == index);
+    }
+}
+
+
+
+
 use *;
 
 use resources::{ImageSource, Image, ToChar};
@@ -201,22 +271,6 @@ impl MenuItem {
             text, enabled
         }
     }
-
-    pub fn content(&self) -> String {
-        self.text.clone()
-    }
-
-    // Handle key presses
-    pub fn handle_key(&mut self, key: VirtualKeyCode) {
-        if key == VirtualKeyCode::Back {
-            self.text.pop();
-        } else {
-            self.text.push(match key.to_char() {
-                '�' => return,
-                character => character
-            });
-        }
-    }
 }
 
 macro_rules! item {
@@ -231,12 +285,6 @@ macro_rules! item {
     );
     ($item: expr, $thing: expr, $boolean: expr) => (
         MenuItem::new(format!($item, $thing), $boolean)
-    )
-}
-
-macro_rules! menu {
-    ($($item: expr),*) => (
-        Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, true, true, vec![$($item,)*])
     )
 }
 
@@ -286,15 +334,6 @@ impl Menu {
         }
     }
 
-    // Get the selected item
-    pub fn selected(&self) -> String {
-        self.list[self.selection].text.clone()
-    }
-
-    pub fn set_enabled(&mut self, i: usize, enabled: bool) {
-        self.list[i].enabled = enabled;
-    }
-
     pub fn enabled(&self, i: usize) -> bool {
         self.list[i].enabled
     }
@@ -305,14 +344,6 @@ impl Menu {
         if self.selection >= self.list.len() {
             self.selection = self.list.len() - 1;
         }
-    }
-
-    pub fn get_item(&self, index: usize) -> &MenuItem {
-        &self.list[index]
-    }
-
-    pub fn get_item_mut(&mut self, index: usize) -> &mut MenuItem {
-        &mut self.list[index]
     }
 
     // Are any of the items in the list enabled?
@@ -455,34 +486,4 @@ impl UI {
             .find(|&(_, button)| button.active && button.clicked(ctx, mouse.0, mouse.1))
             .map(|(i, _)| i)
     }
-}
-
-#[test]
-fn test_menu() {
-    let items = vec![item!("Item 1"), item!("Item 2", false), item!("Item 3")];
-
-    // Test the `item!` macro
-
-    assert_eq!(items, vec![
-        MenuItem::new("Item 1".into(), true),
-        MenuItem::new("Item 2".into(), false),
-        MenuItem::new("Item 3".into(), true)
-    ]);
-
-    let mut menu = Menu::new(0.0, 0.0, Vertical::Left, Horizontal::Top, true, true, items);
-
-    assert_eq!(menu.selected(), "Item 1".to_string());
-
-    menu.rotate_down();
-
-    assert_eq!(menu.selected(), "Item 3".to_string());
-
-    menu.rotate_up();
-
-    assert_eq!(menu.selected(), "Item 1".to_string());
-
-    menu.set_enabled(1, true);
-    menu.rotate_down();
-
-    assert_eq!(menu.selected(), "Item 2".to_string());
 }

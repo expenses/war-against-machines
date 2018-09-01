@@ -17,7 +17,7 @@ pub struct Context {
     renderer: Renderer,
     player: Player,
     font: CachedFont<'static>,
-    events: UIEvents<GlutinTranslator>
+    pub gui: Gui
 }
 
 impl Context {
@@ -25,13 +25,13 @@ impl Context {
     pub fn new(event_loop: &EventsLoop, settings: Settings) -> Self {
         let renderer = Renderer::new(event_loop, &settings);
 
+        let (width, height) = (settings.window_width as f32, settings.window_height as f32);
+
         Self {
-            width: settings.window_width as f32,
-            height: settings.window_height as f32,
-            settings,
+            width, height, settings,
             player: Player::new(),
             font: CachedFont::from_bytes(FONT, &renderer.display).unwrap(),
-            events: UIEvents::default(),
+            gui: Gui::new(width, height),
             renderer
         }
     }
@@ -111,12 +111,12 @@ impl Context {
         self.renderer.clear(colours::BLACK);
     }
 
-    pub fn push_event(&mut self, event: &WindowEvent) {
-        self.events.push_event(event);
+    pub fn update_gui(&mut self, event: &WindowEvent) {
+        self.gui.update(event);
     }
 
-    pub fn clear_events(&mut self) {
-        self.events.clear();
+    pub fn clear_gui(&mut self) {
+        self.gui.clear();
     }
 
     // Play a sound effect

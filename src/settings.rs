@@ -134,11 +134,34 @@ impl Settings {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum GameType {
     Local,
     Host,
     Connect
+}
+
+impl GameType {
+    pub fn as_str(&self) -> &str {
+        match *self {
+            GameType::Local => "Local",
+            GameType::Host => "Host",
+            GameType::Connect => "Connect"
+        }
+    }
+
+    pub fn rotate_right(&mut self) {
+        *self = match *self {
+            GameType::Local => GameType::Host,
+            GameType::Host => GameType::Connect,
+            GameType::Connect => GameType::Local
+        }
+    }
+
+    pub fn rotate_left(&mut self) {
+        self.rotate_right();
+        self.rotate_right();
+    }
 }
 
 // A struct for holding the initialization settings for a skirmish
@@ -149,7 +172,7 @@ pub struct SkirmishSettings {
     pub player_b_units: usize,
     pub player_a_unit_type: UnitType,
     pub player_b_unit_type: UnitType,
-    pub light: f32,
+    pub light: u8,
     pub game_type: GameType,
     pub address: String,
     pub save_game: Option<PathBuf>
@@ -165,7 +188,7 @@ impl Default for SkirmishSettings {
             player_b_units: 4,
             player_a_unit_type: UnitType::Squaddie,
             player_b_unit_type: UnitType::Machine,
-            light: 1.0,
+            light: 10,
             game_type: GameType::Local,
             address: DEFAULT_ADDR.into(),
             save_game: None
@@ -183,7 +206,7 @@ impl SkirmishSettings {
         self.height = clamp(self.height, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
         self.player_a_units = clamp(self.player_a_units, 1, self.width);
         self.player_b_units = clamp(self.player_b_units, 1, self.width);
-        self.light = clamp(self.light, 0.0, 1.0);
+        self.light = clamp(self.light, 0, 10);
     }
 
     // Switch the player unit type
@@ -200,6 +223,10 @@ impl SkirmishSettings {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
         }
+    }
+
+    pub fn set_savegame(&mut self, savegame: &str, settings: &Settings) {
+        self.save_game = Some(PathBuf::from(&settings.savegames).join(savegame));
     }
 }
 
