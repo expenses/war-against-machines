@@ -1,10 +1,12 @@
 mod renderer;
 mod audio;
 
+use runic::*;
+use pedot::*;
 use glutin::*;
 use colours;
 use settings::Settings;
-use resources::{ImageSource, Image, SoundEffect, CHARACTER_GAP};
+use resources::*;
 use self::renderer::{Renderer, Properties}; 
 use self::audio::Player;
 
@@ -13,18 +15,28 @@ pub struct Context {
     pub width: f32,
     pub height: f32,
     renderer: Renderer,
-    player: Player
+    player: Player,
+    font: CachedFont<'static>,
+    pub gui: Gui
 }
 
 impl Context {
+    pub const UI_SCALE: f32 = 2.0;
+    pub const FONT_SCALE: f32 = 13.0;
+    pub const FONT_HEIGHT: f32 = Self::UI_SCALE * Self::FONT_SCALE;
+
     // Create a new context
-    pub fn new(event_loop: &EventsLoop, settings: Settings) -> Context {
-        Context {
-            renderer: Renderer::new(event_loop, &settings),
-            width: settings.window_width as f32,
-            height: settings.window_height as f32,
-            settings,
-            player: Player::new()
+    pub fn new(event_loop: &EventsLoop, settings: Settings) -> Self {
+        let renderer = Renderer::new(event_loop, &settings);
+
+        let (width, height) = (settings.window_width as f32, settings.window_height as f32);
+
+        Self {
+            width, height, settings,
+            player: Player::new(),
+            font: CachedFont::from_bytes(FONT, &renderer.display).unwrap(),
+            gui: Gui::new(width, height),
+            renderer
         }
     }
 
@@ -36,35 +48,26 @@ impl Context {
         self.renderer.resize(width, height);
     }
 
+    pub fn font_width(&self, text: &str) -> f32 {
+        self.font.rendered_width(text, Self::FONT_HEIGHT, true, &self.renderer.display)
+    }
+
     // Render text
-    pub fn render_text(&mut self, string: &str, mut x: f32, y: f32, colour: [f32; 4]) {
+    pub fn render_text(&mut self, string: &str, mut x: f32, mut y: f32, colour: [f32; 4]) {
+        // Correct for screen position
+        y -= Self::FONT_SCALE;
+
         // Center the text on its width
-        x = (x - self.settings.font_width(string) / 2.0).floor();
+        let width = self.font_width(string);
+        x -= width / 2.0;
         
-        // If the ui scale is odd, offset by 0.5
-        if self.settings.ui_scale % 2 == 1 {
-            x += 0.5;
-        }
-
-        let scale = self.settings.ui_scale();
-
-        // Render each character
-        for character in string.chars() {
-            // Offset the character by its width
-            x += (character.width() + CHARACTER_GAP) / 2.0 * scale;
-            
-            // Render the character
-            self.renderer.render(Properties {
-                src: character.source(),
-                dest: [x, y],
-                rotation: 0.0,
-                overlay_colour: colour,
-                scale
-            });
-
-            // Move to the start of the next character
-            x += (character.width() + CHARACTER_GAP) / 2.0 * scale;
-        }
+        self.font.render_pixelated(
+            string,
+            [x, y],
+            Self::FONT_SCALE, Self::UI_SCALE,
+            colour,
+            &mut self.renderer.target, &self.renderer.display, &self.renderer.text_program
+        ).unwrap();
     }
 
     // Render an image
@@ -103,6 +106,14 @@ impl Context {
     // Clear the renderer
     pub fn clear(&mut self) {
         self.renderer.clear(colours::BLACK);
+    }
+
+    pub fn update_gui(&mut self, event: &WindowEvent) {
+        self.gui.update(event);
+    }
+
+    pub fn clear_gui(&mut self) {
+        self.gui.clear();
     }
 
     // Play a sound effect

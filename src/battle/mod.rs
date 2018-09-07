@@ -24,8 +24,6 @@ use super::error::*;
 use context::*;
 use settings::*;
 
-// todo: review all code & comments
-
 pub enum KeyResponse {
     GameOver,
     Continue,
@@ -76,19 +74,23 @@ impl Battle {
     }
 
     // Create a new Battle
-    pub fn new_vs_ai(map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let (client, ai, server) = singleplayer(map, settings)?;
-        Ok(Self::new(client, Some(server), Some(ai)))
-    }
-
-    pub fn new_multiplayer_host(addr: &str, map: Either<SkirmishSettings, &Path>, settings: Settings) -> Result<Self> {
-        let (client, server) = multiplayer(addr, map, settings)?;
-        Ok(Self::new(client, Some(server), None))
-    }
-
-    pub fn new_multiplayer_connect(addr: &str) -> Result<Self> {
-        let client = Client::new_from_addr(addr)?;
-        Ok(Self::new(client, None, None))
+    pub fn new_from_settings(skirmish_settings: &SkirmishSettings, settings: Settings) -> Result<Self> {
+        match skirmish_settings.game_type {
+            GameType::Local => {
+                let map = Map::new_or_load(skirmish_settings)?;
+                let (client, ai, server) = singleplayer(map, settings)?;
+                Ok(Self::new(client, Some(server), Some(ai)))
+            },
+            GameType::Host => {
+                let map = Map::new_or_load(skirmish_settings)?;
+                let (client, server) = multiplayer(&skirmish_settings.address, map, settings)?;
+                Ok(Self::new(client, Some(server), None))
+            },
+            GameType::Connect => {
+                let client = Client::new_from_addr(&skirmish_settings.address)?;
+                Ok(Self::new(client, None, None))
+            }
+        }
     }
 
     // Handle keypresses
@@ -110,11 +112,8 @@ impl Battle {
         }
 
         // Respond to key presses when the text input is open
-        if pressed {
-            let handled = self.interface.try_handle_save_game_keypress(key, &self.client);
-            if handled {
-                return KeyResponse::Continue;
-            }
+        if self.interface.save_game_open() {
+            return KeyResponse::Continue;
         }
 
         // Respond to key presses when the inventory is open
@@ -166,6 +165,8 @@ impl Battle {
                 ai.join().unwrap().unwrap();
             }
         }
+
+        self.interface.update_savegame(ctx, &self.client);
     }
 
     // Draw both the map and the UI
@@ -181,9 +182,9 @@ impl Battle {
     }
 
     // Move the cursor on the screen
-    pub fn move_cursor(&mut self, x: f32, y: f32) {
+    pub fn move_cursor(&mut self, x: f32, y: f32, ctx: &Context) {
         // Get the position where the cursor should be
-        let (x, y) = self.camera.tile_under_cursor(x, y);
+        let (x, y) = self.camera.tile_under_cursor(x, y, ctx.width, ctx.height);
 
         // Set cursor position if it is on the map and visible
         self.cursor = if x < self.map().tiles.width() && y < self.map().tiles.height() {
@@ -231,13 +232,13 @@ impl Battle {
     }
 
     // Respond to mouse presses
-    pub fn mouse_button(&mut self, button: MouseButton, mouse: (f32, f32), ctx: &Context) {
+    pub fn mouse_button(&mut self, button: MouseButton, ctx: &Context) {
         if !self.waiting_for_command() {
             return;
         }
 
         match button {
-            MouseButton::Left => match self.interface.clicked(ctx, mouse) {
+            MouseButton::Left => match self.interface.clicked(ctx) {
                 // End the turn
                 Some(Button::EndTurn) => self.end_turn(),
                 // Toggle the inventory
@@ -290,19 +291,19 @@ fn battle_operations() {
     let skirmish_settings = SkirmishSettings::default();
     let settings = Settings::default();
 
-    let mut battle = Battle::new_vs_ai(Left(skirmish_settings.clone()), settings).unwrap();
+    let mut battle = Battle::new_from_settings(&skirmish_settings, settings).unwrap();
 
     {
         let map = &battle.client.map;
         assert_eq!(map.side, Side::PlayerA);
         assert_eq!(map.turn(), 1);
 
-        // The cols and rows are equal
-        assert_eq!(map.tiles.width(), skirmish_settings.cols);
-        assert_eq!(map.tiles.height(), skirmish_settings.rows);
+        // The width and height are equal
+        assert_eq!(map.tiles.width(), skirmish_settings.width);
+        assert_eq!(map.tiles.height(), skirmish_settings.height);
 
         // The player unit counts are equal
-        assert_eq!(map.units.count(Side::PlayerA) as usize, skirmish_settings.player_units);
+        assert_eq!(map.units.count(Side::PlayerA) as usize, skirmish_settings.player_a_units);
         
         // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
         assert_eq!(map.units.count(Side::PlayerB) as usize, 0);
@@ -311,7 +312,7 @@ fn battle_operations() {
 
         assert!(map.units.iter()
             .filter(|unit| unit.side == Side::PlayerA)
-            .all(|unit| unit.tag == skirmish_settings.player_unit_type));
+            .all(|unit| unit.tag == skirmish_settings.player_a_unit_type));
     }
 
     // The first unit should be a player unit at (0, 0)
@@ -319,7 +320,7 @@ fn battle_operations() {
     let unit = battle.client.map.units.get_mut(0).unwrap();
 
     assert_eq!(unit.side, Side::PlayerA);
-    assert_eq!(unit.tag, skirmish_settings.player_unit_type);
+    assert_eq!(unit.tag, skirmish_settings.player_a_unit_type);
 
     assert_eq!((unit.x, unit.y), (0, 0));
 }

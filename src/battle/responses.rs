@@ -15,6 +15,29 @@ use utils::*;
 use resources::*;
 
 use std::f32::consts::PI;
+use std::collections::*;
+
+pub struct VisibleEnemies {
+    positions: HashMap<u8, (usize, usize)>
+}
+
+impl VisibleEnemies {
+    pub fn new(side: Side, map: &Map) -> Self {
+        Self {
+            positions: map.visible(side.enemies()).map(|unit| (unit.id, (unit.x, unit.y))).collect()
+        }
+    }
+
+    pub fn new_enemy(&self, side: Side, map: &Map) -> Option<(usize, usize)> {
+        for enemy in map.visible(side.enemies()) {
+            if !self.positions.contains_key(&enemy.id) {
+                return Some((enemy.x, enemy.y));
+            }
+        }
+
+        None
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GameStats {
@@ -33,15 +56,12 @@ pub enum Response {
     Walk(f32),
     SoundEffect(SoundEffect),
     NewState(Map),
-    EnemySpotted {
-        x: usize,
-        y: usize
-    },
     ThrownItem(ThrownItem),
     Explosion(Explosion),
     Bullet(Bullet),
     Message(String),
-    GameOver(GameStats)
+    GameOver(GameStats),
+    InvalidCommand
 }
 
 impl Response {
@@ -64,13 +84,14 @@ impl Response {
     pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, ui: &mut Interface, camera: &mut Camera) -> Status {
         match *self {
             Response::NewState(ref new_map) => {
+                let enemies = VisibleEnemies::new(side, map);
                 map.update_from(new_map.clone(), side);
-                Status {finished: true, blocking: false}
-            },
-            Response::EnemySpotted {x, y} => {
-                // todo: this should probably happen client side
-                ui.append_to_log("Enemy spotted!");
-                camera.set_to(x, y);
+
+                if let Some((new_x, new_y)) = enemies.new_enemy(side, map) {
+                    ui.append_to_log("Enemy spotted!");
+                    camera.set_to(new_x, new_y);
+                }
+
                 Status {finished: true, blocking: false}
             },
             Response::SoundEffect(ref effect) => {
@@ -90,6 +111,11 @@ impl Response {
             Response::Bullet(ref mut bullet) => bullet.step(dt),
             Response::GameOver(ref stats) => {
                 ui.set_game_over_screen(stats);
+                Status {finished: true, blocking: false}
+            },
+            Response::InvalidCommand => {
+                // todo: be less vague!
+                ui.append_to_log("Invalid Command");
                 Status {finished: true, blocking: false}
             }
         }
@@ -344,7 +370,7 @@ impl Bullet {
 // test extrapolation
 #[test]
 fn extrapolation_tests() {
-    let map = Map::new(20, 10, 1.0);
+    let map = Map::new(20, 10, 10.0);
 
     // Lateral directions
     assert_eq!(extrapolate(1.0, 1.0, 2.0, 1.0, &map), (25.0, 1.0));

@@ -1,6 +1,6 @@
 [package]
 name = "war-against-machines"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Expenses <expenses@airmail.cc>"]
 
 [dependencies]
@@ -23,10 +23,14 @@ serde_derive = "*"
 toml = "*"
 ## Efficiently-serialized data
 bincode = "*"
-## Useful enum
-either = "*"
 ## Error handling
 error-chain = "*"
+## Networking
+skynet = "*"
+## Font rendering
+runic = {git = "https://github.com/expenses/runic"}
+## UI
+pedot = {git = "https://github.com/expenses/pedot"}
 
 # Resource loading
 ## Loading images
@@ -35,7 +39,8 @@ image = "*"
 rodio = "*"
 
 # OpenGl!
-glium = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}
+glium = "*"
+#{git = "https://github.com/expenses/glium", branch = "glutin_bump"}
 
 # Logging
 log = "*"

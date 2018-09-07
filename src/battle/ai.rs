@@ -49,7 +49,7 @@ impl Walk {
 pub struct AIClient {
     client: Client,
     finished_units: HashSet<u8>,
-    waiting_for_message: bool
+    waiting_for_response: Option<u8>
 }
 
 impl AIClient {
@@ -57,7 +57,7 @@ impl AIClient {
         Ok(Self {
             client: Client::new(connection)?,
             finished_units: HashSet::new(),
-            waiting_for_message: false
+            waiting_for_response: None
         })
     }
 
@@ -84,24 +84,30 @@ impl AIClient {
     }
 
     fn pathfind(&self, unit: &Unit, x: usize, y: usize) -> Option<(Vec<PathPoint>, u16)> {
-        pathfind(unit, x, y, self.map())
-            .filter(|(_, cost)| *cost <= unit.moves)
+        pathfind(unit, x, y, self.map()).filter(|(_, cost)| *cost <= unit.moves)
     }
 
     pub fn run(&mut self) -> Result<()> {
         loop {
             let message_recieved = self.client.recv();
-            if message_recieved {
-                self.waiting_for_message = false;
+            let (finished, invalid_command) = self.client.process_state_updates();
+
+            if invalid_command {
+                if let Some(id) = self.waiting_for_response.take() {
+                    debug!("Invalid command issued by {}", id);
+                    self.finished_units.insert(id);
+                }
             }
 
-            let finished = self.client.process_state_updates();
+            if message_recieved {
+                self.waiting_for_response = None;
+            }
 
             if finished {
                 return Ok(());
             }
 
-            if !self.waiting_for_message && self.client.our_turn() {
+            if self.waiting_for_response.is_none() && self.client.our_turn() {
                 let next_unit = self.client.map.units.iter()
                     .find(|unit| {
                         unit.side == self.client.side &&
@@ -111,13 +117,13 @@ impl AIClient {
 
                 if let Some(unit) = next_unit {
                     let sent_message = self.process_unit(unit);
-                    self.waiting_for_message = sent_message;
-                    if !sent_message {
+                    if sent_message {
+                        self.waiting_for_response = Some(unit.id);
+                    } else {
                         self.finished_units.insert(unit.id);
                     }
                 } else {
                     self.client.end_turn();
-                    self.waiting_for_message = true;
                     self.finished_units.clear();
                 }
             }
@@ -147,7 +153,6 @@ impl AIClient {
             None => self.maximize_tile_search(unit)
         };
 
-        debug!("Unit: {:?}", unit);
         debug!("Move: {:?}", ai_move);
         debug!("Finished: {:?}", self.finished_units);
 
@@ -232,4 +237,24 @@ impl AIClient {
         
         score
     }
+}
+
+#[test]
+// This will quit after the first action
+fn test_empty_ai_match() {
+    use super::units::*;
+    use super::networking::*;
+    use settings::*;
+
+    let settings = Settings::default();
+    let mut map = Map::new(20, 20, 0.0);
+    map.units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
+    map.units.add(UnitType::Squaddie, Side::PlayerA, 1, 0, UnitFacing::Bottom);
+    map.units.add(UnitType::Squaddie, Side::PlayerA, 2, 0, UnitFacing::Bottom);
+
+    let (mut server, ai_1, ai_2) = ai_vs_ai(map, settings).unwrap();
+
+    server.run().unwrap();
+    ai_1.join().unwrap().unwrap();
+    ai_2.join().unwrap().unwrap();
 }

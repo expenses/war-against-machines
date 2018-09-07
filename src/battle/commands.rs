@@ -58,59 +58,33 @@ impl ServerResponses {
     }
 }
 
-
-struct VisibleEnemies {
-    positions: HashSet<(usize, usize)>
-}
-
-impl VisibleEnemies {
-    fn new(unit: &Unit, map: &Map) -> Self {
-        Self {
-            positions: map.visible(unit.side.enemies()).map(|unit| (unit.x, unit.y)).collect()
-        }
-    }
-
-    fn new_enemy(&self, unit: &Unit, map: &Map) -> Option<(usize, usize)> {
-        for enemy in map.visible(unit.side.enemies()) {
-            let position = (enemy.x, enemy.y);
-            if !self.positions.contains(&position) {
-                return Some(position);
-            }
-        }
-
-        None
-    }
-}
-
 pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, responses: &mut ServerResponses) {
-    let (visible_enemies, side) = {
-        let unit = map.units.get(id).unwrap();
-        (VisibleEnemies::new(unit, map), unit.side)
-    };
+    let current_facing = map.units.get(id).unwrap().facing;
 
-    // Todo: turning should have a cost
-    map.units.get_mut(id).unwrap().facing = new_facing;
+    // todo: animate turning
+
+    let (cost, _) = current_facing.rotation_cost_and_direction(new_facing);
+
+    {
+        let unit = map.units.get_mut(id).unwrap();
+        if unit.moves >= cost {
+            unit.facing = new_facing;
+            unit.moves -= cost;
+        }
+    }
 
     responses.push_and_update_state(map);
-
-    if let Some((x, y)) = visible_enemies.new_enemy(map.units.get(id).unwrap(), map) {
-        responses.push(side, Response::EnemySpotted {x, y});
-    }
 }
 
 pub fn move_command(map: &mut Map, id: u8, path: Vec<UnitFacing>, responses: &mut ServerResponses) {
-    let (visible_enemies, side) = {
-        let unit = map.units.get(id).unwrap();
-
-        (VisibleEnemies::new(unit, map), unit.side)
-    };
+    let side = map.units.get(id).unwrap().side;
+    let visible_enemies = VisibleEnemies::new(side, map);
 
     for facing in path {
         let (moves, current_point) = {
             let unit = map.units.get(id).unwrap();
 
-            if let Some((x, y)) = visible_enemies.new_enemy(unit, map) {
-                responses.push(side, Response::EnemySpotted {x, y});
+            if visible_enemies.new_enemy(unit.side, map).is_some() {
                 return;
             }
 
@@ -126,7 +100,7 @@ pub fn move_command(map: &mut Map, id: u8, path: Vec<UnitFacing>, responses: &mu
             None => return
         };
 
-        if moves < future_point.cost || map.taken(future_point.x, future_point.y) {
+        if moves < future_point.cost {
             return;
         }
 

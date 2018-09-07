@@ -2,14 +2,15 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use battle::units::UnitType;
-use resources::{FONT_HEIGHT, CHARACTER_GAP, ImageSource};
 use utils::clamp;
+use networking::*;
 
 use toml;
 use toml::Value;
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::path::PathBuf;
 
 
 type Table = BTreeMap<String, Value>;
@@ -26,7 +27,6 @@ fn to_table(value: Value) -> Option<Table> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Settings {
     pub volume: u8,
-    pub ui_scale: u8,
     pub window_width: u32,
     pub window_height: u32,
     pub fullscreen: bool,
@@ -38,7 +38,6 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             volume: Self::DEFAULT_VOLUME,
-            ui_scale: Self::DEFAULT_UI_SCALE,
             window_width: 960,
             window_height: 540,
             fullscreen: false,
@@ -49,8 +48,6 @@ impl Default for Settings {
 
 impl Settings {
     const DEFAULT_VOLUME: u8 = 100;
-    const DEFAULT_UI_SCALE: u8 = 2;
-    const MAX_UI_SCALE: u8 = 4;
     const FILENAME: &'static str = "settings.toml";
 
     // Load the settings or use the defaults
@@ -110,30 +107,14 @@ impl Settings {
         }
     }
 
-    pub fn ui_scale(&self) -> f32 {
-        f32::from(self.ui_scale)
-    }
-
     // Make sure the volume isn't too high
     pub fn clamp(&mut self) {
         self.volume = clamp(self.volume, 0, Self::DEFAULT_VOLUME);
-        self.ui_scale = clamp(self.ui_scale, 1, Self::MAX_UI_SCALE);
-    }
-
-    // Get the height that a string would be rendered at
-    pub fn font_height(&self) -> f32 {
-        FONT_HEIGHT * self.ui_scale()
-    }
-
-    // Get the width that a string would be rendered at
-    pub fn font_width(&self, string: &str) -> f32 {
-        string.chars().fold(0.0, |total, character| total + (character.width() + CHARACTER_GAP) * self.ui_scale())
     }
 
     // Reset the settings
     pub fn reset(&mut self) {
         self.volume = Self::DEFAULT_VOLUME;
-        self.ui_scale = Self::DEFAULT_UI_SCALE;
     }
 
     // Convert the settings into a B-Tree map of key-value pairs
@@ -143,29 +124,64 @@ impl Settings {
     }
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum GameType {
+    Local,
+    Host,
+    Connect
+}
+
+impl GameType {
+    pub fn as_str(&self) -> &str {
+        match *self {
+            GameType::Local => "Local",
+            GameType::Host => "Host",
+            GameType::Connect => "Connect"
+        }
+    }
+
+    pub fn rotate_right(&mut self) {
+        *self = match *self {
+            GameType::Local => GameType::Host,
+            GameType::Host => GameType::Connect,
+            GameType::Connect => GameType::Local
+        }
+    }
+
+    pub fn rotate_left(&mut self) {
+        self.rotate_right();
+        self.rotate_right();
+    }
+}
+
 // A struct for holding the initialization settings for a skirmish
-#[derive(Copy, Clone)]
 pub struct SkirmishSettings {
-    pub cols: usize,
-    pub rows: usize,
-    pub player_units: usize,
-    pub ai_units: usize,
-    pub player_unit_type: UnitType,
-    pub ai_unit_type: UnitType,
-    pub light: f32
+    pub width: usize,
+    pub height: usize,
+    pub player_a_units: usize,
+    pub player_b_units: usize,
+    pub player_a_unit_type: UnitType,
+    pub player_b_unit_type: UnitType,
+    pub light: u8,
+    pub game_type: GameType,
+    pub address: String,
+    pub save_game: Option<PathBuf>
 }
 
 // The default skirmish settings
 impl Default for SkirmishSettings {
     fn default() -> SkirmishSettings {
         SkirmishSettings {
-            cols: 30,
-            rows: 30,
-            player_units: 6,
-            ai_units: 4,
-            player_unit_type: UnitType::Squaddie,
-            ai_unit_type: UnitType::Machine,
-            light: 1.0
+            width: 30,
+            height: 30,
+            player_a_units: 6,
+            player_b_units: 4,
+            player_a_unit_type: UnitType::Squaddie,
+            player_b_unit_type: UnitType::Machine,
+            light: 10,
+            game_type: GameType::Local,
+            address: DEFAULT_ADDR.into(),
+            save_game: None
         }
     }
 }
@@ -176,27 +192,31 @@ impl SkirmishSettings {
 
     // Ensure that the settings are between their min and max values
     pub fn clamp(&mut self) {
-        self.cols = clamp(self.cols, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
-        self.rows = clamp(self.rows, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
-        self.player_units = clamp(self.player_units, 1, self.cols);
-        self.ai_units = clamp(self.ai_units, 1, self.cols);
-        self.light = clamp(self.light, 0.0, 1.0);
+        self.width = clamp(self.width, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
+        self.height = clamp(self.height, Self::MIN_MAP_SIZE, Self::MAX_MAP_SIZE);
+        self.player_a_units = clamp(self.player_a_units, 1, self.width);
+        self.player_b_units = clamp(self.player_b_units, 1, self.width);
+        self.light = clamp(self.light, 0, 10);
     }
 
     // Switch the player unit type
-    pub fn change_player_unit_type(&mut self) {
-        self.player_unit_type = match self.player_unit_type {
+    pub fn change_player_a_unit_type(&mut self) {
+        self.player_a_unit_type = match self.player_a_unit_type {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
         }
     }
 
     // Switch the ai unit type
-    pub fn change_ai_unit_type(&mut self) {
-        self.ai_unit_type = match self.ai_unit_type {
+    pub fn change_player_b_unit_type(&mut self) {
+        self.player_b_unit_type = match self.player_b_unit_type {
             UnitType::Squaddie => UnitType::Machine,
             UnitType::Machine => UnitType::Squaddie
         }
+    }
+
+    pub fn set_savegame(&mut self, savegame: &str, settings: &Settings) {
+        self.save_game = Some(PathBuf::from(&settings.savegames).join(savegame));
     }
 }
 
@@ -207,12 +227,9 @@ fn load_save() {
     // Test clamping the settings
 
     settings.volume = 255;
-    settings.ui_scale = 100;
-
     settings.clamp();
 
     assert_eq!(settings.volume, Settings::DEFAULT_VOLUME);
-    assert_eq!(settings.ui_scale, Settings::MAX_UI_SCALE);
 
     settings.volume = 99;
 

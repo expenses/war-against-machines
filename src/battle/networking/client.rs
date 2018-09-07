@@ -72,16 +72,19 @@ impl Client {
         }
     }
 
-    pub fn process_state_updates(&mut self) -> bool {
+    pub fn process_state_updates(&mut self) -> (bool, bool) {
+        let mut invalid_command = false;
+
         for response in self.response_queue.drain(..) {
             match response {
                 Response::NewState(map) => self.map = map,
-                Response::GameOver(_) => return true,
+                Response::GameOver(_) => return (true, invalid_command),
+                Response::InvalidCommand => invalid_command = true,
                 _ => {}
             }
         }
 
-        false
+        (false, invalid_command)
     }
 
     pub fn visibility_at(&self, x: usize, y: usize) -> Visibility {
@@ -128,7 +131,7 @@ impl Client {
         self.connection.send(ClientMessage::EndTurn).unwrap();
     }
 
-    pub fn save(&self, filename: String) {
-        self.connection.send(ClientMessage::SaveGame(filename)).unwrap();
+    pub fn save(&self, filename: &str) {
+        self.connection.send(ClientMessage::SaveGame(filename.into())).unwrap();
     }
 }

@@ -14,17 +14,17 @@ extern crate image;
 extern crate rodio;
 #[macro_use]
 extern crate glium;
-extern crate either;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
+extern crate skynet;
+extern crate runic;
+extern crate pedot;
 
-use std::path::*;
 use std::time::*;
 
-use either::*;
 use glium::glutin;
 use glutin::*;
 use glutin::dpi::LogicalPosition;
@@ -35,7 +35,6 @@ mod weapons;
 mod items;
 #[macro_use]
 mod resources;
-#[macro_use]
 mod utils;
 mod settings;
 mod menu;
@@ -68,12 +67,12 @@ struct App {
 
 impl App {
     // Create a new state, starting on the menu
-    fn new(events_loop: &EventsLoop, settings: Settings) -> App {
+    fn new(events_loop: &EventsLoop, settings: Settings) -> Self {
         let mut ctx = Context::new(events_loop, settings);
 
-        App {
+        Self {
             mode: Mode::Menu,
-            menu: MainMenu::new(&mut ctx.settings),
+            menu: MainMenu::new(&mut ctx),
             skirmish: None,
             mouse: (0.0, 0.0),
             ctx
@@ -81,72 +80,49 @@ impl App {
     }
 
     // Update the game
-    fn update(&mut self, dt: f32) {
-        if let Some(ref mut skirmish) = self.skirmish {
-            if let Mode::Skirmish = self.mode {
-                skirmish.update(&mut self.ctx, dt);
-            }
-        }
-    }
-
-    fn set_skirmish(&mut self, skirmish: Result<Battle>) {
-        match skirmish {
-            Ok(skirmish) => {
-                self.mode = Mode::Skirmish;
-                self.skirmish = Some(skirmish);
-            },
-            Err(error) => display_error(&error)
-        }
-    }
-
-    // Handle key presses
-    fn handle_key_press(&mut self, key: VirtualKeyCode) -> bool {
+    fn update(&mut self, dt: f32) -> bool {
         match self.mode {
-            // If the mode is the menu, respond to callbacks
-            Mode::Menu => if let Some(callback) = self.menu.handle_key(key, &mut self.ctx.settings) {
+            Mode::Skirmish => if let Some(ref mut skirmish) = self.skirmish {
+                skirmish.update(&mut self.ctx, dt);
+            },
+            Mode::Menu => if let Some(callback) = self.menu.update(&mut self.ctx, self.skirmish.is_some()) {
                 match callback {
                     // Generate a new skirmish
-                    MenuCallback::NewSkirmish => {
-                        let skirmish = Battle::new_vs_ai(Left(self.menu.skirmish_settings), self.ctx.settings.clone());
-                        self.set_skirmish(skirmish);
+                    MenuCallback::NewSkirmish(settings) => {
+                        match Battle::new_from_settings(settings, self.ctx.settings.clone()) {
+                            Ok(skirmish) => {
+                                self.mode = Mode::Skirmish;
+                                self.skirmish = Some(skirmish);
+                            },
+                            Err(error) => display_error(&error)
+                        }
                     },
-                    // Load a saved skirmish
-                    MenuCallback::LoadSkirmish(filename) => {
-                        let path = Path::new(&self.ctx.settings.savegames).join(&filename);
-                        let skirmish = Battle::new_vs_ai(Right(&path.as_path()), self.ctx.settings.clone());
-                        self.set_skirmish(skirmish);
-                    },
-                    MenuCallback::HostServer(addr) => {
-                        let skirmish = Battle::new_multiplayer_host(&addr, Left(self.menu.skirmish_settings), self.ctx.settings.clone());
-                        self.set_skirmish(skirmish);
-                    },
-                    MenuCallback::ConnectServer(addr) => {
-                        let skirmish = Battle::new_multiplayer_connect(&addr);
-                        self.set_skirmish(skirmish);
-                    }
                     MenuCallback::Resume => self.mode = Mode::Skirmish,
                     // Quit
                     MenuCallback::Quit => return false
                 }  
-            },
-            // If the skirmish returns false for a key press, switch to the menu
-            Mode::Skirmish => {
-                let key_response = self.skirmish.as_mut().map(|skirmish| skirmish.handle_key(key, true));
+            }
+        }
 
-                if let Some(response) = key_response {
-                    match response {
-                        KeyResponse::GameOver => {
-                            self.mode = Mode::Menu;
-                            self.skirmish = None;
-                            self.menu.refresh(false);
+        true
+    }
 
-                        },
-                        KeyResponse::OpenMenu => {
-                            self.mode = Mode::Menu;
-                            self.menu.refresh(true);
-                        },
-                        _ => {}
-                    }
+    // Handle key presses
+    fn handle_key_press(&mut self, key: VirtualKeyCode) -> bool {
+        if let Mode::Skirmish = self.mode {
+            let key_response = self.skirmish.as_mut().map(|skirmish| skirmish.handle_key(key, true));
+
+            if let Some(response) = key_response {
+                match response {
+                    KeyResponse::GameOver => {
+                        self.mode = Mode::Menu;
+                        self.menu.reset_submenu();
+                        self.skirmish = None;
+                    },
+                    KeyResponse::OpenMenu => {
+                        self.mode = Mode::Menu;
+                    },
+                    _ => {}
                 }
             }
         }
@@ -165,17 +141,11 @@ impl App {
 
     // Handle mouse movement
     fn handle_mouse_motion(&mut self, x: f32, y: f32) {
-        // Convert the coordinates
-        let (x, y) = (
-            x - self.ctx.width / 2.0,
-            self.ctx.height / 2.0 - y
-        );
-
         self.mouse = (x, y);
 
         if let Mode::Skirmish = self.mode {
             if let Some(ref mut skirmish) = self.skirmish {
-                skirmish.move_cursor(x, y);
+                skirmish.move_cursor(x, y, &self.ctx);
             }
         }
     }
@@ -184,7 +154,7 @@ impl App {
     fn handle_mouse_button(&mut self, button: MouseButton) {
         if let Mode::Skirmish = self.mode {
             if let Some(ref mut skirmish) = self.skirmish {
-                skirmish.mouse_button(button, self.mouse, &self.ctx);
+                skirmish.mouse_button(button, &self.ctx);
             }
         }
     }
@@ -224,8 +194,12 @@ fn main() {
     let mut start = Instant::now();
     let mut running = true;
     while running {
+        app.ctx.clear_gui();
+
         // Poll the window events
         events_loop.poll_events(|event| if let Event::WindowEvent {event, ..} = event {
+            app.ctx.update_gui(&event);
+
             match event {
                 WindowEvent::CloseRequested => running = false,
                 // Respond to key presses / releases
@@ -253,7 +227,7 @@ fn main() {
         let ms = ns as f32 / 1_000_000_000.0;
         start = now;
 
-        app.update(ms);
+        running &= app.update(ms);
         app.render();
     }
 }

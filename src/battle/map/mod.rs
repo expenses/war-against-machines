@@ -37,27 +37,34 @@ pub struct Map {
 
 impl Map {
     // Create a new map
-    pub fn new(cols: usize, rows: usize, light: f32) -> Map {
+    pub fn new(width: usize, height: usize, light: f32) -> Map {
         Map {
             light, 
             units: Units::new(),
-            tiles: Tiles::new(cols, rows),
+            tiles: Tiles::new(width, height),
             turn: 1,
             side: Side::PlayerA
         }
     }
 
-    pub fn new_from_settings(settings: SkirmishSettings) -> Self {
-        let mut map = Self::new(settings.cols, settings.rows, settings.light);
+    pub fn new_or_load(settings: &SkirmishSettings) -> Result<Self> {
+        match settings.save_game {
+            None => Ok(Self::new_from_settings(settings)),
+            Some(ref path) => Self::load(path)
+        }
+    }
+
+    pub fn new_from_settings(settings: &SkirmishSettings) -> Self {
+        let mut map = Self::new(settings.width, settings.height, f32::from(settings.light) / 10.0);
 
         // Add player units
-        for x in 0 .. settings.player_units {
-            map.units.add(settings.player_unit_type, Side::PlayerA, x, 0, UnitFacing::Bottom);
+        for x in 0 .. settings.player_a_units {
+            map.units.add(settings.player_a_unit_type, Side::PlayerA, x, 0, UnitFacing::Bottom);
         }
 
         // Add ai units
-        for y in settings.cols - settings.ai_units .. settings.cols {
-            map.units.add(settings.ai_unit_type, Side::PlayerB, y, settings.rows - 1, UnitFacing::Top);
+        for y in settings.width - settings.player_b_units .. settings.width {
+            map.units.add(settings.player_b_unit_type, Side::PlayerB, y, settings.height - 1, UnitFacing::Top);
         }
         
         // Generate tiles
@@ -134,6 +141,8 @@ impl Map {
             return responses;
         }
 
+        let moves = self.units.get(id).unwrap().moves;
+
         match command {
             Command::Walk(path)             => move_command(self, id, path, &mut responses),
             Command::Turn(facing)           => turn_command(self, id, facing, &mut responses),
@@ -142,6 +151,11 @@ impl Map {
             Command::DropItem(item)         => drop_item_command(self, id, item, &mut responses),
             Command::ThrowItem {item, x, y} => throw_item_command(self, id, item, x, y, &mut responses),
             Command::Fire {x, y}            => fire_command(self, id, x, y, &mut responses),
+        }
+
+        // All commands should have a cost, so if one doesn't, it failed
+        if self.units.get(id).unwrap().moves == moves {
+            responses.push(side, Response::InvalidCommand);
         }
 
         let player_a_units = self.units.count(Side::PlayerA);

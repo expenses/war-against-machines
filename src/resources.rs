@@ -3,11 +3,6 @@
 use *;
 
 const TILE: f32 = 48.0;
-const FONT_Y: f32 = TILE * 8.5;
-pub const FONT_HEIGHT: f32 = 8.0;
-
-// The gap between text characters
-pub const CHARACTER_GAP: f32 = 1.0;
 
 // include_bytes! but prepends the resources directory
 macro_rules! bytes {
@@ -24,17 +19,12 @@ pub const AUDIO: [&[u8]; 3] = [
     bytes!("audio/plasma_shot.ogg")
 ];
 
+pub const FONT: &[u8] = bytes!("font/TinyUnicode.ttf");
+
 // Scale up a tile position for the 48 by 48 tileset
 macro_rules! tiles {
     ($x: expr, $y: expr, $width: expr, $height: expr) => (
         [$x as f32 * TILE, $y as f32 * TILE, $width as f32 * TILE, $height as f32 * TILE]
-    )
-}
-
-// Simplify writing the coordinates for a character in the tileset
-macro_rules! char_loc {
-    ($x: expr, $width: expr) => (
-        [$x as f32, FONT_Y, $width as f32, FONT_HEIGHT]
     )
 }
 
@@ -60,8 +50,14 @@ pub enum Image {
     ObjectRebar,
     ObjectRubble,
 
-    Squaddie,
-    Machine,
+    SquaddieFront,
+    SquaddieLeft,
+    SquaddieBack,
+    SquaddieRight,
+
+    // todo: machine left and right
+    MachineFront,
+    MachineBack,
 
     Ruin1Left,
     Ruin1Top,
@@ -103,7 +99,6 @@ pub enum Image {
     SkeletonCracked,
     Rubble,
     Crater,
-    Fire,
     Explosion1,
     Explosion2,
     Explosion3,
@@ -118,141 +113,62 @@ impl ImageSource for Image {
             Image::Base1 => tiles!(0, 0, 1, 1),
             Image::Base2 => tiles!(1, 0, 1, 1),
             
-            Image::ObjectRebar => tiles!(0, 1, 1, 1),
-            Image::ObjectRubble => tiles!(1, 1, 1, 1),
-
-            Image::Squaddie => tiles!(0, 2, 1, 1),
-            Image::Machine => tiles!(1, 2, 1, 1),
-
-            Image::Ruin1Left => tiles!(2, 2, 1, 1),
-            Image::Ruin1Top => tiles!(3, 2, 1, 1),
-            Image::Ruin2Left => tiles!(4, 2, 1, 1),
-            Image::Ruin2Top => tiles!(5, 2, 1, 1),
-
             Image::PitTop => tiles!(2, 0, 1, 1),
             Image::PitLeft => tiles!(3, 0, 1, 1),
             Image::PitRight => tiles!(4, 0, 1, 1),
             Image::PitBottom => tiles!(5, 0, 1, 1),
             Image::PitCenter => tiles!(6, 0, 1, 1),
+
+            Image::ObjectRebar => tiles!(0, 1, 1, 1),
+            Image::ObjectRubble => tiles!(1, 1, 1, 1),
+
             Image::PitTL => tiles!(2, 1, 1, 1),
             Image::PitTR => tiles!(3, 1, 1, 1),
             Image::PitBL => tiles!(4, 1, 1, 1),
             Image::PitBR => tiles!(5, 1, 1, 1),
 
-            Image::RegularBullet => tiles!(0, 3, 1, 1),
-            Image::PlasmaBullet => tiles!(1, 3, 1, 1),
+            Image::SquaddieFront => tiles!(0, 2, 1, 1),
+            Image::SquaddieLeft => tiles!(1, 2, 1, 1),
+            Image::SquaddieBack => tiles!(2, 2, 1, 1),
+            Image::SquaddieRight => tiles!(3, 2, 1, 1),
+            Image::MachineFront => tiles!(4, 2, 1, 1),
+            Image::MachineBack => tiles!(5, 2, 1, 1),
 
-            Image::SquaddieCorpse => tiles!(0, 4, 1, 1),
-            Image::MachineCorpse => tiles!(1, 4, 1, 1),
-            Image::Scrap => tiles!(2, 4, 1, 1),
-            Image::Weapon => tiles!(3, 4, 1, 1),
-            Image::AmmoClip => tiles!(4, 4, 1, 1),
-            Image::Bandages => tiles!(5, 4, 1, 1),
-            Image::Grenade => tiles!(6, 4, 1, 1),
-
-            Image::Cursor => tiles!(0, 5, 1, 1),
-            Image::CursorCrosshair => tiles!(1, 5, 1, 1),
-            Image::Path => tiles!(2, 5, 1, 1),
-
-            Image::LeftEdge => tiles!(0, 6, 1, 1),
-            Image::RightEdge => tiles!(1, 6, 1, 1),
-            Image::Skeleton => tiles!(2, 6, 1, 1),
-            Image::SkeletonCracked => tiles!(3, 6, 1, 1),
-            Image::Rubble => tiles!(4, 6, 1, 1),
-            Image::Crater => tiles!(5, 6, 1, 1),
-            Image::Fire => tiles!(6, 6, 1, 1),
-            Image::Explosion1 => tiles!(7, 6, 1, 1),
-            Image::Explosion2 => tiles!(8, 6, 1, 1),
-            Image::Explosion3 => tiles!(9, 6, 1, 1),
-
-            Image::Title => tiles!(0, 7, 10, 1),
+            Image::Ruin1Left => tiles!(0, 3, 1, 1),
+            Image::Ruin1Top => tiles!(1, 3, 1, 1),
+            Image::Ruin2Left => tiles!(2, 3, 1, 1),
+            Image::Ruin2Top => tiles!(3, 3, 1, 1),
             
-            Image::EndTurnButton => tiles!(0, 8, 1, 0.5),
-            Image::InventoryButton => tiles!(1, 8, 1, 0.5),
-            Image::SaveGameButton => tiles!(2, 8, 1, 0.5),
-        }
-    }
-}
+            Image::RegularBullet => tiles!(0, 4, 1, 1),
+            Image::PlasmaBullet => tiles!(1, 4, 1, 1),
 
-impl ImageSource for char {
-    // Map a character to its position in the tileset (oh boy...)
-    fn source(&self) -> [f32; 4] {
-        match *self {
-            'A' => char_loc!(0, 4),
-            'B' => char_loc!(5, 4),
-            'C' => char_loc!(10, 3),
-            'D' => char_loc!(14, 4),
-            'E' => char_loc!(19, 3),
-            'F' => char_loc!(23, 3),
-            'G' => char_loc!(27, 4),
-            'H' => char_loc!(32, 4),
-            'I' => char_loc!(37, 3),
-            'J' => char_loc!(41, 4),
-            'K' => char_loc!(46, 4),
-            'L' => char_loc!(51, 3),
-            'M' => char_loc!(55, 5),
-            'N' => char_loc!(61, 4),
-            'O' => char_loc!(66, 4),
-            'P' => char_loc!(71, 4),
-            'Q' => char_loc!(76, 4),
-            'R' => char_loc!(81, 4),
-            'S' => char_loc!(86, 4),
-            'T' => char_loc!(91, 3),
-            'U' => char_loc!(95, 4),
-            'V' => char_loc!(100, 4),
-            'W' => char_loc!(105, 5),
-            'X' => char_loc!(111, 4),
-            'Y' => char_loc!(116, 4),
-            'Z' => char_loc!(121, 3),
-            'a' => char_loc!(125, 4),
-            'b' => char_loc!(130, 4),
-            'c' => char_loc!(135, 3),
-            'd' => char_loc!(139, 4),
-            'e' => char_loc!(144, 4),
-            'f' => char_loc!(149, 3),
-            'g' => char_loc!(153, 4),
-            'h' => char_loc!(158, 4),
-            'i' => char_loc!(163, 1),
-            'j' => char_loc!(165, 2),
-            'k' => char_loc!(168, 4),
-            'l' => char_loc!(173, 1),
-            'm' => char_loc!(175, 5),
-            'n' => char_loc!(181, 4),
-            'o' => char_loc!(186, 4),
-            'p' => char_loc!(191, 4),
-            'q' => char_loc!(196, 4),
-            'r' => char_loc!(201, 3),
-            's' => char_loc!(205, 4),
-            't' => char_loc!(210, 3),
-            'u' => char_loc!(214, 4),
-            'v' => char_loc!(219, 4),
-            'w' => char_loc!(224, 5),
-            'x' => char_loc!(230, 3),
-            'y' => char_loc!(234, 4),
-            'z' => char_loc!(239, 4),
-            '1' => char_loc!(244, 2),
-            '2' => char_loc!(247, 4),
-            '3' => char_loc!(252, 4),
-            '4' => char_loc!(257, 4),
-            '5' => char_loc!(262, 4),
-            '6' => char_loc!(267, 4),
-            '7' => char_loc!(272, 4),
-            '8' => char_loc!(277, 4),
-            '9' => char_loc!(282, 4),
-            '0' => char_loc!(287, 4),
-            '>' => char_loc!(292, 2),
-            '(' => char_loc!(295, 2),
-            ')' => char_loc!(298, 2),
-            '-' => char_loc!(301, 3),
-            ':' => char_loc!(305, 1),
-            ',' => char_loc!(307, 2),
-            '.' => char_loc!(310, 1),
-            '%' => char_loc!(312, 3),
-            '!' => char_loc!(316, 1),
-            '/' => char_loc!(318, 3),
-            '\'' => char_loc!(322, 1),
-            ' ' => char_loc!(329, 4),
-            _ => char_loc!(324, 4),
+            Image::SquaddieCorpse => tiles!(0, 5, 1, 1),
+            Image::MachineCorpse => tiles!(1, 5, 1, 1),
+            Image::Scrap => tiles!(2, 5, 1, 1),
+            Image::Weapon => tiles!(3, 5, 1, 1),
+            Image::AmmoClip => tiles!(4, 5, 1, 1),
+            Image::Bandages => tiles!(5, 5, 1, 1),
+            Image::Grenade => tiles!(6, 5, 1, 1),
+
+            Image::Cursor => tiles!(0, 6, 1, 1),
+            Image::CursorCrosshair => tiles!(1, 6, 1, 1),
+            Image::Path => tiles!(2, 6, 1, 1),
+
+            Image::LeftEdge => tiles!(0, 7, 1, 1),
+            Image::RightEdge => tiles!(1, 7, 1, 1),
+            Image::Skeleton => tiles!(2, 7, 1, 1),
+            Image::SkeletonCracked => tiles!(3, 7, 1, 1),
+            Image::Rubble => tiles!(4, 7, 1, 1),
+            Image::Crater => tiles!(5, 7, 1, 1),
+            Image::Explosion1 => tiles!(6, 7, 1, 1),
+            Image::Explosion2 => tiles!(7, 7, 1, 1),
+            Image::Explosion3 => tiles!(8, 7, 1, 1),
+
+            Image::Title => tiles!(0, 8, 10, 1),
+            
+            Image::EndTurnButton => tiles!(0, 9, 1, 0.5),
+            Image::InventoryButton => tiles!(1, 9, 1, 0.5),
+            Image::SaveGameButton => tiles!(2, 9, 1, 0.5),
         }
     }
 }
