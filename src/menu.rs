@@ -3,8 +3,7 @@
 use context::Context;
 use resources::Image;
 use settings::*;
-
-use ui::{self, *};
+use ui::*;
 
 use glutin::*;
 
@@ -14,6 +13,12 @@ const MAP_SIZE_CHANGE: usize = 5;
 const TITLE_TOP_OFFSET: f32 = 50.0;
 const VOLUME_CHANGE: u8 = 5;
 const LIGHT_LEVEL_CHANGE: u8 = 2;
+
+macro_rules! list {
+    ($x:expr, $y:expr, $($widget: expr),*) => (
+        List::new($x, $y, vec![$($widget,)*])
+    )
+}
 
 #[derive(PartialEq)]
 enum Submenu {
@@ -89,7 +94,7 @@ impl MainMenu {
                     ListItem::new("<Volume>"),
                     ListItem::new("Reset")
                 ),
-                list!(0.0, 50.0)
+                List::new(0.0, 50.0, Vec::new())
             ],
             settings: SkirmishSettings::default()
         };

@@ -240,11 +240,11 @@ impl Battle {
         match button {
             MouseButton::Left => match self.interface.clicked(ctx) {
                 // End the turn
-                Some(Button::EndTurn) => self.end_turn(),
+                Some(ButtonType::EndTurn) => self.end_turn(),
                 // Toggle the inventory
-                Some(Button::Inventory) => self.interface.toggle_inventory(),
+                Some(ButtonType::Inventory) => self.interface.toggle_inventory(),
                 // Toggle the save game input
-                Some(Button::SaveGame) => self.interface.toggle_save_game(),
+                Some(ButtonType::SaveGame) => self.interface.toggle_save_game(),
                 // Or select/deselect a unit
                 _ => if let Some((x, y)) = self.cursor {
                     self.perform_actions(x, y)

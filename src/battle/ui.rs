@@ -1,9 +1,7 @@
 use glium::glutin::VirtualKeyCode;
 
-use pedot::*;
-use ui;
+use pedot::{HorizontalAlign, VerticalAlign};
 use ui::*;
-use resources::*;
 use context::*;
 use utils::*;
 use super::map::*;
@@ -15,7 +13,7 @@ const INVENTORY_X_OFFSET: f32 = 150.0;
 const INVENTORY_UNIT_TITLE_OFFSET: f32 = -160.0;
 const INVENTORY_TILE_TITLE_OFFSET: f32 = -160.0 + Context::FONT_HEIGHT;
 
-pub enum Button {
+pub enum ButtonType {
     EndTurn,
     Inventory,
     SaveGame
@@ -47,37 +45,37 @@ impl InventoryInfo {
 }
 
 pub struct Interface {
-    game_over: ui::List,
-    buttons: [ui::Button; 3],
+    game_over: List,
+    buttons: [Button; 3],
     save_game: TextInput,
     save_game_active: bool,
-    unit_inventory: ui::List,
-    tile_inventory: ui::List,
-    unit_title: ui::TextDisplay2,
-    tile_title: ui::TextDisplay2,
+    unit_inventory: List,
+    tile_inventory: List,
+    unit_title: TextDisplay,
+    tile_title: TextDisplay,
     inventory_active: bool,
-    game_info: ui::TextDisplay2,
-    log: ui::TextDisplay2
+    game_info: TextDisplay,
+    log: TextDisplay
 }
 
 impl Interface {
 	pub fn new() -> Self {
         Self {
-            game_over: list!(0.0, 50.0).active(false),
+            game_over: List::new(0.0, 50.0, Vec::new()).active(false),
             buttons: [
-                ui::Button::new(HorizontalAlign::Right(0.0), VerticalAlign::Bottom(0.0), Image::EndTurnButton),
-                ui::Button::new(HorizontalAlign::Right(1.0), VerticalAlign::Bottom(0.0), Image::InventoryButton),
-                ui::Button::new(HorizontalAlign::Right(2.0), VerticalAlign::Bottom(0.0), Image::SaveGameButton),
+                Button::new(HorizontalAlign::Right(0.0), VerticalAlign::Bottom(0.0), "End Turn"),
+                Button::new(HorizontalAlign::Right(1.0), VerticalAlign::Bottom(0.0), "Inventory"),
+                Button::new(HorizontalAlign::Right(2.0), VerticalAlign::Bottom(0.0), "Save Game"),
             ],
             save_game: TextInput::new(HorizontalAlign::Middle(0.0), VerticalAlign::Middle(0.0), "Save game to: "),
             save_game_active: false,
-            unit_inventory: list!(-INVENTORY_X_OFFSET, 75.0),
-            tile_inventory: list!(INVENTORY_X_OFFSET, 75.0).active(false),
-            unit_title: ui::TextDisplay2::new(HorizontalAlign::Middle(-INVENTORY_X_OFFSET), VerticalAlign::Middle(INVENTORY_UNIT_TITLE_OFFSET)),
-            tile_title: ui::TextDisplay2::new(HorizontalAlign::Middle(INVENTORY_X_OFFSET), VerticalAlign::Middle(INVENTORY_TILE_TITLE_OFFSET)),
+            unit_inventory: List::new(-INVENTORY_X_OFFSET, 75.0, Vec::new()),
+            tile_inventory: List::new(INVENTORY_X_OFFSET, 75.0, Vec::new()).active(false),
+            unit_title: TextDisplay::new(HorizontalAlign::Middle(-INVENTORY_X_OFFSET), VerticalAlign::Middle(INVENTORY_UNIT_TITLE_OFFSET)),
+            tile_title: TextDisplay::new(HorizontalAlign::Middle(INVENTORY_X_OFFSET), VerticalAlign::Middle(INVENTORY_TILE_TITLE_OFFSET)),
             inventory_active: false,
-            game_info: ui::TextDisplay2::new(HorizontalAlign::Middle(10.0), VerticalAlign::Top(10.0)),
-            log: ui::TextDisplay2::new(HorizontalAlign::Left(10.0), VerticalAlign::Bottom(10.0))
+            game_info: TextDisplay::new(HorizontalAlign::Middle(10.0), VerticalAlign::Top(10.0)),
+            log: TextDisplay::new(HorizontalAlign::Left(10.0), VerticalAlign::Bottom(10.0))
         }
 	}
 
@@ -116,7 +114,7 @@ impl Interface {
         self.tile_inventory.set_active(!tile);
     }
 
-    fn active_inventory(&mut self) -> &mut ui::List {
+    fn active_inventory(&mut self) -> &mut List {
         if self.unit_inventory.is_active() {
             &mut self.unit_inventory
         } else {
@@ -180,16 +178,16 @@ impl Interface {
         self.game_over.render(ctx);
     }
 
-    pub fn clicked(&self, ctx: &Context) -> Option<Button>{
+    pub fn clicked(&self, ctx: &Context) -> Option<ButtonType>{
         let clicked = self.buttons.iter()
             .enumerate()
             .find(|(_, button)| button.clicked(ctx))
             .map(|(i, _)| i);
         
         match clicked {
-            Some(0) => Some(Button::EndTurn),
-            Some(1) => Some(Button::Inventory),
-            Some(2) => Some(Button::SaveGame),
+            Some(0) => Some(ButtonType::EndTurn),
+            Some(1) => Some(ButtonType::Inventory),
+            Some(2) => Some(ButtonType::SaveGame),
             _ => None
         }
     }

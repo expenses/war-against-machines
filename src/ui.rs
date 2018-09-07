@@ -1,21 +1,11 @@
 // A UI struct to display clickable buttons and text fields
 
-use pedot;
+use pedot::{self, *};
 use std::ops::*;
 use colours::{self, *};
 use context::*;
-use resources::*;
 use glutin::VirtualKeyCode;
-
-macro_rules! list {
-    ($x:expr, $y: expr) => (
-        ui::List::new($x, $y, Vec::new())
-    );
-
-    ($x:expr, $y:expr, $($widget: expr),*) => (
-        ui::List::new($x, $y, vec![$($widget,)*])
-    )
-}
+use resources::*;
 
 #[derive(Debug)]
 pub struct ListItem {
@@ -66,8 +56,8 @@ impl ListItem {
 }
 
 pub struct List {
-    x: pedot::HorizontalAlign,
-    y: pedot::VerticalAlign,
+    x: HorizontalAlign,
+    y: VerticalAlign,
     inner: pedot::List<ListItem>,
     active: bool
 }
@@ -75,8 +65,8 @@ pub struct List {
 impl List {
     pub fn new(x: f32, y: f32, items: Vec<ListItem>) -> Self {
         Self {
-            x: pedot::HorizontalAlign::Middle(x),
-            y: pedot::VerticalAlign::Middle(-y),
+            x: HorizontalAlign::Middle(x),
+            y: VerticalAlign::Middle(-y),
             inner: pedot::List::new(items),
             active: true
         }
@@ -137,35 +127,35 @@ impl DerefMut for List {
 }
 
 pub struct Button {
-    x: pedot::HorizontalAlign,
-    y: pedot::VerticalAlign,
-    image: Image
+    x: HorizontalAlign,
+    y: VerticalAlign,
+    text: &'static str
 }
 
 impl Button {
-    pub fn new(x: pedot::HorizontalAlign, y: pedot::VerticalAlign, image: Image) -> Self {
+    pub fn new(x: HorizontalAlign, y: VerticalAlign, text: &'static str) -> Self {
         Self {
-            x, y, image
+            x, y, text
         }
     }
 
     fn width(&self) -> f32 {
-        self.image.width() * Context::UI_SCALE
+        Image::Button.width() * Context::UI_SCALE
     }
 
     fn height(&self) -> f32 {
-        self.image.height() * Context::UI_SCALE
+        Image::Button.height() * Context::UI_SCALE
     }
 
-    fn x(&self) -> pedot::HorizontalAlign {
+    fn x(&self) -> HorizontalAlign {
         self.x * self.width() + self.width() / 2.0
     }
 
-    fn y(&self) -> pedot::VerticalAlign {
+    fn y(&self) -> VerticalAlign {
         self.y * self.height() + self.height() / 2.0
     }
 
-    fn state(&self, ctx: &Context) -> pedot::ButtonState {
+    fn state(&self, ctx: &Context) -> ButtonState {
         ctx.gui.button(self.x(), self.y(), self.width(), self.height())
     }
 
@@ -174,27 +164,29 @@ impl Button {
     }
 
     pub fn render(&self, ctx: &mut Context) {
-        let position = [ctx.gui.x_absolute(self.x()), ctx.gui.y_absolute(self.y())];
+        let x = ctx.gui.x_absolute(self.x());
+        let y = ctx.gui.y_absolute(self.y());
 
         let overlay = match self.state(ctx) {
-            pedot::ButtonState::None => colours::ALPHA,
-            pedot::ButtonState::Hovering(_, _) => [0.0, 0.0, 0.0, 0.25],
-            pedot::ButtonState::Clicked(_, _) => [1.0, 1.0, 1.0, 0.5]
+            ButtonState::None => colours::ALPHA,
+            ButtonState::Hovering(_, _) => [0.0, 0.0, 0.0, 0.25],
+            ButtonState::Clicked(_, _) => [1.0, 1.0, 1.0, 0.5]
         };
 
-        ctx.render_with_overlay(self.image, position, Context::UI_SCALE, overlay);
+        ctx.render_with_overlay(Image::Button, [x, y], Context::UI_SCALE, overlay);
+        ctx.render_text(self.text, x, y - Context::FONT_HEIGHT / 4.0, WHITE);
     }
 }
 
 pub struct TextInput {
     base: &'static str,
     mutable: String,
-    x: pedot::HorizontalAlign,
-    y: pedot::VerticalAlign
+    x: HorizontalAlign,
+    y: VerticalAlign
 }
 
 impl TextInput {
-    pub fn new(x: pedot::HorizontalAlign, y: pedot::VerticalAlign, base: &'static str) -> Self {
+    pub fn new(x: HorizontalAlign, y: VerticalAlign, base: &'static str) -> Self {
         Self {
             x, y, base,
             mutable: String::new()
@@ -219,14 +211,14 @@ impl TextInput {
     }
 }
 
-pub struct TextDisplay2 {
+pub struct TextDisplay {
     text: String,
-    x: pedot::HorizontalAlign,
-    y: pedot::VerticalAlign
+    x: HorizontalAlign,
+    y: VerticalAlign
 }
 
-impl TextDisplay2 {
-    pub fn new(x: pedot::HorizontalAlign, y: pedot::VerticalAlign) -> Self {
+impl TextDisplay {
+    pub fn new(x: HorizontalAlign, y: VerticalAlign) -> Self {
         Self {
             x, y, 
             text: String::new()
@@ -245,16 +237,16 @@ impl TextDisplay2 {
     pub fn render(&self, ctx: &mut Context) {
         let height = Context::FONT_HEIGHT * self.text.lines().count() as f32;
         let mut y = ctx.gui.y_absolute(self.y) + match self.y {
-            pedot::VerticalAlign::Top(_) => Context::FONT_HEIGHT,
-            pedot::VerticalAlign::Middle(_) => 0.0,
-            pedot::VerticalAlign::Bottom(_) => -height
+            VerticalAlign::Top(_) => Context::FONT_HEIGHT,
+            VerticalAlign::Middle(_) => 0.0,
+            VerticalAlign::Bottom(_) => -height
         };
         
         for line in self.text.lines() {
             let x = ctx.gui.x_absolute(self.x) + match self.x {
-                pedot::HorizontalAlign::Left(_) => ctx.font_width(line) / 2.0,
-                pedot::HorizontalAlign::Middle(_) => 0.0,
-                pedot::HorizontalAlign::Right(_) => -ctx.font_width(line) / 2.0
+                HorizontalAlign::Left(_) => ctx.font_width(line) / 2.0,
+                HorizontalAlign::Middle(_) => 0.0,
+                HorizontalAlign::Right(_) => -ctx.font_width(line) / 2.0
             };
 
             ctx.render_text(line, x, y, WHITE);

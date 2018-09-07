@@ -89,9 +89,8 @@ pub enum Image {
     CursorCrosshair,
     Path,
 
-    EndTurnButton,
-    InventoryButton,
-    SaveGameButton,
+    // todo: the button image (and general ui) could use some work
+    Button,
 
     LeftEdge,
     RightEdge,
@@ -166,9 +165,7 @@ impl ImageSource for Image {
 
             Image::Title => tiles!(0, 8, 10, 1),
             
-            Image::EndTurnButton => tiles!(0, 9, 1, 0.5),
-            Image::InventoryButton => tiles!(1, 9, 1, 0.5),
-            Image::SaveGameButton => tiles!(2, 9, 1, 0.5),
+            Image::Button => tiles!(0, 9, 1, 0.5),
         }
     }
 }

@@ -380,7 +380,8 @@ impl Unit {
     }
 
     pub fn inventory_remove(&mut self, item: usize) -> Option<Item> {
-        if item < self.inventory.len() {
+        if item < self.inventory.len() && self.moves >= ITEM_COST {
+            self.moves -= ITEM_COST;
             Some(self.inventory.remove(item))
         } else {
             None
@@ -404,14 +405,8 @@ impl Unit {
 
     // Drop an item from the unit's inventory
     pub fn drop_item(&mut self, tiles: &mut Tiles, index: usize) {
-        if self.moves < ITEM_COST {
-            return;
-        }
-
         if let Some(item) = self.inventory_remove(index) {
             tiles.drop(self.x, self.y, item);
-            self.moves -= ITEM_COST;
-            return;
         }
     }
 
@@ -419,7 +414,7 @@ impl Unit {
         if self.moves < ITEM_COST {
             return;
         }
-        
+
         let tile = tiles.at_mut(self.x, self.y);
 
         if let Some(item) = tile.items_remove(index) {
