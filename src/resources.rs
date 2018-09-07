@@ -54,6 +54,8 @@ pub enum Image {
     SquaddieLeft,
     SquaddieBack,
     SquaddieRight,
+
+    // todo: machine left and right
     MachineFront,
     MachineBack,
 

@@ -59,8 +59,20 @@ impl ServerResponses {
 }
 
 pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, responses: &mut ServerResponses) {
-    // Todo: turning should have a cost
-    map.units.get_mut(id).unwrap().facing = new_facing;
+    let current_facing = map.units.get(id).unwrap().facing;
+
+    // todo: animate turning
+
+    let (cost, _) = current_facing.rotation_cost_and_direction(new_facing);
+
+    {
+        let unit = map.units.get_mut(id).unwrap();
+        if unit.moves >= cost {
+            unit.facing = new_facing;
+            unit.moves -= cost;
+        }
+    }
+
     responses.push_and_update_state(map);
 }
 

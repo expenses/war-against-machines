@@ -114,6 +114,7 @@ impl Response {
                 Status {finished: true, blocking: false}
             },
             Response::InvalidCommand => {
+                // todo: be less vague!
                 ui.append_to_log("Invalid Command");
                 Status {finished: true, blocking: false}
             }
