@@ -100,7 +100,7 @@ impl List {
 
         for (i, item) in self.inner.iter().enumerate() {
             let y = ctx.gui.y_absolute(self.y) + i as f32 * 20.0;
-            item.render(ctx.gui.x_absolute(self.x * ctx.settings.ui_scale()), y, ctx, i == index && self.is_active());
+            item.render(ctx.gui.x_absolute(self.x), y, ctx, i == index && self.is_active());
         }
     }
 
@@ -149,24 +149,24 @@ impl Button {
         }
     }
 
-    fn width(&self, ctx: &Context) -> f32 {
-        self.image.width() * ctx.settings.ui_scale()
+    fn width(&self) -> f32 {
+        self.image.width() * Context::UI_SCALE
     }
 
-    fn height(&self, ctx: &Context) -> f32 {
-        self.image.height() * ctx.settings.ui_scale()
+    fn height(&self) -> f32 {
+        self.image.height() * Context::UI_SCALE
     }
 
-    fn x(&self, ctx: &Context) -> pedot::HorizontalAlign {
-        self.x * self.width(ctx) + self.width(ctx) / 2.0
+    fn x(&self) -> pedot::HorizontalAlign {
+        self.x * self.width() + self.width() / 2.0
     }
 
-    fn y(&self, ctx: &Context) -> pedot::VerticalAlign {
-        self.y * self.height(ctx) + self.height(ctx) / 2.0
+    fn y(&self) -> pedot::VerticalAlign {
+        self.y * self.height() + self.height() / 2.0
     }
 
     fn state(&self, ctx: &Context) -> pedot::ButtonState {
-        ctx.gui.button(self.x(ctx), self.y(ctx), self.width(ctx), self.height(ctx))
+        ctx.gui.button(self.x(), self.y(), self.width(), self.height())
     }
 
     pub fn clicked(&self, ctx: &Context) -> bool {
@@ -174,8 +174,7 @@ impl Button {
     }
 
     pub fn render(&self, ctx: &mut Context) {
-        let scale = ctx.settings.ui_scale();
-        let position = [ctx.gui.x_absolute(self.x(ctx)), ctx.gui.y_absolute(self.y(ctx))];
+        let position = [ctx.gui.x_absolute(self.x()), ctx.gui.y_absolute(self.y())];
 
         let overlay = match self.state(ctx) {
             pedot::ButtonState::None => colours::ALPHA,
@@ -183,7 +182,7 @@ impl Button {
             pedot::ButtonState::Clicked(_, _) => [1.0, 1.0, 1.0, 0.5]
         };
 
-        ctx.render_with_overlay(self.image, position, scale, overlay);
+        ctx.render_with_overlay(self.image, position, Context::UI_SCALE, overlay);
     }
 }
 
@@ -244,22 +243,22 @@ impl TextDisplay2 {
     }
 
     pub fn render(&self, ctx: &mut Context) {
-        let height = ctx.font_height() * self.text.lines().count() as f32;
+        let height = Context::FONT_HEIGHT * self.text.lines().count() as f32;
         let mut y = ctx.gui.y_absolute(self.y) + match self.y {
-            pedot::VerticalAlign::Top(_) => ctx.font_height(),
+            pedot::VerticalAlign::Top(_) => Context::FONT_HEIGHT,
             pedot::VerticalAlign::Middle(_) => 0.0,
             pedot::VerticalAlign::Bottom(_) => -height
         };
         
         for line in self.text.lines() {
-            let x = ctx.gui.x_absolute(self.x * ctx.settings.ui_scale()) + match self.x {
+            let x = ctx.gui.x_absolute(self.x) + match self.x {
                 pedot::HorizontalAlign::Left(_) => ctx.font_width(line) / 2.0,
                 pedot::HorizontalAlign::Middle(_) => 0.0,
                 pedot::HorizontalAlign::Right(_) => -ctx.font_width(line) / 2.0
             };
 
             ctx.render_text(line, x, y, WHITE);
-            y += ctx.font_height();
+            y += Context::FONT_HEIGHT;
         }
     }
 }

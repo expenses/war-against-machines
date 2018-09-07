@@ -21,6 +21,10 @@ pub struct Context {
 }
 
 impl Context {
+    pub const UI_SCALE: f32 = 2.0;
+    pub const FONT_SCALE: f32 = 13.0;
+    pub const FONT_HEIGHT: f32 = Self::UI_SCALE * Self::FONT_SCALE;
+
     // Create a new context
     pub fn new(event_loop: &EventsLoop, settings: Settings) -> Self {
         let renderer = Renderer::new(event_loop, &settings);
@@ -44,20 +48,14 @@ impl Context {
         self.renderer.resize(width, height);
     }
 
-    pub fn font_height(&self) -> f32 {
-        self.font.rendered_height(13.0 * self.settings.ui_scale())
-    }
-
     pub fn font_width(&self, text: &str) -> f32 {
-        self.font.rendered_width(text, 13.0 * self.settings.ui_scale(), true, &self.renderer.display)
+        self.font.rendered_width(text, Self::FONT_HEIGHT, true, &self.renderer.display)
     }
 
     // Render text
     pub fn render_text(&mut self, string: &str, mut x: f32, mut y: f32, colour: [f32; 4]) {
-        let scale = self.settings.ui_scale();
-
         // Correct for screen position
-        y -= 13.0;
+        y -= Self::FONT_SCALE;
 
         // Center the text on its width
         let width = self.font_width(string);
@@ -66,7 +64,7 @@ impl Context {
         self.font.render_pixelated(
             string,
             [x, y],
-            13.0, scale,
+            Self::FONT_SCALE, Self::UI_SCALE,
             colour,
             &mut self.renderer.target, &self.renderer.display, &self.renderer.text_program
         ).unwrap();

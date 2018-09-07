@@ -27,7 +27,6 @@ fn to_table(value: Value) -> Option<Table> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Settings {
     pub volume: u8,
-    pub ui_scale: u8,
     pub window_width: u32,
     pub window_height: u32,
     pub fullscreen: bool,
@@ -39,7 +38,6 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             volume: Self::DEFAULT_VOLUME,
-            ui_scale: Self::DEFAULT_UI_SCALE,
             window_width: 960,
             window_height: 540,
             fullscreen: false,
@@ -50,8 +48,6 @@ impl Default for Settings {
 
 impl Settings {
     const DEFAULT_VOLUME: u8 = 100;
-    const DEFAULT_UI_SCALE: u8 = 2;
-    const MAX_UI_SCALE: u8 = 4;
     const FILENAME: &'static str = "settings.toml";
 
     // Load the settings or use the defaults
@@ -111,21 +107,14 @@ impl Settings {
         }
     }
 
-    pub fn ui_scale(&self) -> f32 {
-        // todo: hacky but cbf changings things right now
-        2.0
-    }
-
     // Make sure the volume isn't too high
     pub fn clamp(&mut self) {
         self.volume = clamp(self.volume, 0, Self::DEFAULT_VOLUME);
-        self.ui_scale = clamp(self.ui_scale, 1, Self::MAX_UI_SCALE);
     }
 
     // Reset the settings
     pub fn reset(&mut self) {
         self.volume = Self::DEFAULT_VOLUME;
-        self.ui_scale = Self::DEFAULT_UI_SCALE;
     }
 
     // Convert the settings into a B-Tree map of key-value pairs
@@ -238,12 +227,9 @@ fn load_save() {
     // Test clamping the settings
 
     settings.volume = 255;
-    settings.ui_scale = 100;
-
     settings.clamp();
 
     assert_eq!(settings.volume, Settings::DEFAULT_VOLUME);
-    assert_eq!(settings.ui_scale, Settings::MAX_UI_SCALE);
 
     settings.volume = 99;
 

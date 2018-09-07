@@ -87,7 +87,6 @@ impl MainMenu {
                     0.0, 50.0,
                     ListItem::new("Back"),
                     ListItem::new("<Volume>"),
-                    ListItem::new("<UI Scale>"),
                     ListItem::new("Reset")
                 ),
                 list!(0.0, 50.0)
@@ -134,7 +133,6 @@ impl MainMenu {
 
         let settings = &mut self.submenus[Submenu::Settings.index()];
         settings[1].set_text(&format!("Volume: {}", ctx.settings.volume));
-        settings[2].set_text(&format!("UI Scale: {}", ctx.settings.ui_scale));
     }
 
     fn refresh_skirmish_saves(&mut self, ctx: &Context) {
@@ -185,9 +183,7 @@ impl MainMenu {
                     0 if enter_pressed => self.submenu = Submenu::Main,
                     1 if movement_left => ctx.settings.volume -= VOLUME_CHANGE,
                     1 if movement_right => ctx.settings.volume += VOLUME_CHANGE,
-                    2 if movement_left => ctx.settings.ui_scale -= 1,
-                    2 if movement_right => ctx.settings.ui_scale += 1,
-                    3 if enter_pressed => ctx.settings.reset(),
+                    2 if enter_pressed => ctx.settings.reset(),
                     _ => {}
                 }
 
