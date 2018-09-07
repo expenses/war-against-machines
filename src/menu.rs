@@ -4,8 +4,7 @@ use context::Context;
 use resources::Image;
 use settings::*;
 
-use pedot::*;
-use ui::*;
+use ui::{self, *};
 
 use glutin::*;
 
@@ -48,10 +47,8 @@ pub enum MenuCallback<'a> {
 pub struct MainMenu {
     settings: SkirmishSettings,
     submenu: Submenu,
-    submenus: [List<ListItem>; 5]
+    submenus: [List; 5]
 }
-
-// todo: making a server should also be under the skirmish submenu
 
 impl MainMenu {
     // Create a new Menu
@@ -60,38 +57,40 @@ impl MainMenu {
             submenu: Submenu::Main,
             submenus: [
                 list!(
-                    ListItem::new(0.0, 50.0, "Skirmish"),
-                    ListItem::new(0.0, 30.0, "Settings"),
-                    ListItem::new(0.0, 10.0, "Quit")
+                    0.0, 50.0,
+                    ListItem::new("Skirmish"),
+                    ListItem::new("Settings"),
+                    ListItem::new("Quit")
                 ),
                 list!(
-                    ListItem::new(0.0, 50.0, "Back"),
-                    ListItem::new(0.0, 30.0, "Resume Skirmish"),
-                    ListItem::new(0.0, 10.0, "New Skirmish"),
-                    ListItem::new(0.0, -10.0, "Game Type:").unselectable(),
-                    ListItem::new(0.0, -30.0, "<Game Type>"),
-                    ListItem::new(0.0, -50.0, "Load Save"),
-                    ListItem::new(0.0, -70.0, "Settings"),
-                    ListItem::new(0.0, -90.0, "Address:").unselectable(),
-                    ListItem::new(0.0, -110.0, "<Address>")
+                    0.0, 50.0,
+                    ListItem::new("Back"),
+                    ListItem::new("Resume Skirmish"),
+                    ListItem::new("New Skirmish"),
+                    ListItem::new("<Game Type>"),
+                    ListItem::new("Load Save"),
+                    ListItem::new("Settings"),
+                    ListItem::new("<Address>")
                 ),
                 list!(
-                    ListItem::new(0.0, 50.0, "Back"),
-                    ListItem::new(0.0, 30.0, "<Width>"),
-                    ListItem::new(0.0, 10.0, "<Height>"),
-                    ListItem::new(0.0, -10.0, "<Player A Units>"),
-                    ListItem::new(0.0, -30.0, "<Player B Units>"),
-                    ListItem::new(0.0, -50.0, "<Player A Unit Type>"),
-                    ListItem::new(0.0, -70.0, "<Player A Unit Type>"),
-                    ListItem::new(0.0, -90.0, "<Light Level>")
+                    0.0, 50.0,
+                    ListItem::new("Back"),
+                    ListItem::new("<Width>"),
+                    ListItem::new("<Height>"),
+                    ListItem::new("<Player A Units>"),
+                    ListItem::new("<Player B Units>"),
+                    ListItem::new("<Player A Unit Type>"),
+                    ListItem::new("<Player A Unit Type>"),
+                    ListItem::new("<Light Level>")
                 ),
                 list!(
-                    ListItem::new(0.0, 50.0, "Back"),
-                    ListItem::new(0.0, 30.0, "<Volume>"),
-                    ListItem::new(0.0, 10.0, "<UI Scale>"),
-                    ListItem::new(0.0, -10.0, "Reset")
+                    0.0, 50.0,
+                    ListItem::new("Back"),
+                    ListItem::new("<Volume>"),
+                    ListItem::new("<UI Scale>"),
+                    ListItem::new("Reset")
                 ),
-                list!()
+                list!(0.0, 50.0)
             ],
             settings: SkirmishSettings::default()
         };
@@ -104,50 +103,38 @@ impl MainMenu {
         menu
     }
 
-    fn rotate_up(&mut self) {
-        self.submenus[self.submenu.index()].rotate_up();
-        if !self.submenus[self.submenu.index()].get().selectable() {
-            self.rotate_up();
-        }
-    }
-
-    fn rotate_down(&mut self) {
-        self.submenus[self.submenu.index()].rotate_down();
-        if !self.submenus[self.submenu.index()].get().selectable() {
-            self.rotate_down();
-        }
+    pub fn reset_submenu(&mut self) {
+        self.submenu = Submenu::Main;
     }
 
     fn refresh_skirmish_settings(&mut self) {
-        let skirmish_settings = Submenu::SkirmishSettings.index();
+        self.settings.clamp();
 
-        self.submenus[skirmish_settings][1].set_text(&format!("Width: {}", self.settings.width));
-        self.submenus[skirmish_settings][2].set_text(&format!("Height: {}", self.settings.height));
-        self.submenus[skirmish_settings][3].set_text(&format!("Player A Units: {}", self.settings.player_a_units));
-        self.submenus[skirmish_settings][4].set_text(&format!("Player B Units: {}", self.settings.player_b_units));
-        self.submenus[skirmish_settings][5].set_text(&format!("Player A Unit Type: {}", self.settings.player_a_unit_type));
-        self.submenus[skirmish_settings][6].set_text(&format!("Player B Unit Type: {}", self.settings.player_b_unit_type));
-        self.submenus[skirmish_settings][7].set_text(&format!("Light Level: {}", f32::from(self.settings.light) / 10.0));
+        let skirmish_settings = &mut self.submenus[Submenu::SkirmishSettings.index()];
+        skirmish_settings[1].set_text(&format!("Width: {}", self.settings.width));
+        skirmish_settings[2].set_text(&format!("Height: {}", self.settings.height));
+        skirmish_settings[3].set_text(&format!("Player A Units: {}", self.settings.player_a_units));
+        skirmish_settings[4].set_text(&format!("Player B Units: {}", self.settings.player_b_units));
+        skirmish_settings[5].set_text(&format!("Player A Unit Type: {}", self.settings.player_a_unit_type));
+        skirmish_settings[6].set_text(&format!("Player B Unit Type: {}", self.settings.player_b_unit_type));
+        skirmish_settings[7].set_text(&format!("Light Level: {}", f32::from(self.settings.light) / 10.0));
     }
 
     fn refresh_skirmish(&mut self, game_in_progress: bool) {
-        let skirmish = Submenu::Skirmish.index();
-        
-        self.settings.clamp();
-
-        self.submenus[skirmish][1].set_selectable(game_in_progress);
-        self.submenus[skirmish][4].set_text(self.settings.game_type.as_str());
-        self.submenus[skirmish][5].set_selectable(self.settings.game_type != GameType::Connect);
-        self.submenus[skirmish][6].set_selectable(self.settings.game_type != GameType::Connect);
-        self.submenus[skirmish][8].set_text(&self.settings.address).set_selectable(self.settings.game_type != GameType::Local);
+        let skirmish = &mut self.submenus[Submenu::Skirmish.index()];
+        skirmish[1].set_selectable(game_in_progress);
+        skirmish[3].set_text(&format!("Game Type: {}", self.settings.game_type.as_str()));
+        skirmish[4].set_selectable(self.settings.game_type != GameType::Connect);
+        skirmish[5].set_selectable(self.settings.game_type != GameType::Connect);
+        skirmish[6].set_text(&format!("Address: {}", self.settings.address)).set_selectable(self.settings.game_type != GameType::Local);
     }
 
     fn refresh_settings(&mut self, ctx: &mut Context) {
-        let settings = Submenu::Settings.index();
-
         ctx.settings.clamp();
-        self.submenus[settings][1].set_text(&format!("Volume: {}", ctx.settings.volume));
-        self.submenus[settings][2].set_text(&format!("UI Scale: {}", ctx.settings.ui_scale));
+
+        let settings = &mut self.submenus[Submenu::Settings.index()];
+        settings[1].set_text(&format!("Volume: {}", ctx.settings.volume));
+        settings[2].set_text(&format!("UI Scale: {}", ctx.settings.ui_scale));
     }
 
     fn refresh_skirmish_saves(&mut self, ctx: &Context) {
@@ -155,19 +142,14 @@ impl MainMenu {
 
         submenu.clear_entries();
 
-        submenu.push_entry(ListItem::new(0.0, 50.0, "Back"));
-        submenu.push_entry(ListItem::new(0.0, 30.0, "Refresh"));
-        submenu.push_entry(ListItem::new(0.0, 10.0, "None"));
-
-        let mut y = 10.0;
+        submenu.push_entry(ListItem::new("Back"));
+        submenu.push_entry(ListItem::new("Refresh"));
+        submenu.push_entry(ListItem::new("None"));
 
         read_dir(&ctx.settings.savegames).unwrap()
             .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))
             .filter(|entry| !entry.starts_with('.'))
-            .map(|entry| {
-                y -= 20.0;
-                ListItem::new(0.0, y, &entry)
-            })
+            .map(|entry| ListItem::new(&entry))
             .for_each(|entry| submenu.push_entry(entry));
     }
 
@@ -175,11 +157,11 @@ impl MainMenu {
         let enter_pressed = ctx.gui.key_pressed(VirtualKeyCode::Return);
 
         if ctx.gui.key_pressed(VirtualKeyCode::Up) {
-            self.rotate_up();
+            self.submenus[self.submenu.index()].rotate_up();
         }
 
         if ctx.gui.key_pressed(VirtualKeyCode::Down) {
-            self.rotate_down();
+            self.submenus[self.submenu.index()].rotate_down();
         }
 
         let movement_left = ctx.gui.key_pressed(VirtualKeyCode::Left);
@@ -244,14 +226,14 @@ impl MainMenu {
             0 if enter_pressed  => self.submenu = Submenu::Main,
             1 if enter_pressed  => return Some(MenuCallback::Resume),
             2 if enter_pressed  => return Some(MenuCallback::NewSkirmish(&self.settings)),
-            4 if movement_left  => self.settings.game_type.rotate_left(),
-            4 if movement_right => self.settings.game_type.rotate_right(),
-            5 if enter_pressed  => self.submenu = Submenu::SkirmishSaves,
-            6 if enter_pressed  => self.submenu = Submenu::SkirmishSettings,
-            8 if back_pressed   => {
+            3 if movement_left  => self.settings.game_type.rotate_left(),
+            3 if movement_right => self.settings.game_type.rotate_right(),
+            4 if enter_pressed  => self.submenu = Submenu::SkirmishSaves,
+            5 if enter_pressed  => self.submenu = Submenu::SkirmishSettings,
+            6 if back_pressed   => {
                 self.settings.address.pop();
             },
-            8 => {
+            6 => {
                 key_input = ctx.gui.key_input(&mut self.settings.address, |c| c.is_ascii_digit() || c == '.' || c == ':');
             },
             _ => {}
@@ -299,9 +281,9 @@ impl MainMenu {
 
     pub fn render(&self, ctx: &mut Context) {
         // Draw the title
-        let dest = [0.0, ctx.height / 2.0 - TITLE_TOP_OFFSET];
+        let dest = [ctx.width / 2.0, TITLE_TOP_OFFSET];
         ctx.render(Image::Title, dest, 1.0);
 
-        render_list(&self.submenus[self.submenu.index()], ctx);
+        self.submenus[self.submenu.index()].render(ctx);
     }
 }

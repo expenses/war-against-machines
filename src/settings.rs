@@ -112,7 +112,8 @@ impl Settings {
     }
 
     pub fn ui_scale(&self) -> f32 {
-        f32::from(self.ui_scale)
+        // todo: hacky but cbf changings things right now
+        2.0
     }
 
     // Make sure the volume isn't too high

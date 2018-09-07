@@ -95,10 +95,13 @@ impl Camera {
         to_map_coords(x, y)
     }
 
-    pub fn tile_under_cursor(&self, mouse_x: f32, mouse_y: f32) -> (usize, usize) {
+    pub fn tile_under_cursor(&self, mut mouse_x: f32, mut mouse_y: f32, width: f32, height: f32) -> (usize, usize) {
+        mouse_x -= width / 2.0;
+        mouse_y -= height / 2.0;
+
         // Work out the position of the mouse on the screen relative to the camera
         let x = mouse_x  / TILE_WIDTH  / self.zoom + self.x / 2.0;
-        let y = -mouse_y / TILE_HEIGHT / self.zoom - self.y / 2.0;
+        let y = mouse_y / TILE_HEIGHT / self.zoom - self.y / 2.0;
 
         // Account for the images being square
         let y = y - 0.5;
@@ -114,7 +117,7 @@ impl Camera {
 // If a tile is visible, get it's location on the screen
 fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32; 2]> {
     // Get the maximum x and y values (given that (0, 0) is at the center)
-    let (max_x, max_y) = (ctx.width / 2.0, ctx.height / 2.0);
+    let (max_x, max_y) = (ctx.width, ctx.height);
     // The x and y difference of a tile compared to another tile on the same row/col
     let (x_size, y_size) = (TILE_WIDTH / 2.0 * camera.zoom, TILE_HEIGHT / 2.0 * camera.zoom);
 
@@ -122,12 +125,12 @@ fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32;
     let (x, y) = from_map_coords(x, y);
 
     // Get the correct position
-    let x = (x - camera.x) * x_size;
-    let y = (y - camera.y) * y_size;
+    let x = (x - camera.x) * x_size + ctx.width / 2.0;
+    let y = -(y - camera.y) * y_size + ctx.height / 2.0;
 
     // Check if the tile is onscreen
-    if x > -max_x - x_size && y > -max_y - y_size * 2.0 &&
-       x < max_x  + x_size && y < max_y + y_size  * 2.0 {    
+    if x > -x_size && y > -y_size * 2.0 &&
+       x < max_x + x_size && y < max_y + y_size * 2.0 {    
         Some([x, y])
     } else {
         None
@@ -369,5 +372,5 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
 fn default_camera_pos() {
     // If the cursor is in the center of the screen and the camera is
     // the default, the tile under the cursor should be at (0, 0)
-    assert_eq!(Camera::new().tile_under_cursor(0.0, -1.0), (0, 0));
+    assert_eq!(Camera::new().tile_under_cursor(501.0, 501.0, 1000.0, 1000.0), (0, 0));
 }

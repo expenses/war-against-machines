@@ -112,11 +112,8 @@ impl Battle {
         }
 
         // Respond to key presses when the text input is open
-        if pressed {
-            let handled = self.interface.try_handle_save_game_keypress(key, &self.client);
-            if handled {
-                return KeyResponse::Continue;
-            }
+        if self.interface.save_game_open() {
+            return KeyResponse::Continue;
         }
 
         // Respond to key presses when the inventory is open
@@ -168,6 +165,8 @@ impl Battle {
                 ai.join().unwrap().unwrap();
             }
         }
+
+        self.interface.update_savegame(ctx, &self.client);
     }
 
     // Draw both the map and the UI
@@ -183,9 +182,9 @@ impl Battle {
     }
 
     // Move the cursor on the screen
-    pub fn move_cursor(&mut self, x: f32, y: f32) {
+    pub fn move_cursor(&mut self, x: f32, y: f32, ctx: &Context) {
         // Get the position where the cursor should be
-        let (x, y) = self.camera.tile_under_cursor(x, y);
+        let (x, y) = self.camera.tile_under_cursor(x, y, ctx.width, ctx.height);
 
         // Set cursor position if it is on the map and visible
         self.cursor = if x < self.map().tiles.width() && y < self.map().tiles.height() {
@@ -233,13 +232,13 @@ impl Battle {
     }
 
     // Respond to mouse presses
-    pub fn mouse_button(&mut self, button: MouseButton, mouse: (f32, f32), ctx: &Context) {
+    pub fn mouse_button(&mut self, button: MouseButton, ctx: &Context) {
         if !self.waiting_for_command() {
             return;
         }
 
         match button {
-            MouseButton::Left => match self.interface.clicked(ctx, mouse) {
+            MouseButton::Left => match self.interface.clicked(ctx) {
                 // End the turn
                 Some(Button::EndTurn) => self.end_turn(),
                 // Toggle the inventory

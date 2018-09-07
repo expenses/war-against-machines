@@ -20,9 +20,12 @@ uniform float prop_scale;
 uniform vec2 tileset_size;
 uniform vec2 screen_resolution;
 
+vec2 screen_pos_to_opengl_pos(vec2 position) {
+    return (vec2(0, 1) + vec2(1, -1) * position / screen_resolution - 0.5) * 2.0;
+}
+
 void main() {
     // Scale and translate the UV for the source, and then scale down for the tileset
-    // TODO: figure out why the `vec2(0, 1)` needs to be here
     out_uv = vec2(0, 1) + (in_uv * prop_src.zw + prop_src.xy) / tileset_size;
 
     // Calculate the (clockwise) rotation matrix
@@ -31,11 +34,9 @@ void main() {
         -sin(prop_rotation), cos(prop_rotation)
     );
 
-    // Rotated and scale the position
-    vec2 scaled = in_pos * rotation * prop_src.zw * prop_scale;
-    // Get the output position
-    vec2 pos = (scaled + prop_dest * 2) / screen_resolution;
+    vec2 position = screen_pos_to_opengl_pos(prop_dest);
 
-    // Set the position
-    gl_Position = vec4(pos, 0.0, 1.0);
+    vec2 image_size = in_pos * rotation / screen_resolution * prop_src.zw * prop_scale;
+
+    gl_Position = vec4(position + image_size, 0.0, 1.0);
 }

@@ -35,7 +35,6 @@ mod weapons;
 mod items;
 #[macro_use]
 mod resources;
-#[macro_use]
 mod utils;
 mod settings;
 mod menu;
@@ -117,6 +116,7 @@ impl App {
                 match response {
                     KeyResponse::GameOver => {
                         self.mode = Mode::Menu;
+                        self.menu.reset_submenu();
                         self.skirmish = None;
                     },
                     KeyResponse::OpenMenu => {
@@ -141,17 +141,11 @@ impl App {
 
     // Handle mouse movement
     fn handle_mouse_motion(&mut self, x: f32, y: f32) {
-        // Convert the coordinates
-        let (x, y) = (
-            x - self.ctx.width / 2.0,
-            self.ctx.height / 2.0 - y
-        );
-
         self.mouse = (x, y);
 
         if let Mode::Skirmish = self.mode {
             if let Some(ref mut skirmish) = self.skirmish {
-                skirmish.move_cursor(x, y);
+                skirmish.move_cursor(x, y, &self.ctx);
             }
         }
     }
@@ -160,7 +154,7 @@ impl App {
     fn handle_mouse_button(&mut self, button: MouseButton) {
         if let Mode::Skirmish = self.mode {
             if let Some(ref mut skirmish) = self.skirmish {
-                skirmish.mouse_button(button, self.mouse, &self.ctx);
+                skirmish.mouse_button(button, &self.ctx);
             }
         }
     }

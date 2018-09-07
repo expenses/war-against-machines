@@ -131,7 +131,7 @@ impl Client {
         self.connection.send(ClientMessage::EndTurn).unwrap();
     }
 
-    pub fn save(&self, filename: String) {
-        self.connection.send(ClientMessage::SaveGame(filename)).unwrap();
+    pub fn save(&self, filename: &str) {
+        self.connection.send(ClientMessage::SaveGame(filename.into())).unwrap();
     }
 }

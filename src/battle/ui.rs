@@ -1,7 +1,6 @@
 use glium::glutin::VirtualKeyCode;
 
 use pedot::*;
-
 use ui;
 use ui::*;
 use resources::*;
@@ -20,20 +19,20 @@ pub enum Button {
 
 struct InventoryInfo {
     string: String,
-    items: Vec<MenuItem>,
-    ground: Vec<MenuItem>
+    items: Vec<ListItem>,
+    ground: Vec<ListItem>
 }
 
 impl InventoryInfo {
 	fn new(unit: &Unit, map: &Map) -> Self {
 		// Collect the unit's items into a vec
         let items = unit.inventory().iter()
-            .map(|item| item!(item))
+            .map(|item| ListItem::new(&item.to_string()))
             .collect();
 
         // Collect the items on the ground into a vec
         let ground = map.tiles.at(unit.x, unit.y).items.iter()
-            .map(|item| item!(item))
+            .map(|item| ListItem::new(&item.to_string()))
             .collect();
         
         Self {
@@ -44,83 +43,60 @@ impl InventoryInfo {
 }
 
 pub struct Interface {
-    general: UI,
-    inventory: UI,
-    game_over: List<ListItem>,
-    game_over_active: bool
+    game_over: ui::List,
+    buttons: [ui::Button; 3],
+    save_game: TextInput,
+    save_game_active: bool,
+    unit_inventory: ui::List,
+    tile_inventory: ui::List,
+    unit_title: ui::TextDisplay2,
+    tile_title: ui::TextDisplay2,
+    inventory_active: bool,
+    game_info: ui::TextDisplay2,
+    log: ui::TextDisplay2
 }
 
 impl Interface {
 	pub fn new() -> Self {
-		let width_offset = -Image::EndTurnButton.width();
-
-        let mut general = UI::new(true);
-
-        // Buttons
-        general.add_buttons(vec![
-            ui::Button::new(Image::EndTurnButton, 0.0, 0.0, Vertical::Right, Horizontal::Bottom),
-            ui::Button::new(Image::InventoryButton, width_offset, 0.0, Vertical::Right, Horizontal::Bottom),
-            ui::Button::new(Image::SaveGameButton, width_offset * 2.0, 0.0, Vertical::Right, Horizontal::Bottom)
-        ]);
-
-        general.add_text_displays(vec![
-        	// Game Info
-            TextDisplay::new(0.0, 10.0, Vertical::Middle, Horizontal::Top, true),
-            // Game log
-            TextDisplay::new(10.0, -10.0, Vertical::Left, Horizontal::Bottom, true)
-        ]);
-
-        // Save game
-        general.add_text_inputs(vec![
-            TextInput::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, "Save game to:")
-        ]);
-
-        // Game over screen
-        general.add_menus(vec![
-            Menu::new(0.0, 0.0, Vertical::Middle, Horizontal::Middle, false, true, Vec::new())
-        ]);
-
-        // Create the inventory UI
-
-        let mut inventory = UI::new(false);
-        
-        inventory.add_text_displays(vec![
-            // Unit title
-            TextDisplay::new(-75.0, 50.0, Vertical::Middle, Horizontal::Top, true),
-            // Ground title
-            TextDisplay::new(75.0, 50.0, Vertical::Middle, Horizontal::Top, true)
-        ]);
-
-        inventory.add_menus(vec![
-            // Unit inventory
-            Menu::new(-75.0, 82.5, Vertical::Middle, Horizontal::Top, true, true, Vec::new()),
-            // Ground inventory
-            Menu::new(75.0, 62.5, Vertical::Middle, Horizontal::Top, true, false, Vec::new())
-        ]);
-
         Self {
-        	general, inventory,
-            game_over: list!(),
-            game_over_active: false
+            game_over: list!(0.0, 50.0).active(false),
+            buttons: [
+                ui::Button::new(HorizontalAlign::Right(0.0), VerticalAlign::Bottom(0.0), Image::EndTurnButton),
+                ui::Button::new(HorizontalAlign::Right(1.0), VerticalAlign::Bottom(0.0), Image::InventoryButton),
+                ui::Button::new(HorizontalAlign::Right(2.0), VerticalAlign::Bottom(0.0), Image::SaveGameButton),
+            ],
+            save_game: TextInput::new(HorizontalAlign::Middle(0.0), VerticalAlign::Middle(0.0), "Save game to: "),
+            save_game_active: false,
+            unit_inventory: list!(-75.0, 75.0),
+            tile_inventory: list!(75.0, 75.0).active(false),
+            unit_title: ui::TextDisplay2::new(HorizontalAlign::Middle(-75.0), VerticalAlign::Middle(-150.0)),
+            tile_title: ui::TextDisplay2::new(HorizontalAlign::Middle(75.0), VerticalAlign::Middle(-150.0)),
+            inventory_active: false,
+            game_info: ui::TextDisplay2::new(HorizontalAlign::Middle(0.0), VerticalAlign::Top(0.0)),
+            log: ui::TextDisplay2::new(HorizontalAlign::Left(10.0), VerticalAlign::Bottom(10.0))
         }
 	}
 
     pub fn toggle_inventory(&mut self) {
-        self.inventory.toggle();
+        self.inventory_active = !self.inventory_active;
     }
 
     pub fn toggle_save_game(&mut self) {
-        self.general.text_input_mut(0).toggle()
+        self.save_game_active = !self.save_game_active;
     }
 
-    pub fn try_handle_save_game_keypress(&mut self, key: VirtualKeyCode, client: &Client) -> bool {
-        if self.general.text_input(0).active {
-            if key == VirtualKeyCode::Return {
-                let filename = self.general.text_input(0).text();
+    pub fn save_game_open(&self) -> bool {
+        self.save_game_active
+    }
+
+    pub fn update_savegame(&mut self, ctx: &Context, client: &Client) -> bool {
+        if self.save_game_active {
+            if ctx.gui.key_pressed(VirtualKeyCode::Return) {
+                let filename = self.save_game.text();
                 client.save(filename);
-                self.general.text_input_mut(0).toggle();
+                self.save_game_active = false;
             } else {
-                self.general.text_input_mut(0).handle_key(key);
+                self.save_game.update(ctx);
             }
 
             true
@@ -129,32 +105,40 @@ impl Interface {
         }
     }
 
+    fn toggle_active_inventory(&mut self) {
+        let unit = self.unit_inventory.is_active();
+        self.unit_inventory.set_active(!unit);
+        let tile = self.tile_inventory.is_active();
+        self.tile_inventory.set_active(!tile);
+    }
+
+    fn active_inventory(&mut self) -> &mut ui::List {
+        if self.unit_inventory.is_active() {
+            &mut self.unit_inventory
+        } else {
+            &mut self.tile_inventory
+        }
+    }
+
     pub fn try_handle_inventory_keypress(&mut self, key: VirtualKeyCode, client: &Client, selected: u8, cursor: &Option<(usize, usize)>) -> bool {
-        if !self.inventory.active {
+        if !self.inventory_active {
             return false;
         }
-
-        // Get the active/inactive menu
-        let (active, inactive) = if self.inventory.menu(0).selected {(0, 1)} else {(1, 0)};
         
         match key {
-            // Toggle the inventory
-            VirtualKeyCode::I => self.inventory.toggle(),
+            VirtualKeyCode::I => self.toggle_inventory(),
             // Rotate the selection up
-            VirtualKeyCode::Up   | VirtualKeyCode::W => self.inventory.menu_mut(active).rotate_up(),
+            VirtualKeyCode::Up   | VirtualKeyCode::W => self.active_inventory().rotate_up(),
             // Rotate the selection down
-            VirtualKeyCode::Down | VirtualKeyCode::S => self.inventory.menu_mut(active).rotate_down(),
+            VirtualKeyCode::Down | VirtualKeyCode::S => self.active_inventory().rotate_down(),
             // Switch which menu is selected
             VirtualKeyCode::Left | VirtualKeyCode::Right |
-            VirtualKeyCode::A    | VirtualKeyCode::D => {
-                self.inventory.menu_mut(active).selected = false;
-                self.inventory.menu_mut(inactive).selected = true;
-            },
+            VirtualKeyCode::A    | VirtualKeyCode::D => self.toggle_active_inventory(),
             // Pick up / drop an item
             VirtualKeyCode::Return => {
-                let index = self.inventory.menu(active).selection;
+                let index = self.active_inventory().index();
 
-                if active == 0 {
+                if self.unit_inventory.is_active() {
                     client.drop_item(selected, index);
                 } else {
                     client.pickup_item(selected, index);
@@ -164,16 +148,16 @@ impl Interface {
             },
             // Use an item
             VirtualKeyCode::E => {
-                if active == 0 {
-                    let index = self.inventory.menu(active).selection;
+                if self.unit_inventory.is_active() {
+                    let index = self.active_inventory().index();
                     client.use_item(selected, index);
                 }
             },
             // Throw an item
             VirtualKeyCode::T => {
-                if active == 0 {
+                if self.unit_inventory.is_active() {
                     if let Some((cursor_x, cursor_y)) = cursor {
-                        client.throw_item(selected, self.inventory.menu(active).selection, *cursor_x, *cursor_y);
+                        client.throw_item(selected, self.active_inventory().index(), *cursor_x, *cursor_y);
                         //self.inventory.menu_mut(active).fit_selection();
                     }
                 }
@@ -185,15 +169,20 @@ impl Interface {
     }
 
     pub fn game_over_screen_active(&self) -> bool {
-        self.game_over_active
+        self.game_over.is_active()
     }
 
     pub fn draw_game_over_screen(&self, ctx: &mut Context) {
-        render_list(&self.game_over, ctx);
+        self.game_over.render(ctx);
     }
 
-    pub fn clicked(&self, ctx: &Context, mouse: (f32, f32)) -> Option<Button>{
-        match self.general.clicked(ctx, mouse) {
+    pub fn clicked(&self, ctx: &Context) -> Option<Button>{
+        let clicked = self.buttons.iter()
+            .enumerate()
+            .find(|(_, button)| button.clicked(ctx))
+            .map(|(i, _)| i);
+        
+        match clicked {
             Some(0) => Some(Button::EndTurn),
             Some(1) => Some(Button::Inventory),
             Some(2) => Some(Button::SaveGame),
@@ -215,40 +204,55 @@ impl Interface {
         };
 
         // Set the text of the UI text display
-        self.general.text_display_mut(0).text = format!("Turn {} - {}\n{}", map.turn(), side, selected);
+        self.game_info.set_text(format!("Turn {} - {}\n{}", map.turn(), side, selected));
 
         // Set the inventory
-        if self.inventory.active {
+        if self.inventory_active {
             let info = selected_id.and_then(|selected| map.units.get(selected)).map(|unit| InventoryInfo::new(unit, map));
 
             // Get the name of the selected unit, it's items and the items on the ground
             if let Some(info) = info {
-                self.inventory.text_display_mut(0).text = info.string;
-                self.inventory.text_display_mut(1).text = "Ground".into();
-                self.inventory.menu_mut(0).set_list(vec_or_default(info.items, || item!("No items")));
-                self.inventory.menu_mut(1).set_list(vec_or_default(info.ground, || item!("No items")));
+                self.unit_title.set_text(info.string);
+                self.tile_title.set_text("Ground".into());
+                
+                self.unit_inventory.set_entries(vec_or_default(info.items, || ListItem::new("No items")));
+                self.tile_inventory.set_entries(vec_or_default(info.ground, || ListItem::new("No items")));
             }
         }
         
-        // Draw the UI
-        self.general.draw(ctx);
-        self.inventory.draw(ctx);
+        for button in &self.buttons {
+            button.render(ctx);
+        }
+
+        if self.save_game_active {
+            self.save_game.render(ctx);
+        }
+
+        if self.inventory_active {
+            self.unit_inventory.render(ctx);
+            self.tile_inventory.render(ctx);
+            self.unit_title.render(ctx);
+            self.tile_title.render(ctx);
+        }
+
+        self.game_info.render(ctx);
+        self.log.render(ctx);
 	}
 
     // todo: the log should probably remove items after a while
     pub fn append_to_log(&mut self, message: &str) {
-        self.general.text_display_mut(1).append(message)
+        self.log.append(message);
     }
 
     pub fn set_game_over_screen(&mut self, stats: &GameStats) {
-        self.game_over_active = true;
         self.game_over.set_entries(vec![
-            ListItem::new(0.0, 40.0, "Game Over").unselectable(),
-            ListItem::new(0.0, 20.0, if stats.won {"Game Over"} else {"You Lost"}).unselectable(),
-            ListItem::new(0.0, 0.0, &format!("Units lost: {}", stats.units_lost)).unselectable(),
-            ListItem::new(0.0, -20.0, &format!("Units killed: {}", stats.units_killed)).unselectable(),
-            ListItem::new(0.0, -40.0, "Close")
+            ListItem::new("Game Over").unselectable(),
+            ListItem::new(if stats.won {"Game Over"} else {"You Lost"}).unselectable(),
+            ListItem::new(&format!("Units lost: {}", stats.units_lost)).unselectable(),
+            ListItem::new(&format!("Units killed: {}", stats.units_killed)).unselectable(),
+            ListItem::new("Close")
         ]);
+        self.game_over.set_active(true);
         self.game_over.set_index(4);
     }
 }

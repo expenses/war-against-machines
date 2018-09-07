@@ -57,8 +57,7 @@ impl Context {
         let scale = self.settings.ui_scale();
 
         // Correct for screen position
-        x += self.width / 2.0;
-        y = self.height / 2.0 - y - 13.0;
+        y -= 13.0;
 
         // Center the text on its width
         let width = self.font_width(string);
