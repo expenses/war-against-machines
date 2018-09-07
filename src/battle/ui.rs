@@ -11,6 +11,10 @@ use super::units::*;
 use super::networking::*;
 use super::responses::*;
 
+const INVENTORY_X_OFFSET: f32 = 150.0;
+const INVENTORY_UNIT_TITLE_OFFSET: f32 = -160.0;
+const INVENTORY_TILE_TITLE_OFFSET: f32 = -160.0 + Context::FONT_HEIGHT;
+
 pub enum Button {
     EndTurn,
     Inventory,
@@ -67,12 +71,12 @@ impl Interface {
             ],
             save_game: TextInput::new(HorizontalAlign::Middle(0.0), VerticalAlign::Middle(0.0), "Save game to: "),
             save_game_active: false,
-            unit_inventory: list!(-75.0, 75.0),
-            tile_inventory: list!(75.0, 75.0).active(false),
-            unit_title: ui::TextDisplay2::new(HorizontalAlign::Middle(-75.0), VerticalAlign::Middle(-150.0)),
-            tile_title: ui::TextDisplay2::new(HorizontalAlign::Middle(75.0), VerticalAlign::Middle(-150.0)),
+            unit_inventory: list!(-INVENTORY_X_OFFSET, 75.0),
+            tile_inventory: list!(INVENTORY_X_OFFSET, 75.0).active(false),
+            unit_title: ui::TextDisplay2::new(HorizontalAlign::Middle(-INVENTORY_X_OFFSET), VerticalAlign::Middle(INVENTORY_UNIT_TITLE_OFFSET)),
+            tile_title: ui::TextDisplay2::new(HorizontalAlign::Middle(INVENTORY_X_OFFSET), VerticalAlign::Middle(INVENTORY_TILE_TITLE_OFFSET)),
             inventory_active: false,
-            game_info: ui::TextDisplay2::new(HorizontalAlign::Middle(0.0), VerticalAlign::Top(0.0)),
+            game_info: ui::TextDisplay2::new(HorizontalAlign::Middle(10.0), VerticalAlign::Top(10.0)),
             log: ui::TextDisplay2::new(HorizontalAlign::Left(10.0), VerticalAlign::Bottom(10.0))
         }
 	}

@@ -135,10 +135,13 @@ pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize
     let item = {
         let (item, unit_x, unit_y) = {
             let unit = map.units.get_mut(id).unwrap();
+            // todo: item cost validation should happen in unit.inventory_remove/inventory_add functions so its ensured by the api
             if let Some(item) = unit.inventory_remove(item) {
-                if !distance_under(x, y, unit.x, unit.y, unit.tag.throw_distance()) {
+                if !distance_under(x, y, unit.x, unit.y, unit.tag.throw_distance()) || ITEM_COST > unit.moves {
                     return;
                 }
+
+                unit.moves -= ITEM_COST;
 
                 (item, unit.x, unit.y)
             } else {

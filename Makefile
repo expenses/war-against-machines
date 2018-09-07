@@ -6,17 +6,10 @@ tileset = make/tileset/target/release/tileset
 # Build the tileset
 tileset: resources/tileset.png
 
-# Run the colour conversion script
-convert_colour: target/release/convert_colour
-	$^
-
 # Check the build on both stable and nightly (with clippy)
+# Useful for git pre-commit hooks mostly
 check:
 	cargo +stable check && cargo +nightly clippy && cargo +nightly test
-
-# Test shaders
-shaders:
-	cargo test compile_shaders
 
 # Compile Rust source code
 $(tileset): make/tileset/src/main.rs

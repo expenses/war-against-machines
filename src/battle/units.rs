@@ -15,7 +15,7 @@ use utils::{chance_to_hit, distance_under};
 use resources::Image;
 use context::*;
 
-// The cost for a unit to pick up / drop / use an item
+// The cost for a unit to pick up / drop / use / throw an item
 pub const ITEM_COST: u16 = 5;
 
 // A list of first names to pick from

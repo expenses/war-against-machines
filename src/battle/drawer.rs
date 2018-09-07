@@ -360,7 +360,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
         if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
             ctx.render(
                 thrown_item.image(),
-                [dest[0], dest[1] + thrown_item.height() * camera.zoom * TILE_HEIGHT],
+                [dest[0], dest[1] - thrown_item.height() * camera.zoom * TILE_HEIGHT],
                 camera.zoom
             );
         }
