@@ -144,7 +144,8 @@ impl MainMenu {
         submenu.push_entry(ListItem::new("Refresh"));
         submenu.push_entry(ListItem::new("None"));
 
-        read_dir(&ctx.settings.savegames).unwrap()
+        read_dir(&ctx.settings.savegames).into_iter()
+            .flat_map(|dir| dir)
             .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))
             .filter(|entry| !entry.starts_with('.'))
             .map(|entry| ListItem::new(&entry))

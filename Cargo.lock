@@ -913,6 +913,7 @@ dependencies = [
 [[package]]
 name = "pedot"
 version = "0.1.0"
+source = "git+https://github.com/expenses/pedot#6255f2cc13495c9646295edf275cbea305e1c91c"
 dependencies = [
  "derive_is_enum_variant 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1135,6 +1136,7 @@ dependencies = [
 [[package]]
 name = "runic"
 version = "0.1.0"
+source = "git+https://github.com/expenses/runic#6cb0ef8b76323ed6c8798fa9b8be969fed18612f"
 dependencies = [
  "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1434,10 +1436,10 @@ dependencies = [
  "odds 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ord_subset 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pathfinding 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "pedot 0.1.0",
+ "pedot 0.1.0 (git+https://github.com/expenses/pedot)",
  "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rodio 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "runic 0.1.0",
+ "runic 0.1.0 (git+https://github.com/expenses/runic)",
  "serde 1.0.75 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.75 (registry+https://github.com/rust-lang/crates.io-index)",
  "skynet 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1697,6 +1699,7 @@ dependencies = [
 "checksum parking_lot 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "69376b761943787ebd5cc85a5bc95958651a22609c5c1c2b65de21786baec72b"
 "checksum parking_lot_core 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)" = "4db1a8ccf734a7bce794cc19b3df06ed87ab2f3907036b693c68f56b4d4537fa"
 "checksum pathfinding 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "db30970027436939d53f4838a11475963e12a6fa0a48408212357634dac43817"
+"checksum pedot 0.1.0 (git+https://github.com/expenses/pedot)" = "<none>"
 "checksum peeking_take_while 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 "checksum percent-encoding 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "31010dd2e1ac33d5b46a5b413495239882813e0369f8ed8a5e266f173602f831"
 "checksum pkg-config 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)" = "104630aa1c83213cbc76db0703630fcb0421dac3585063be4ce9a8a2feeaa745"
@@ -1723,6 +1726,7 @@ dependencies = [
 "checksum regex-syntax 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "747ba3b235651f6e2f67dfa8bcdcd073ddb7c243cb21c442fc12395dfcac212d"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum rodio 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e724e9a6bf5aab9a4e6aa50bbdf0ef44d82cadabb904ca46c247249ce4197331"
+"checksum runic 0.1.0 (git+https://github.com/expenses/runic)" = "<none>"
 "checksum rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "bcfe5b13211b4d78e5c2cadfebd7769197d95c639c35a50057eb4c05de811395"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
 "checksum rusttype 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97ea162eca92b8f25bf9d5dbaeda19ca1e08173c5199d168b688f04eb14cd327"

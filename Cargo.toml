@@ -28,9 +28,9 @@ error-chain = "*"
 ## Networking
 skynet = "*"
 ## Font rendering
-runic = {path = "../hectic-rs/runic"}
+runic = {git = "https://github.com/expenses/runic"}
 ## UI
-pedot = {path = "../hectic-rs/pedot"}
+pedot = {git = "https://github.com/expenses/pedot"}
 
 # Resource loading
 ## Loading images
