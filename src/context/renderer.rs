@@ -1,15 +1,15 @@
 use glium;
-use glium::*;
-use glutin::*;
-use glutin::dpi::*;
-use image::{load_from_memory_with_format, ImageFormat};
-use glium::texture::*;
 use glium::index::PrimitiveType::*;
+use glium::texture::*;
 use glium::uniforms::*;
-use runic::pixelated_program;
+use glium::*;
+use glutin::dpi::*;
+use glutin::*;
+use image::{load_from_memory_with_format, ImageFormat};
+use runic::default_program;
 
-use settings::Settings;
 use resources::TILESET;
+use settings::Settings;
 
 const TITLE: &str = "War Against Machines";
 const VERT: &str = include_str!("shaders/shader.vert");
@@ -18,29 +18,42 @@ const FRAG: &str = include_str!("shaders/shader.frag");
 #[derive(Copy, Clone)]
 struct Vertex {
     in_pos: [f32; 2],
-    in_uv: [f32; 2]
+    in_uv: [f32; 2],
 }
 
 implement_vertex!(Vertex, in_pos, in_uv);
 
 // A square of vertices
 const SQUARE: &[Vertex] = &[
-    Vertex { in_pos: [1.0, -1.0],  in_uv: [1.0, 1.0]},
-    Vertex { in_pos: [-1.0, -1.0], in_uv: [0.0, 1.0]},
-    Vertex { in_pos: [-1.0, 1.0],  in_uv: [0.0, 0.0]},
-    Vertex { in_pos: [1.0, 1.0],   in_uv: [1.0, 0.0]},
+    Vertex {
+        in_pos: [1.0, -1.0],
+        in_uv: [1.0, 1.0],
+    },
+    Vertex {
+        in_pos: [-1.0, -1.0],
+        in_uv: [0.0, 1.0],
+    },
+    Vertex {
+        in_pos: [-1.0, 1.0],
+        in_uv: [0.0, 0.0],
+    },
+    Vertex {
+        in_pos: [1.0, 1.0],
+        in_uv: [1.0, 0.0],
+    },
 ];
 // The indices that hold the square together
 const INDICES: &[u16] = &[0, 1, 2, 2, 3, 0];
 
-
 // Load a texture from memory and return it and its dimensions
 fn load_texture(display: &Display, bytes: &[u8]) -> ([f32; 2], SrgbTexture2d) {
-    let img = load_from_memory_with_format(bytes, ImageFormat::PNG).unwrap().to_rgba();
+    let img = load_from_memory_with_format(bytes, ImageFormat::PNG)
+        .unwrap()
+        .to_rgba();
     let (width, height) = img.dimensions();
     let image = RawImage2d::from_raw_rgba_reversed(&img.into_raw(), (width, height));
     let texture = SrgbTexture2d::new(display, image).unwrap();
-    
+
     ([width as f32, height as f32], texture)
 }
 
@@ -50,13 +63,13 @@ pub struct Properties {
     pub overlay_colour: [f32; 4],
     pub dest: [f32; 2],
     pub rotation: f32,
-    pub scale: f32
+    pub scale: f32,
 }
 
 struct Uniforms {
     screen_resolution: [f32; 2],
     tileset_size: [f32; 2],
-    texture: SrgbTexture2d
+    texture: SrgbTexture2d,
 }
 
 pub struct Renderer {
@@ -66,7 +79,7 @@ pub struct Renderer {
     vertex_buffer: VertexBuffer<Vertex>,
     indices: IndexBuffer<u16>,
     program: Program,
-    pub text_program: Program
+    pub text_program: Program,
 }
 
 impl Renderer {
@@ -93,17 +106,17 @@ impl Renderer {
         let indices = IndexBuffer::new(&display, TrianglesList, INDICES).unwrap();
         let program = Program::from_source(&display, VERT, FRAG, None).unwrap();
 
-        let text_program = pixelated_program(&display).unwrap();
+        let text_program = default_program(&display).unwrap();
 
         // Load the texture
         let (tileset_size, tileset) = load_texture(&display, TILESET);
-        
+
         Renderer {
             // Setup uniforms
             uniforms: Uniforms {
                 tileset_size,
                 screen_resolution: [width as f32, height as f32],
-                texture: tileset
+                texture: tileset,
             },
             // Setup the draw target
             target: display.draw(),
@@ -111,7 +124,7 @@ impl Renderer {
             vertex_buffer,
             indices,
             program,
-            text_program
+            text_program,
         }
     }
 
@@ -142,11 +155,19 @@ impl Renderer {
         // Make sure alpha blending is enabled
         let draw_params = DrawParameters {
             blend: Blend::alpha_blending(),
-            .. Default::default()
+            ..Default::default()
         };
 
         // Draw to the target
-        self.target.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &draw_params).unwrap();
+        self.target
+            .draw(
+                &self.vertex_buffer,
+                &self.indices,
+                &self.program,
+                &uniforms,
+                &draw_params,
+            )
+            .unwrap();
     }
 
     // Finish the current draw target (swapping it onto the screen) and setup a new one
@@ -157,7 +178,8 @@ impl Renderer {
 
     // Clear the target
     pub fn clear(&mut self, colour: [f32; 4]) {
-        self.target.clear_color(colour[0], colour[1], colour[2], colour[3]);
+        self.target
+            .clear_color(colour[0], colour[1], colour[2], colour[3]);
     }
 }
 
@@ -173,8 +195,18 @@ impl Drop for Renderer {
 // so only enable this test on OSX
 #[cfg(target_os = "macos")]
 fn compile_shaders() {
+    //use glium::glutin::*;
+    //use glium::glutin::dpi::*;
+    //use glium::backend::glutin::headless::*;
+
+    let context_builder = ContextBuilder::new();
+    let event_loop = EventsLoop::new();
+    let context = context_builder
+        .build_headless(&event_loop, PhysicalSize::new(640.0, 480.0))
+        .unwrap();
+
     // Create the headless context and renderer
-    let context = HeadlessRendererBuilder::new(640, 480).build().unwrap();
+    //let context = HeadlessRendererBuilder::new(640, 480).build().unwrap();
     let display = HeadlessRenderer::new(context).unwrap();
     // Try create the program
     Program::from_source(&display, VERT, FRAG, None).unwrap();

@@ -1,30 +1,33 @@
 // float_cmp is an annoying clippy lint
 #![cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
 
-use super::map::*;
-use super::units::*;
 use super::drawer::*;
+use super::map::*;
 use super::ui::*;
+use super::units::*;
 
 use rand;
-use rand::distributions::*;
+use rand::Rng;
 
-use weapons::*;
 use context::*;
-use utils::*;
 use resources::*;
+use utils::*;
+use weapons::*;
 
-use std::f32::consts::PI;
 use std::collections::*;
+use std::f32::consts::PI;
 
 pub struct VisibleEnemies {
-    positions: HashMap<u8, (usize, usize)>
+    positions: HashMap<u8, (usize, usize)>,
 }
 
 impl VisibleEnemies {
     pub fn new(side: Side, map: &Map) -> Self {
         Self {
-            positions: map.visible(side.enemies()).map(|unit| (unit.id, (unit.x, unit.y))).collect()
+            positions: map
+                .visible(side.enemies())
+                .map(|unit| (unit.id, (unit.x, unit.y)))
+                .collect(),
         }
     }
 
@@ -43,12 +46,12 @@ impl VisibleEnemies {
 pub struct GameStats {
     pub won: bool,
     pub units_lost: u8,
-    pub units_killed: u8
+    pub units_killed: u8,
 }
 
 pub struct Status {
     pub finished: bool,
-    pub blocking: bool
+    pub blocking: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -61,7 +64,7 @@ pub enum Response {
     Bullet(Bullet),
     Message(String),
     GameOver(GameStats),
-    InvalidCommand
+    InvalidCommand,
 }
 
 impl Response {
@@ -69,19 +72,45 @@ impl Response {
         Response::NewState(map.clone_visible(side))
     }
 
-    pub fn new_explosion(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
+    pub fn new_explosion(
+        x: usize,
+        y: usize,
+        center_x: usize,
+        center_y: usize,
+        blocking: bool,
+    ) -> Self {
         Response::Explosion(Explosion::new(x, y, center_x, center_y, blocking))
     }
 
-    pub fn new_thrown_item(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Self {
+    pub fn new_thrown_item(
+        image: Image,
+        start_x: usize,
+        start_y: usize,
+        end_x: usize,
+        end_y: usize,
+    ) -> Self {
         Response::ThrownItem(ThrownItem::new(image, start_x, start_y, end_x, end_y))
     }
 
-    pub fn new_bullet(unit: &Unit, target_x: usize, target_y: usize, will_hit: bool, map: &Map) -> Self {
+    pub fn new_bullet(
+        unit: &Unit,
+        target_x: usize,
+        target_y: usize,
+        will_hit: bool,
+        map: &Map,
+    ) -> Self {
         Response::Bullet(Bullet::new(unit, target_x, target_y, will_hit, map))
     }
 
-    pub fn step(&mut self, dt: f32, side: Side, map: &mut Map, ctx: &mut Context, ui: &mut Interface, camera: &mut Camera) -> Status {
+    pub fn step(
+        &mut self,
+        dt: f32,
+        side: Side,
+        map: &mut Map,
+        ctx: &mut Context,
+        ui: &mut Interface,
+        camera: &mut Camera,
+    ) -> Status {
         match *self {
             Response::NewState(ref new_map) => {
                 let enemies = VisibleEnemies::new(side, map);
@@ -92,31 +121,49 @@ impl Response {
                     camera.set_to(new_x, new_y);
                 }
 
-                Status {finished: true, blocking: false}
-            },
+                Status {
+                    finished: true,
+                    blocking: false,
+                }
+            }
             Response::SoundEffect(ref effect) => {
                 ctx.play_sound(effect);
-                Status {finished: true, blocking: false}
+                Status {
+                    finished: true,
+                    blocking: false,
+                }
             }
             Response::Walk(ref mut time) => {
                 *time += dt;
-                Status {finished: *time > 0.2, blocking: true}
-            },
+                Status {
+                    finished: *time > 0.2,
+                    blocking: true,
+                }
+            }
             Response::Message(ref string) => {
                 ui.append_to_log(string);
-                Status {finished: true, blocking: false}
-            },
+                Status {
+                    finished: true,
+                    blocking: false,
+                }
+            }
             Response::Explosion(ref mut explosion) => explosion.step(dt),
             Response::ThrownItem(ref mut item) => item.step(dt),
             Response::Bullet(ref mut bullet) => bullet.step(dt),
             Response::GameOver(ref stats) => {
                 ui.set_game_over_screen(stats);
-                Status {finished: true, blocking: false}
-            },
+                Status {
+                    finished: true,
+                    blocking: false,
+                }
+            }
             Response::InvalidCommand => {
                 // todo: be less vague!
                 ui.append_to_log("Invalid Command");
-                Status {finished: true, blocking: false}
+                Status {
+                    finished: true,
+                    blocking: false,
+                }
             }
         }
     }
@@ -124,21 +171,21 @@ impl Response {
     pub fn as_explosion(&self) -> Option<&Explosion> {
         match *self {
             Response::Explosion(ref explosion) if explosion.time > 0.0 => Some(explosion),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn as_thrown_item(&self) -> Option<&ThrownItem> {
         match *self {
             Response::ThrownItem(ref item) => Some(item),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn as_bullet(&self) -> Option<&Bullet> {
         match *self {
             Response::Bullet(ref bullet) if !bullet.finished && bullet.time > 0.0 => Some(bullet),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -148,7 +195,7 @@ pub struct Explosion {
     x: usize,
     y: usize,
     time: f32,
-    blocking: bool
+    blocking: bool,
 }
 
 impl Explosion {
@@ -157,8 +204,10 @@ impl Explosion {
 
     fn new(x: usize, y: usize, center_x: usize, center_y: usize, blocking: bool) -> Self {
         Self {
-            x, y, blocking,
-            time: -distance(x, y, center_x, center_y) / Self::SPEED
+            x,
+            y,
+            blocking,
+            time: -distance(x, y, center_x, center_y) / Self::SPEED,
         }
     }
 
@@ -184,9 +233,12 @@ impl Explosion {
     }
 
     fn step(&mut self, dt: f32) -> Status {
-        self.time += dt;        
-        
-        Status {finished: self.time > Self::DURATION, blocking: self.blocking}
+        self.time += dt;
+
+        Status {
+            finished: self.time > Self::DURATION,
+            blocking: self.blocking,
+        }
     }
 }
 
@@ -198,7 +250,7 @@ pub struct ThrownItem {
     progress: f32,
     increment: f32,
     end_x: f32,
-    end_y: f32
+    end_y: f32,
 }
 
 impl ThrownItem {
@@ -209,7 +261,7 @@ impl ThrownItem {
     // Min time of the equiv of 5 tiles
     //const MIN: f32 = 5.0;
 
-    fn new(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Self {        
+    fn new(image: Image, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Self {
         Self {
             image,
             start_x: start_x as f32,
@@ -242,14 +294,17 @@ impl ThrownItem {
     // Update the progress and the height
     fn step(&mut self, dt: f32) -> Status {
         self.progress += self.increment * dt;
-        
-        Status {finished: self.progress > 1.0, blocking: true}
+
+        Status {
+            finished: self.progress > 1.0,
+            blocking: true,
+        }
     }
 }
 
 const MARGIN: f32 = 5.0;
 
-// Extrapolate two points on the map to get the point at which a bullet 
+// Extrapolate two points on the map to get the point at which a bullet
 // would go off the map
 fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) {
     // Get the min and max edges
@@ -257,21 +312,31 @@ fn extrapolate(x_1: f32, y_1: f32, x_2: f32, y_2: f32, map: &Map) -> (f32, f32) 
     let min_y = -MARGIN;
     let max_x = map.tiles.width() as f32 + MARGIN;
     let max_y = map.tiles.height() as f32 + MARGIN;
-    
+
     // get the relevant edges
-    let relevant_x = if x_2 > x_1 {max_x} else {min_x};
-    let relevant_y = if y_2 > y_1 {max_y} else {min_y};
+    let relevant_x = if x_2 > x_1 { max_x } else { min_x };
+    let relevant_y = if y_2 > y_1 { max_y } else { min_y };
 
     // If the line is straight just change the x or y coord
     if x_2 == x_1 {
         (x_1, relevant_y)
     } else if y_2 == y_1 {
         (relevant_x, y_1)
-    } else {(
-        // Extrapolate the values by the difference to an edge and clamp
-        clamp(x_2 + ((x_2 - x_1) / (y_2 - y_1)) * (relevant_y - y_2), min_x, max_x),
-        clamp(y_2 + ((y_2 - y_1) / (x_2 - x_1)) * (relevant_x - x_2), min_y, max_y)
-    )}
+    } else {
+        (
+            // Extrapolate the values by the difference to an edge and clamp
+            clamp(
+                x_2 + ((x_2 - x_1) / (y_2 - y_1)) * (relevant_y - y_2),
+                min_x,
+                max_x,
+            ),
+            clamp(
+                y_2 + ((y_2 - y_1) / (x_2 - x_1)) * (relevant_x - x_2),
+                min_y,
+                max_y,
+            ),
+        )
+    }
 }
 
 // A bullet for drawing on the screen
@@ -305,8 +370,8 @@ impl Bullet {
 
         // If the bullet won't hit the target, change the direction slightly
         if !will_hit {
-            direction += Range::new(-0.2, 0.2).sample(&mut rand::thread_rng());
-            
+            direction += rand::thread_rng().gen_range(-0.2, 0.2);
+
             let (x, y) = extrapolate(x, y, x + direction.cos(), y + direction.sin(), map);
 
             target_x = x;
@@ -314,15 +379,19 @@ impl Bullet {
         }
 
         Self {
-           x, y, direction, target_x, target_y,
-           // Get the type of the firing weapon
-           weapon_type: unit.weapon.tag,
-           // The bullet hasn't started moving
-           time: 0.0,
-           finished: false
+            x,
+            y,
+            direction,
+            target_x,
+            target_y,
+            // Get the type of the firing weapon
+            weapon_type: unit.weapon.tag,
+            // The bullet hasn't started moving
+            time: 0.0,
+            finished: false,
         }
     }
-    
+
     // Get the image of the bullet
     pub fn image(&self) -> Image {
         self.weapon_type.bullet()
@@ -354,7 +423,7 @@ impl Bullet {
             // Move the bullet
             self.x += self.direction.cos() * Self::SPEED * dt;
             self.y += self.direction.sin() * Self::SPEED * dt;
-            
+
             // Set if the bullet is past the target
             self.finished = left != (self.x < self.target_x) || above != (self.y < self.target_y);
         }
@@ -362,7 +431,7 @@ impl Bullet {
         // If the bullet hasn't finished or is under the minimum time
         Status {
             finished: self.finished && self.time > Self::MIN_TIME,
-            blocking: true
+            blocking: true,
         }
     }
 }

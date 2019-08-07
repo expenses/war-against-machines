@@ -1,14 +1,14 @@
-mod renderer;
 mod audio;
+mod renderer;
 
-use runic::*;
-use pedot::*;
-use glutin::*;
-use colours;
-use settings::Settings;
-use resources::*;
-use self::renderer::{Renderer, Properties}; 
 use self::audio::Player;
+use self::renderer::{Properties, Renderer};
+use colours;
+use glutin::*;
+use pedot::*;
+use resources::*;
+use runic::*;
+use settings::Settings;
 
 pub struct Context {
     pub settings: Settings,
@@ -17,7 +17,7 @@ pub struct Context {
     renderer: Renderer,
     player: Player,
     font: CachedFont<'static>,
-    pub gui: Gui
+    pub gui: Gui,
 }
 
 impl Context {
@@ -32,11 +32,13 @@ impl Context {
         let (width, height) = (settings.window_width as f32, settings.window_height as f32);
 
         Self {
-            width, height, settings,
+            width,
+            height,
+            settings,
             player: Player::new(),
             font: CachedFont::from_bytes(FONT, &renderer.display).unwrap(),
             gui: Gui::new(width, height),
-            renderer
+            renderer,
         }
     }
 
@@ -49,7 +51,8 @@ impl Context {
     }
 
     pub fn font_width(&self, text: &str) -> f32 {
-        self.font.rendered_width(text, Self::FONT_HEIGHT, true, &self.renderer.display)
+        self.font
+            .rendered_width(text, Self::FONT_HEIGHT, true, &self.renderer.display)
     }
 
     // Render text
@@ -60,40 +63,62 @@ impl Context {
         // Center the text on its width
         let width = self.font_width(string);
         x -= width / 2.0;
-        
-        self.font.render_pixelated(
-            string,
-            [x, y],
-            Self::FONT_SCALE, Self::UI_SCALE,
-            colour,
-            &mut self.renderer.target, &self.renderer.display, &self.renderer.text_program
-        ).unwrap();
+
+        self.font
+            .render_pixelated(
+                string,
+                [x, y],
+                Self::FONT_SCALE,
+                Self::UI_SCALE,
+                colour,
+                &mut self.renderer.target,
+                &self.renderer.display,
+                &self.renderer.text_program,
+            )
+            .unwrap();
     }
 
     // Render an image
     pub fn render(&mut self, image: Image, dest: [f32; 2], scale: f32) {
         self.renderer.render(Properties {
             src: image.source(),
-            dest, scale,
+            dest,
+            scale,
             rotation: 0.0,
             overlay_colour: colours::ALPHA,
         });
     }
 
     // Render an image with a colour overlay
-    pub fn render_with_overlay(&mut self, image: Image, dest: [f32; 2], scale: f32, overlay_colour: [f32; 4]) {
+    pub fn render_with_overlay(
+        &mut self,
+        image: Image,
+        dest: [f32; 2],
+        scale: f32,
+        overlay_colour: [f32; 4],
+    ) {
         self.renderer.render(Properties {
             src: image.source(),
-            dest, scale, overlay_colour,
+            dest,
+            scale,
+            overlay_colour,
             rotation: 0.0,
         });
     }
 
     // Render an image with a particular rotation
-    pub fn render_with_rotation(&mut self, image: Image, dest: [f32; 2], scale: f32, rotation: f32) {
+    pub fn render_with_rotation(
+        &mut self,
+        image: Image,
+        dest: [f32; 2],
+        scale: f32,
+        rotation: f32,
+    ) {
         self.renderer.render(Properties {
             src: image.source(),
-            dest, scale, rotation,
+            dest,
+            scale,
+            rotation,
             overlay_colour: colours::ALPHA,
         });
     }
@@ -122,10 +147,11 @@ impl Context {
         let index = match *sound {
             SoundEffect::Walk => 0,
             SoundEffect::RegularShot => 1,
-            SoundEffect::PlasmaShot => 2
+            SoundEffect::PlasmaShot => 2,
         };
 
         // Play it
-        self.player.play(index, f32::from(self.settings.volume) / 100.0);
+        self.player
+            .play(index, f32::from(self.settings.volume) / 100.0);
     }
 }

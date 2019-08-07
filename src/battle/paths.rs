@@ -6,7 +6,12 @@ use super::map::Map;
 use super::units::{Unit, UnitFacing};
 
 // Use the A Star algorithm to find a path between a unit and a destination
-pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<(Vec<PathPoint>, u16)> {
+pub fn pathfind(
+    unit: &Unit,
+    dest_x: usize,
+    dest_y: usize,
+    map: &Map,
+) -> Option<(Vec<PathPoint>, u16)> {
     if map.taken(dest_x, dest_y) {
         return None;
     }
@@ -15,8 +20,9 @@ pub fn pathfind(unit: &Unit, dest_x: usize, dest_y: usize, map: &Map) -> Option<
         &PathPoint::from(unit),
         |point| point.neighbours(map),
         |point| point.cost(dest_x, dest_y),
-        |point| point.at(dest_x, dest_y)
-    ).map(|(mut path, cost)| {
+        |point| point.at(dest_x, dest_y),
+    )
+    .map(|(mut path, cost)| {
         // Remove the first point
         path.remove(0);
         (path, cost)
@@ -29,15 +35,13 @@ pub struct PathPoint {
     pub x: usize,
     pub y: usize,
     pub cost: u16,
-    pub facing: UnitFacing
+    pub facing: UnitFacing,
 }
 
 impl PathPoint {
     // Create a new PathPoint
     pub fn new(x: usize, y: usize, cost: u16, facing: UnitFacing) -> PathPoint {
-        PathPoint {
-            x, y, cost, facing
-        }
+        PathPoint { x, y, cost, facing }
     }
 
     // Create a path point from a unit
@@ -46,7 +50,7 @@ impl PathPoint {
             x: unit.x,
             y: unit.y,
             cost: 0,
-            facing: unit.facing
+            facing: unit.facing,
         }
     }
 
@@ -121,18 +125,30 @@ impl PathPoint {
 
 #[test]
 fn pathfinding() {
-    use super::units::*;
     use super::map::*;
+    use super::units::*;
 
     let size = 30;
-    let unit = Unit::new(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom, 0);
+    let unit = Unit::new(
+        UnitType::Squaddie,
+        Side::PlayerA,
+        0,
+        0,
+        UnitFacing::Bottom,
+        0,
+    );
     let mut map = Map::new(size, size, 0.5);
 
     // A path between (0, 0) and (29, 29) should be a straight diagonal
 
     let mut path = Vec::new();
-    for i in 1 .. size {
-        path.push(PathPoint::new(i, i, Unit::WALK_DIAGONAL_COST, UnitFacing::Bottom));
+    for i in 1..size {
+        path.push(PathPoint::new(
+            i,
+            i,
+            Unit::WALK_DIAGONAL_COST,
+            UnitFacing::Bottom,
+        ));
     }
 
     let cost = (size - 1) as u16 * Unit::WALK_DIAGONAL_COST;

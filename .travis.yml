@@ -1,6 +1,6 @@
 language: rust
 
-# Test on linux/stable, linux/beta, linux/nightly and osx/stable
+# Test on linux/stable, linux/nightly and osx/stable
 matrix:
   include:
     - os: linux

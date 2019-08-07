@@ -6,9 +6,9 @@ const TILE: f32 = 48.0;
 
 // include_bytes! but prepends the resources directory
 macro_rules! bytes {
-    ($file: expr) => (
+    ($file: expr) => {
         include_bytes!(concat!("../resources/", $file))
-    )
+    };
 }
 
 pub const TILESET: &[u8] = bytes!("tileset.png");
@@ -16,22 +16,27 @@ pub const TILESET: &[u8] = bytes!("tileset.png");
 pub const AUDIO: [&[u8]; 3] = [
     bytes!("audio/walk.ogg"),
     bytes!("audio/regular_shot.ogg"),
-    bytes!("audio/plasma_shot.ogg")
+    bytes!("audio/plasma_shot.ogg"),
 ];
 
 pub const FONT: &[u8] = bytes!("font/TinyUnicode.ttf");
 
 // Scale up a tile position for the 48 by 48 tileset
 macro_rules! tiles {
-    ($x: expr, $y: expr, $width: expr, $height: expr) => (
-        [$x as f32 * TILE, $y as f32 * TILE, $width as f32 * TILE, $height as f32 * TILE]
-    )
+    ($x: expr, $y: expr, $width: expr, $height: expr) => {
+        [
+            $x as f32 * TILE,
+            $y as f32 * TILE,
+            $width as f32 * TILE,
+            $height as f32 * TILE,
+        ]
+    };
 }
 
 // A trait for mapping an image to its position in the tileset
 pub trait ImageSource {
     fn source(&self) -> [f32; 4];
-     
+
     fn width(&self) -> f32 {
         self.source()[2]
     }
@@ -46,7 +51,7 @@ pub trait ImageSource {
 pub enum Image {
     Base1,
     Base2,
-    
+
     ObjectRebar,
     ObjectRubble,
 
@@ -102,7 +107,7 @@ pub enum Image {
     Explosion2,
     Explosion3,
 
-    Title
+    Title,
 }
 
 impl ImageSource for Image {
@@ -111,7 +116,7 @@ impl ImageSource for Image {
         match *self {
             Image::Base1 => tiles!(0, 0, 1, 1),
             Image::Base2 => tiles!(1, 0, 1, 1),
-            
+
             Image::PitTop => tiles!(2, 0, 1, 1),
             Image::PitLeft => tiles!(3, 0, 1, 1),
             Image::PitRight => tiles!(4, 0, 1, 1),
@@ -137,7 +142,7 @@ impl ImageSource for Image {
             Image::Ruin1Top => tiles!(1, 3, 1, 1),
             Image::Ruin2Left => tiles!(2, 3, 1, 1),
             Image::Ruin2Top => tiles!(3, 3, 1, 1),
-            
+
             Image::RegularBullet => tiles!(0, 4, 1, 1),
             Image::PlasmaBullet => tiles!(1, 4, 1, 1),
 
@@ -164,7 +169,7 @@ impl ImageSource for Image {
             Image::Explosion3 => tiles!(8, 7, 1, 1),
 
             Image::Title => tiles!(0, 8, 10, 1),
-            
+
             Image::Button => tiles!(0, 9, 1, 0.5),
         }
     }
@@ -220,12 +225,12 @@ impl ToChar for VirtualKeyCode {
             VirtualKeyCode::Key7 => '7',
             VirtualKeyCode::Key8 => '8',
             VirtualKeyCode::Key9 => '9',
-            VirtualKeyCode::Key0 => '0',            
+            VirtualKeyCode::Key0 => '0',
             VirtualKeyCode::Minus => '-',
             VirtualKeyCode::Period => '.',
             VirtualKeyCode::Space => ' ',
             VirtualKeyCode::Semicolon => ':',
-            _ => '�'
+            _ => '�',
         }
     }
 }

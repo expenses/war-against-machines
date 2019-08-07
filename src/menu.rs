@@ -26,7 +26,7 @@ enum Submenu {
     Skirmish,
     SkirmishSettings,
     SkirmishSaves,
-    Settings
+    Settings,
 }
 
 impl Submenu {
@@ -36,7 +36,7 @@ impl Submenu {
             Submenu::Skirmish => 1,
             Submenu::SkirmishSettings => 2,
             Submenu::Settings => 3,
-            Submenu::SkirmishSaves => 4
+            Submenu::SkirmishSaves => 4,
         }
     }
 }
@@ -45,14 +45,14 @@ impl Submenu {
 pub enum MenuCallback<'a> {
     NewSkirmish(&'a SkirmishSettings),
     Resume,
-    Quit
+    Quit,
 }
 
 // The main menu struct
 pub struct MainMenu {
     settings: SkirmishSettings,
     submenu: Submenu,
-    submenus: [List; 5]
+    submenus: [List; 5],
 }
 
 impl MainMenu {
@@ -62,13 +62,15 @@ impl MainMenu {
             submenu: Submenu::Main,
             submenus: [
                 list!(
-                    0.0, 50.0,
+                    0.0,
+                    50.0,
                     ListItem::new("Skirmish"),
                     ListItem::new("Settings"),
                     ListItem::new("Quit")
                 ),
                 list!(
-                    0.0, 50.0,
+                    0.0,
+                    50.0,
                     ListItem::new("Back"),
                     ListItem::new("Resume Skirmish"),
                     ListItem::new("New Skirmish"),
@@ -78,7 +80,8 @@ impl MainMenu {
                     ListItem::new("<Address>")
                 ),
                 list!(
-                    0.0, 50.0,
+                    0.0,
+                    50.0,
                     ListItem::new("Back"),
                     ListItem::new("<Width>"),
                     ListItem::new("<Height>"),
@@ -89,14 +92,15 @@ impl MainMenu {
                     ListItem::new("<Light Level>")
                 ),
                 list!(
-                    0.0, 50.0,
+                    0.0,
+                    50.0,
                     ListItem::new("Back"),
                     ListItem::new("<Volume>"),
                     ListItem::new("Reset")
                 ),
-                List::new(0.0, 50.0, Vec::new())
+                List::new(0.0, 50.0, Vec::new()),
             ],
-            settings: SkirmishSettings::default()
+            settings: SkirmishSettings::default(),
         };
 
         menu.refresh_skirmish(false);
@@ -119,9 +123,18 @@ impl MainMenu {
         skirmish_settings[2].set_text(&format!("Height: {}", self.settings.height));
         skirmish_settings[3].set_text(&format!("Player A Units: {}", self.settings.player_a_units));
         skirmish_settings[4].set_text(&format!("Player B Units: {}", self.settings.player_b_units));
-        skirmish_settings[5].set_text(&format!("Player A Unit Type: {}", self.settings.player_a_unit_type));
-        skirmish_settings[6].set_text(&format!("Player B Unit Type: {}", self.settings.player_b_unit_type));
-        skirmish_settings[7].set_text(&format!("Light Level: {}", f32::from(self.settings.light) / 10.0));
+        skirmish_settings[5].set_text(&format!(
+            "Player A Unit Type: {}",
+            self.settings.player_a_unit_type
+        ));
+        skirmish_settings[6].set_text(&format!(
+            "Player B Unit Type: {}",
+            self.settings.player_b_unit_type
+        ));
+        skirmish_settings[7].set_text(&format!(
+            "Light Level: {}",
+            f32::from(self.settings.light) / 10.0
+        ));
     }
 
     fn refresh_skirmish(&mut self, game_in_progress: bool) {
@@ -130,7 +143,9 @@ impl MainMenu {
         skirmish[3].set_text(&format!("Game Type: {}", self.settings.game_type.as_str()));
         skirmish[4].set_selectable(self.settings.game_type != GameType::Connect);
         skirmish[5].set_selectable(self.settings.game_type != GameType::Connect);
-        skirmish[6].set_text(&format!("Address: {}", self.settings.address)).set_selectable(self.settings.game_type != GameType::Local);
+        skirmish[6]
+            .set_text(&format!("Address: {}", self.settings.address))
+            .set_selectable(self.settings.game_type != GameType::Local);
     }
 
     fn refresh_settings(&mut self, ctx: &mut Context) {
@@ -149,9 +164,14 @@ impl MainMenu {
         submenu.push_entry(ListItem::new("Refresh"));
         submenu.push_entry(ListItem::new("None"));
 
-        read_dir(&ctx.settings.savegames).into_iter()
+        read_dir(&ctx.settings.savegames)
+            .into_iter()
             .flat_map(|dir| dir)
-            .filter_map(|entry| entry.ok().and_then(|entry| entry.file_name().into_string().ok()))
+            .filter_map(|entry| {
+                entry
+                    .ok()
+                    .and_then(|entry| entry.file_name().into_string().ok())
+            })
             .filter(|entry| !entry.starts_with('.'))
             .map(|entry| ListItem::new(&entry))
             .for_each(|entry| submenu.push_entry(entry));
@@ -174,13 +194,11 @@ impl MainMenu {
         let index = self.submenus[self.submenu.index()].index();
 
         match self.submenu {
-            Submenu::Main => {
-                match index {
-                    0 if enter_pressed => self.submenu = Submenu::Skirmish,
-                    1 if enter_pressed => self.submenu = Submenu::Settings,
-                    2 if enter_pressed => return Some(MenuCallback::Quit),
-                    _ => {}
-                }
+            Submenu::Main => match index {
+                0 if enter_pressed => self.submenu = Submenu::Skirmish,
+                1 if enter_pressed => self.submenu = Submenu::Settings,
+                2 if enter_pressed => return Some(MenuCallback::Quit),
+                _ => {}
             },
             Submenu::Skirmish => return self.update_skirmish(ctx, game_in_progress),
             Submenu::SkirmishSettings => self.update_skirmish_settings(ctx),
@@ -196,48 +214,52 @@ impl MainMenu {
                 if enter_pressed || movement_left || movement_right {
                     self.refresh_settings(ctx);
                 }
-            },
-            Submenu::SkirmishSaves => {
-                match index {
-                    0 if enter_pressed => self.submenu = Submenu::Skirmish,
-                    1 if enter_pressed => self.refresh_skirmish_saves(ctx),
-                    2 if enter_pressed => self.settings.save_game = None,
-                    _ if enter_pressed => {
-                        let save_game = self.submenus[self.submenu.index()].get().text();
-                        self.settings.set_savegame(save_game, &ctx.settings);
-                    },
-                    _ => {}
-                }
             }
+            Submenu::SkirmishSaves => match index {
+                0 if enter_pressed => self.submenu = Submenu::Skirmish,
+                1 if enter_pressed => self.refresh_skirmish_saves(ctx),
+                2 if enter_pressed => self.settings.save_game = None,
+                _ if enter_pressed => {
+                    let save_game = self.submenus[self.submenu.index()].get().text();
+                    self.settings.set_savegame(save_game, &ctx.settings);
+                }
+                _ => {}
+            },
         }
 
         None
     }
 
-    pub fn update_skirmish(&mut self, ctx: &Context, game_in_progress: bool) -> Option<MenuCallback> {
+    pub fn update_skirmish(
+        &mut self,
+        ctx: &Context,
+        game_in_progress: bool,
+    ) -> Option<MenuCallback> {
         let enter_pressed = ctx.gui.key_pressed(VirtualKeyCode::Return);
         let movement_left = ctx.gui.key_pressed(VirtualKeyCode::Left);
         let movement_right = ctx.gui.key_pressed(VirtualKeyCode::Right);
         let back_pressed = ctx.gui.key_pressed(VirtualKeyCode::Back);
-        
+
         let index = &self.submenus[self.submenu.index()].index();
 
         let mut key_input = false;
 
         match index {
-            0 if enter_pressed  => self.submenu = Submenu::Main,
-            1 if enter_pressed  => return Some(MenuCallback::Resume),
-            2 if enter_pressed  => return Some(MenuCallback::NewSkirmish(&self.settings)),
-            3 if movement_left  => self.settings.game_type.rotate_left(),
+            0 if enter_pressed => self.submenu = Submenu::Main,
+            1 if enter_pressed => return Some(MenuCallback::Resume),
+            2 if enter_pressed => return Some(MenuCallback::NewSkirmish(&self.settings)),
+            3 if movement_left => self.settings.game_type.rotate_left(),
             3 if movement_right => self.settings.game_type.rotate_right(),
-            4 if enter_pressed  => self.submenu = Submenu::SkirmishSaves,
-            5 if enter_pressed  => self.submenu = Submenu::SkirmishSettings,
-            6 if back_pressed   => {
+            4 if enter_pressed => self.submenu = Submenu::SkirmishSaves,
+            5 if enter_pressed => self.submenu = Submenu::SkirmishSettings,
+            6 if back_pressed => {
                 self.settings.address.pop();
-            },
+            }
             6 => {
-                key_input = ctx.gui.key_input(&mut self.settings.address, |c| c.is_ascii_digit() || c == '.' || c == ':');
-            },
+                key_input = ctx.gui.key_input(&mut self.settings.address, |c| {
+                    c.is_ascii_digit() || c == '.' || c == ':'
+                });
+            }
             _ => {}
         }
 
@@ -257,12 +279,12 @@ impl MainMenu {
 
         match index {
             0 if enter_pressed => self.submenu = Submenu::Skirmish,
-            
+
             1 if movement_left => self.settings.width -= MAP_SIZE_CHANGE,
             1 if movement_right => self.settings.width += MAP_SIZE_CHANGE,
             2 if movement_left => self.settings.height -= MAP_SIZE_CHANGE,
             2 if movement_right => self.settings.height += MAP_SIZE_CHANGE,
-            
+
             3 if movement_left => self.settings.player_a_units -= 1,
             3 if movement_right => self.settings.player_a_units += 1,
             4 if movement_left => self.settings.player_b_units -= 1,
@@ -271,7 +293,9 @@ impl MainMenu {
             5 if movement_left || movement_right => self.settings.change_player_a_unit_type(),
             6 if movement_left || movement_right => self.settings.change_player_b_unit_type(),
 
-            7 if movement_left => self.settings.light = self.settings.light.saturating_sub(LIGHT_LEVEL_CHANGE),
+            7 if movement_left => {
+                self.settings.light = self.settings.light.saturating_sub(LIGHT_LEVEL_CHANGE)
+            }
             7 if movement_right => self.settings.light += LIGHT_LEVEL_CHANGE,
             _ => {}
         }

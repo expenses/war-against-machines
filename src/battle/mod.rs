@@ -1,24 +1,24 @@
 // A battle in the game
 
-pub mod units;
-pub mod map;
-mod drawer;
-mod paths;
-mod responses;
 mod ai;
 mod commands;
-mod networking;
+mod drawer;
+pub mod map;
 mod messages;
+mod networking;
+mod paths;
+mod responses;
 mod ui;
+pub mod units;
 
 use *;
 
 use self::drawer::*;
-use self::paths::*;
-use self::units::*;
-use self::networking::*;
 use self::map::*;
+use self::networking::*;
+use self::paths::*;
 use self::ui::*;
+use self::units::*;
 use super::error::*;
 
 use context::*;
@@ -27,7 +27,7 @@ use settings::*;
 pub enum KeyResponse {
     GameOver,
     Continue,
-    OpenMenu
+    OpenMenu,
 }
 
 #[derive(Default)]
@@ -38,7 +38,7 @@ struct Keys {
     down: bool,
     zoom_out: bool,
     zoom_in: bool,
-    force_fire: bool
+    force_fire: bool,
 }
 
 // The main Battle struct the handles actions
@@ -52,40 +52,51 @@ pub struct Battle {
     ai: Option<ThreadHandle>,
     keys: Keys,
     interface: Interface,
-    visual_debugging: bool
+    visual_debugging: bool,
 }
 
 impl Battle {
     fn new(client: Client, server: Option<ThreadHandle>, ai: Option<ThreadHandle>) -> Self {
         let mut camera = Camera::new();
-        if let Some(unit) = client.map.units.iter().find(|unit| unit.side == client.side) {
+        if let Some(unit) = client
+            .map
+            .units
+            .iter()
+            .find(|unit| unit.side == client.side)
+        {
             camera.set_to(unit.x, unit.y);
         }
 
         Self {
-            client, server, ai, camera,
+            client,
+            server,
+            ai,
+            camera,
             cursor: None,
             keys: Keys::default(),
             selected: None,
             path: None,
             interface: Interface::new(),
-            visual_debugging: false
+            visual_debugging: false,
         }
     }
 
     // Create a new Battle
-    pub fn new_from_settings(skirmish_settings: &SkirmishSettings, settings: Settings) -> Result<Self> {
+    pub fn new_from_settings(
+        skirmish_settings: &SkirmishSettings,
+        settings: Settings,
+    ) -> Result<Self> {
         match skirmish_settings.game_type {
             GameType::Local => {
                 let map = Map::new_or_load(skirmish_settings)?;
                 let (client, ai, server) = singleplayer(map, settings)?;
                 Ok(Self::new(client, Some(server), Some(ai)))
-            },
+            }
             GameType::Host => {
                 let map = Map::new_or_load(skirmish_settings)?;
                 let (client, server) = multiplayer(&skirmish_settings.address, map, settings)?;
                 Ok(Self::new(client, Some(server), None))
-            },
+            }
             GameType::Connect => {
                 let client = Client::new_from_addr(&skirmish_settings.address)?;
                 Ok(Self::new(client, None, None))
@@ -95,7 +106,7 @@ impl Battle {
 
     // Handle keypresses
     pub fn handle_key(&mut self, key: VirtualKeyCode, pressed: bool) -> KeyResponse {
-        // Respond to key presses on the score screen            
+        // Respond to key presses on the score screen
         if self.interface.game_over_screen_active() {
             if pressed {
                 if let VirtualKeyCode::Return = key {
@@ -119,18 +130,23 @@ impl Battle {
         // Respond to key presses when the inventory is open
         if pressed {
             if let Some(selected) = self.selected {
-                let handled = self.interface.try_handle_inventory_keypress(key, &self.client, selected, &self.cursor);
+                let handled = self.interface.try_handle_inventory_keypress(
+                    key,
+                    &self.client,
+                    selected,
+                    &self.cursor,
+                );
                 if handled {
                     return KeyResponse::Continue;
                 }
             }
         }
-    
+
         // Respond to keys normally!
         match key {
-            VirtualKeyCode::Up    | VirtualKeyCode::W => self.keys.up = pressed,
-            VirtualKeyCode::Down  | VirtualKeyCode::S => self.keys.down = pressed,
-            VirtualKeyCode::Left  | VirtualKeyCode::A => self.keys.left = pressed,
+            VirtualKeyCode::Up | VirtualKeyCode::W => self.keys.up = pressed,
+            VirtualKeyCode::Down | VirtualKeyCode::S => self.keys.down = pressed,
+            VirtualKeyCode::Left | VirtualKeyCode::A => self.keys.left = pressed,
             VirtualKeyCode::Right | VirtualKeyCode::D => self.keys.right = pressed,
             VirtualKeyCode::O => self.keys.zoom_out = pressed,
             VirtualKeyCode::P => self.keys.zoom_in = pressed,
@@ -146,15 +162,28 @@ impl Battle {
     // Update the battle
     pub fn update(&mut self, ctx: &mut Context, dt: f32) {
         // Move the camera
-        if self.keys.up       { self.camera.move_y(dt, &self.client.map); }
-        if self.keys.down     { self.camera.move_y(-dt, &self.client.map); }
-        if self.keys.left     { self.camera.move_x(-dt, &self.client.map); }
-        if self.keys.right    { self.camera.move_x(dt, &self.client.map); }
-        if self.keys.zoom_out { self.camera.zoom(-dt); }
-        if self.keys.zoom_in  { self.camera.zoom(dt); }
+        if self.keys.up {
+            self.camera.move_y(dt, &self.client.map);
+        }
+        if self.keys.down {
+            self.camera.move_y(-dt, &self.client.map);
+        }
+        if self.keys.left {
+            self.camera.move_x(-dt, &self.client.map);
+        }
+        if self.keys.right {
+            self.camera.move_x(dt, &self.client.map);
+        }
+        if self.keys.zoom_out {
+            self.camera.zoom(-dt);
+        }
+        if self.keys.zoom_in {
+            self.camera.zoom(dt);
+        }
 
         self.client.recv();
-        self.client.process_responses(dt, ctx, &mut self.interface, &mut self.camera);
+        self.client
+            .process_responses(dt, ctx, &mut self.interface, &mut self.camera);
 
         if self.interface.game_over_screen_active() {
             if let Some(server) = self.server.take() {
@@ -177,7 +206,8 @@ impl Battle {
         // Otherwise draw the battle and UI
         } else {
             draw_battle(ctx, self);
-            self.interface.draw(ctx, self.selected, &self.client.map, self.ai.is_some());
+            self.interface
+                .draw(ctx, self.selected, &self.client.map, self.ai.is_some());
         }
     }
 
@@ -204,11 +234,13 @@ impl Battle {
                 } else if let Some(selected) = self.selected {
                     self.client.fire(selected, x, y);
                 }
-            },
+            }
             // Force fire on a tile
-            None if self.keys.force_fire => if let Some(selected) = self.selected {
-                self.client.fire(selected, x, y);
-            },
+            None if self.keys.force_fire => {
+                if let Some(selected) = self.selected {
+                    self.client.fire(selected, x, y);
+                }
+            }
             // Move the current unit
             None => {
                 let map = &self.client.map;
@@ -223,8 +255,8 @@ impl Battle {
                         Some(ref path) if path[path.len() - 1].at(x, y) => {
                             self.client.walk(unit.id, path);
                             None
-                        },
-                        _ => pathfind(unit, x, y, &self.map()).map(|(path, _)| path)
+                        }
+                        _ => pathfind(unit, x, y, &self.map()).map(|(path, _)| path),
                     }
                 }
             }
@@ -246,13 +278,18 @@ impl Battle {
                 // Toggle the save game input
                 Some(ButtonType::SaveGame) => self.interface.toggle_save_game(),
                 // Or select/deselect a unit
-                _ => if let Some((x, y)) = self.cursor {
-                    self.perform_actions(x, y)
+                _ => {
+                    if let Some((x, y)) = self.cursor {
+                        self.perform_actions(x, y)
+                    }
                 }
             },
-            MouseButton::Right => if let Some((x, y)) = self.cursor {
-                if let Some(unit) = self.selected() {
-                    self.client.turn(unit.id, UnitFacing::from_points(unit.x, unit.y, x, y));
+            MouseButton::Right => {
+                if let Some((x, y)) = self.cursor {
+                    if let Some(unit) = self.selected() {
+                        self.client
+                            .turn(unit.id, UnitFacing::from_points(unit.x, unit.y, x, y));
+                    }
                 }
             }
             _ => {}
@@ -269,13 +306,17 @@ impl Battle {
 
     // Get a reference to the unit that is selected
     fn selected(&self) -> Option<&Unit> {
-        self.selected.and_then(|selected| self.map().units.get(selected))
+        self.selected
+            .and_then(|selected| self.map().units.get(selected))
     }
 
     // Work out if the cursor is on an ai unit
     fn cursor_active(&self) -> bool {
-        self.keys.force_fire ||
-        self.cursor.map(|(x, y)| self.map().units.on_side(x, y, self.client.side.enemies())).unwrap_or(false)
+        self.keys.force_fire
+            || self
+                .cursor
+                .map(|(x, y)| self.map().units.on_side(x, y, self.client.side.enemies()))
+                .unwrap_or(false)
     }
 
     // End the current turn
@@ -303,14 +344,19 @@ fn battle_operations() {
         assert_eq!(map.tiles.height(), skirmish_settings.height);
 
         // The player unit counts are equal
-        assert_eq!(map.units.count(Side::PlayerA) as usize, skirmish_settings.player_a_units);
-        
+        assert_eq!(
+            map.units.count(Side::PlayerA) as usize,
+            skirmish_settings.player_a_units
+        );
+
         // No AI units should be in the map, because the server shouldn't have sent info for them as they aren't visible
         assert_eq!(map.units.count(Side::PlayerB) as usize, 0);
 
         // The unit types are correct
 
-        assert!(map.units.iter()
+        assert!(map
+            .units
+            .iter()
             .filter(|unit| unit.side == Side::PlayerA)
             .all(|unit| unit.tag == skirmish_settings.player_a_unit_type));
     }

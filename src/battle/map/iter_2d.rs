@@ -4,15 +4,16 @@ pub struct Iter2D {
     x: usize,
     y: usize,
     cols: usize,
-    rows: usize
+    rows: usize,
 }
 
 impl Iter2D {
     pub fn new(cols: usize, rows: usize) -> Iter2D {
         Iter2D {
-            cols, rows,
+            cols,
+            rows,
             x: 0,
-            y: 0
+            y: 0,
         }
     }
 }

@@ -4,14 +4,14 @@ use resources::AUDIO;
 
 use rodio::*;
 
-use std::rc::Rc;
 use std::io::Cursor;
+use std::rc::Rc;
 
 // An audio player struct
 pub struct Player {
     sources: Vec<Rc<Vec<u8>>>,
     sinks: Vec<Sink>,
-    endpoint: Device
+    endpoint: Device,
 }
 
 impl Player {
@@ -20,7 +20,7 @@ impl Player {
             // Use reference-counting to avoid cloning the source each time
             sources: AUDIO.iter().map(|sound| Rc::new(sound.to_vec())).collect(),
             sinks: Vec::new(),
-            endpoint: default_output_device().unwrap()
+            endpoint: default_output_device().unwrap(),
         }
     }
 
@@ -39,7 +39,7 @@ impl Player {
         }
 
         // Or create a new sink
-        let mut sink = Sink::new(&self.endpoint);
+        let sink = Sink::new(&self.endpoint);
         sink.append(source);
         sink.set_volume(volume);
 

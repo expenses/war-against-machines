@@ -4,13 +4,13 @@ use rand;
 use rand::Rng;
 
 use super::super::units::*;
-use super::walls::*;
 use super::iter_2d::Iter2D;
+use super::walls::*;
 
 use super::grid::*;
 use items::Item;
-use utils::*;
 use resources::Image;
+use utils::*;
 
 // todo: make map generation better!
 const MIN_PIT_SIZE: usize = 2;
@@ -21,7 +21,7 @@ const MAX_PIT_SIZE: usize = 5;
 pub enum Visibility {
     Visible(u8),
     Foggy,
-    Invisible
+    Invisible,
 }
 
 impl Visibility {
@@ -40,7 +40,7 @@ impl Visibility {
                 }
 
                 f32::from(distance) * rate
-            },
+            }
             Visibility::Foggy => {
                 if debug {
                     return [0.0, 1.0, 0.0, 0.25];
@@ -59,7 +59,7 @@ impl Visibility {
         [0.0, 0.0, 0.0, alpha]
     }
 
-    // Return the distance of the tile or the maximum value 
+    // Return the distance of the tile or the maximum value
     fn distance(self) -> u8 {
         if let Visibility::Visible(value) = self {
             value
@@ -85,7 +85,7 @@ fn combine_visibilities(a: Visibility, b: Visibility) -> Visibility {
 pub enum Obstacle {
     Object(Image),
     Pit(Image),
-    Empty
+    Empty,
 }
 
 // A tile in the map
@@ -95,7 +95,7 @@ pub struct Tile {
     pub obstacle: Obstacle,
     pub decoration: Option<Image>,
     pub walls: Walls,
-    pub items: Vec<Item>
+    pub items: Vec<Item>,
 }
 
 impl Tile {
@@ -106,7 +106,7 @@ impl Tile {
             obstacle: Obstacle::Empty,
             decoration: None,
             walls: Walls::new(),
-            items: Vec::new()
+            items: Vec::new(),
         }
     }
 
@@ -137,32 +137,41 @@ impl Tile {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Tiles {
     tiles: Grid<Tile>,
-    visibility_grids: [Grid<Visibility>; 2]
+    visibility_grids: [Grid<Visibility>; 2],
 }
 
 impl Tiles {
     // Create a new set of tiles but do not generate it
     pub fn new(width: usize, height: usize) -> Self {
         let mut rng = rand::thread_rng();
-        let bases = &[Image::Base1, Image::Base2];
-        let tiles = Grid::new(width, height, || Tile::new(*rng.choose(bases).unwrap()));
+        let tiles = Grid::new(width, height, || {
+            Tile::new(if rng.gen() {
+                Image::Base1
+            } else {
+                Image::Base2
+            })
+        });
 
         Self {
-            tiles, visibility_grids: [Grid::new(width, height, || Visibility::Invisible), Grid::new(width, height, || Visibility::Invisible)]
+            tiles,
+            visibility_grids: [
+                Grid::new(width, height, || Visibility::Invisible),
+                Grid::new(width, height, || Visibility::Invisible),
+            ],
         }
     }
 
     pub fn visibility_at(&self, x: usize, y: usize, side: Side) -> Visibility {
         match side {
             Side::PlayerA => *self.visibility_grids[0].at(x, y),
-            Side::PlayerB => *self.visibility_grids[1].at(x, y)
+            Side::PlayerB => *self.visibility_grids[1].at(x, y),
         }
     }
 
     pub fn set_visibility_at(&mut self, x: usize, y: usize, side: Side, visibility: Visibility) {
         match side {
             Side::PlayerA => *self.visibility_grids[0].at_mut(x, y) = visibility,
-            Side::PlayerB => *self.visibility_grids[1].at_mut(x, y) = visibility
+            Side::PlayerB => *self.visibility_grids[1].at_mut(x, y) = visibility,
         }
     }
 
@@ -177,7 +186,6 @@ impl Tiles {
     // Generate the tiles
     pub fn generate(&mut self, units: &Units) {
         let mut rng = rand::thread_rng();
-        let objects = &[Image::ObjectRebar, Image::ObjectRubble];
 
         for (x, y) in self.iter() {
             let tile = self.at_mut(x, y);
@@ -187,7 +195,11 @@ impl Tiles {
             // Add in decorations
             if rng.gen::<f32>() < 0.05 {
                 tile.decoration = Some(if rng.gen::<bool>() {
-                    if unit { Image::SkeletonCracked } else { Image::Skeleton }
+                    if unit {
+                        Image::SkeletonCracked
+                    } else {
+                        Image::Skeleton
+                    }
                 } else {
                     Image::Rubble
                 });
@@ -195,14 +207,18 @@ impl Tiles {
 
             // Add in objects
             if !unit && rng.gen::<f32>() < 0.05 {
-                tile.obstacle = Obstacle::Object(*rng.choose(objects).unwrap());
+                tile.obstacle = Obstacle::Object(if rng.gen() {
+                    Image::ObjectRebar
+                } else {
+                    Image::ObjectRubble
+                });
             }
         }
 
         // Generate a randomly sized pit
         self.add_pit(
             rng.gen_range(MIN_PIT_SIZE, MAX_PIT_SIZE + 1),
-            rng.gen_range(MIN_PIT_SIZE, MAX_PIT_SIZE + 1)
+            rng.gen_range(MIN_PIT_SIZE, MAX_PIT_SIZE + 1),
         );
 
         // Add in the walls
@@ -245,31 +261,42 @@ impl Tiles {
         // Generate pit position and size
         let mut rng = rand::thread_rng();
 
-        let max_x = self.width() - width  - 1;
+        let max_x = self.width() - width - 1;
         let max_y = self.height() - height - 1;
 
-        let pit_x = if max_x > 1 { rng.gen_range(1, max_x) } else { 1 };
-        let pit_y = if max_y > 1 { rng.gen_range(1, max_y) } else { 1 };
+        let pit_x = if max_x > 1 {
+            rng.gen_range(1, max_x)
+        } else {
+            1
+        };
+        let pit_y = if max_y > 1 {
+            rng.gen_range(1, max_y)
+        } else {
+            1
+        };
 
         // Add pit corners
-        self.at_mut(pit_x,             pit_y             ).set_pit(Image::PitTop);
-        self.at_mut(pit_x,             pit_y + height - 1).set_pit(Image::PitLeft);
-        self.at_mut(pit_x + width - 1, pit_y             ).set_pit(Image::PitRight);
-        self.at_mut(pit_x + width - 1, pit_y + height - 1).set_pit(Image::PitBottom);
+        self.at_mut(pit_x, pit_y).set_pit(Image::PitTop);
+        self.at_mut(pit_x, pit_y + height - 1)
+            .set_pit(Image::PitLeft);
+        self.at_mut(pit_x + width - 1, pit_y)
+            .set_pit(Image::PitRight);
+        self.at_mut(pit_x + width - 1, pit_y + height - 1)
+            .set_pit(Image::PitBottom);
 
         // Add in the top/bottom pit edges and center
-        for x in pit_x + 1 .. pit_x + width - 1 {
-            self.at_mut(x, pit_y             ).set_pit(Image::PitTR);
+        for x in pit_x + 1..pit_x + width - 1 {
+            self.at_mut(x, pit_y).set_pit(Image::PitTR);
             self.at_mut(x, pit_y + height - 1).set_pit(Image::PitBL);
 
-            for y in pit_y + 1 .. pit_y + height - 1 {
+            for y in pit_y + 1..pit_y + height - 1 {
                 self.at_mut(x, y).set_pit(Image::PitCenter);
             }
         }
 
         // Add in the left/right pit edges
-        for y in pit_y + 1 .. pit_y + height - 1 {
-            self.at_mut(pit_x,             y).set_pit(Image::PitTL);
+        for y in pit_y + 1..pit_y + height - 1 {
+            self.at_mut(pit_x, y).set_pit(Image::PitTL);
             self.at_mut(pit_x + width - 1, y).set_pit(Image::PitBR);
         }
     }
@@ -289,7 +316,7 @@ impl Tiles {
         for (x, y) in self.iter() {
             let player_a_visible = self.tile_visible(units, Side::PlayerA, x, y);
             let player_b_visible = self.tile_visible(units, Side::PlayerB, x, y);
-            
+
             let player_a_already_visible = self.visibility_at(x, y, Side::PlayerA).is_visible();
             let player_b_already_visible = self.visibility_at(x, y, Side::PlayerB).is_visible();
 
@@ -298,7 +325,7 @@ impl Tiles {
             } else if player_a_already_visible {
                 self.set_visibility_at(x, y, Side::PlayerA, Visibility::Foggy);
             }
-            
+
             if let Some(distance) = player_b_visible {
                 self.set_visibility_at(x, y, Side::PlayerB, Visibility::Visible(distance));
             } else if player_b_already_visible {
@@ -319,11 +346,16 @@ impl Tiles {
 
     // Is a tile visible by any unit on a particular side
     fn tile_visible(&self, units: &Units, side: Side, x: usize, y: usize) -> Option<u8> {
-        units.iter()
+        units
+            .iter()
             .filter(|unit| unit.side == side)
             .map(|unit| self.line_of_sight(unit.x, unit.y, x, y, unit.tag.sight(), unit.facing))
             // Get the minimum distance or none
-            .fold(None, |sum, dist| sum.and_then(|sum| dist.map(|dist| min(sum, dist))).or(sum).or(dist))
+            .fold(None, |sum, dist| {
+                sum.and_then(|sum| dist.map(|dist| min(sum, dist)))
+                    .or(sum)
+                    .or(dist)
+            })
     }
 
     // Is the wall space between two horizontal tiles empty
@@ -351,11 +383,13 @@ impl Tiles {
 
         // Check that there isn't a wall across the tiles and the right corners are open
 
-        (top || bottom) && (left || right) && if tl_to_br {
-            (top || left) && (bottom || right)
-        } else {
-            (top || right) && (bottom || left)
-        }
+        (top || bottom)
+            && (left || right)
+            && if tl_to_br {
+                (top || left) && (bottom || right)
+            } else {
+                (top || right) && (bottom || left)
+            }
     }
 
     // What should the visiblity of a left wall at a position be
@@ -372,7 +406,7 @@ impl Tiles {
     // What should the visibility of a top wall at a position be
     pub fn top_wall_visibility(&self, x: usize, y: usize, side: Side) -> Visibility {
         let visibility = self.visibility_at(x, y, side);
-        
+
         if y > 0 {
             combine_visibilities(visibility, self.visibility_at(x, y - 1, side))
         } else {
@@ -385,8 +419,14 @@ impl Tiles {
         Iter2D::new(self.width(), self.height())
     }
 
-    pub fn visible_units<'a>(&'a self, units: &'a Units, side: Side) -> impl Iterator<Item=&'a Unit> {
-        units.iter().filter(move |unit| self.visibility_at(unit.x, unit.y, side).is_visible())
+    pub fn visible_units<'a>(
+        &'a self,
+        units: &'a Units,
+        side: Side,
+    ) -> impl Iterator<Item = &'a Unit> {
+        units
+            .iter()
+            .filter(move |unit| self.visibility_at(unit.x, unit.y, side).is_visible())
     }
 
     pub fn clone_visible(&self, side: Side) -> Self {
@@ -396,10 +436,10 @@ impl Tiles {
             // Wipe the info of tiles that are not visible
             if !self.visibility_at(x, y, side).is_visible() {
                 let walls = tiles.at(x, y).walls.clone();
-                
+
                 let tile = tiles.at_mut(x, y);
                 *tile = Tile::new(Image::Base1);
-                
+
                 if self.left_wall_visibility(x, y, side).is_visible() {
                     tile.walls.left = walls.left.clone();
                 }
@@ -411,14 +451,20 @@ impl Tiles {
         }
 
         let grids = if side == Side::PlayerA {
-            [self.visibility_grids[0].clone(), Grid::new(0, 0, || Visibility::Invisible)]
+            [
+                self.visibility_grids[0].clone(),
+                Grid::new(0, 0, || Visibility::Invisible),
+            ]
         } else {
-            [Grid::new(0, 0, || Visibility::Invisible), self.visibility_grids[1].clone()]
+            [
+                Grid::new(0, 0, || Visibility::Invisible),
+                self.visibility_grids[1].clone(),
+            ]
         };
 
         Self {
             tiles,
-            visibility_grids: grids
+            visibility_grids: grids,
         }
     }
 
@@ -440,13 +486,16 @@ fn pit_generation() {
     tiles.generate(&Units::new());
 
     // At least one tile should have a pit on it
-    assert!(tiles.iter().map(|(x, y)| tiles.at(x, y)).any(|tile| tile.obstacle.is_pit()));
+    assert!(tiles
+        .iter()
+        .map(|(x, y)| tiles.at(x, y))
+        .any(|tile| tile.obstacle.is_pit()));
 }
 
 #[test]
 fn walk_on_tile() {
     let mut tiles = Tiles::new(30, 30);
-   
+
     let tile = tiles.at_mut(0, 0);
     tile.decoration = Some(Image::Skeleton);
     tile.walk_on();

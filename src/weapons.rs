@@ -1,17 +1,17 @@
 // The different weapons in the game
 
-use std::fmt;
 use std::cmp::min;
+use std::fmt;
 
-use resources::{Image, SoundEffect};
 use items::Item;
+use resources::{Image, SoundEffect};
 
 // The type of weapon
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum WeaponType {
     Rifle,
     MachineGun,
-    PlasmaRifle
+    PlasmaRifle,
 }
 
 impl WeaponType {
@@ -19,7 +19,7 @@ impl WeaponType {
     pub fn bullet(self) -> Image {
         match self {
             WeaponType::PlasmaRifle => Image::PlasmaBullet,
-            _ => Image::RegularBullet
+            _ => Image::RegularBullet,
         }
     }
 
@@ -27,7 +27,7 @@ impl WeaponType {
     pub fn fire_sound(self) -> SoundEffect {
         match self {
             WeaponType::PlasmaRifle => SoundEffect::PlasmaShot,
-            _ => SoundEffect::RegularShot
+            _ => SoundEffect::RegularShot,
         }
     }
 
@@ -35,7 +35,7 @@ impl WeaponType {
         match self {
             WeaponType::Rifle => 10,
             WeaponType::MachineGun => 5,
-            WeaponType::PlasmaRifle => 8
+            WeaponType::PlasmaRifle => 8,
         }
     }
 
@@ -43,7 +43,7 @@ impl WeaponType {
         match self {
             WeaponType::Rifle => 40,
             WeaponType::MachineGun => 20,
-            WeaponType::PlasmaRifle => 60
+            WeaponType::PlasmaRifle => 60,
         }
     }
 
@@ -51,7 +51,7 @@ impl WeaponType {
         match self {
             WeaponType::Rifle => 6,
             WeaponType::MachineGun => 10,
-            WeaponType::PlasmaRifle => 15
+            WeaponType::PlasmaRifle => 15,
         }
     }
 
@@ -59,18 +59,22 @@ impl WeaponType {
         match self {
             WeaponType::Rifle => Item::Rifle(0).weight(),
             WeaponType::MachineGun => Item::MachineGun(0).weight(),
-            WeaponType::PlasmaRifle => Item::PlasmaRifle(0).weight()
+            WeaponType::PlasmaRifle => Item::PlasmaRifle(0).weight(),
         }
     }
 }
 
 impl fmt::Display for WeaponType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match *self {
-            WeaponType::Rifle => "Rifle",
-            WeaponType::MachineGun => "Machine Gun",
-            WeaponType::PlasmaRifle => "Plasma Rifle"
-        })
+        write!(
+            f,
+            "{}",
+            match *self {
+                WeaponType::Rifle => "Rifle",
+                WeaponType::MachineGun => "Machine Gun",
+                WeaponType::PlasmaRifle => "Plasma Rifle",
+            }
+        )
     }
 }
 
@@ -78,7 +82,7 @@ impl fmt::Display for WeaponType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Weapon {
     pub tag: WeaponType,
-    pub ammo: u8
+    pub ammo: u8,
 }
 
 impl fmt::Display for Weapon {
@@ -90,9 +94,7 @@ impl fmt::Display for Weapon {
 impl Weapon {
     // Create a new weapon based of the weapon type
     pub fn new(tag: WeaponType, ammo: u8) -> Weapon {
-        Weapon {
-            tag, ammo
-        }
+        Weapon { tag, ammo }
     }
 
     // Can the weapon be fired with the current firing mode
@@ -124,7 +126,7 @@ impl Weapon {
         match self.tag {
             WeaponType::Rifle => Item::Rifle(self.ammo),
             WeaponType::MachineGun => Item::MachineGun(self.ammo),
-            WeaponType::PlasmaRifle => Item::PlasmaRifle(self.ammo)
+            WeaponType::PlasmaRifle => Item::PlasmaRifle(self.ammo),
         }
     }
 }

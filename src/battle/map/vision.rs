@@ -1,8 +1,8 @@
 // The line of sight tile functions are in here, because they're pretty big and kinda seperate from the other stuff
 
+use super::super::units::*;
 use super::tiles::*;
 use super::walls::*;
-use super::super::units::*;
 
 use line_drawing::*;
 use rand;
@@ -11,7 +11,7 @@ use std::mem::*;
 // A point for line-of-sight
 type Point = (isize, isize);
 
-// Sort two points on the y axis 
+// Sort two points on the y axis
 fn sort(a: Point, b: Point) -> (Point, Point, bool) {
     if a.1 > b.1 {
         (b, a, true)
@@ -35,24 +35,31 @@ impl Tiles {
     fn wall_between(&self, a: Point, b: Point) -> bool {
         let ((a_x, a_y), (b_x, b_y)) = (from_point(a), from_point(b));
 
-        ! match (b.0 - a.0, b.1 - a.1) {
+        !match (b.0 - a.0, b.1 - a.1) {
             (0, 1) => self.vertical_clear(b_x, b_y),
             (1, 0) => self.horizontal_clear(b_x, b_y),
             (-1, 0) => self.horizontal_clear(a_x, a_y),
             (-1, 1) => self.diagonal_clear(a_x, b_y, false),
             (1, 1) => self.diagonal_clear(b_x, b_y, true),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     // Return the first blocking obstacle between two points or none
-    pub fn line_of_fire(&self, start_x: usize, start_y: usize, end_x: usize, end_y: usize) -> Option<(Point, WallSide)> {
+    pub fn line_of_fire(
+        &self,
+        start_x: usize,
+        start_y: usize,
+        end_x: usize,
+        end_y: usize,
+    ) -> Option<(Point, WallSide)> {
         // Convert the points to isize and sort
         let (start, end) = (to_point(start_x, start_y), to_point(end_x, end_y));
         let (start, end, reversed) = sort(start, end);
 
         // Create an iterator of tile steps
-        let mut iter = Bresenham::new(start, end).steps()
+        let mut iter = Bresenham::new(start, end)
+            .steps()
             // Filter to steps with walls between
             .filter(|&(a, b)| self.wall_between(a, b))
             // Map to the containing tile and wall direction
@@ -95,18 +102,34 @@ impl Tiles {
                     };
 
                     // Choose a random wall
-                    if rand::random::<bool>() { wall_a } else { wall_b }
-                },
-                _ => unreachable!()
+                    if rand::random::<bool>() {
+                        wall_a
+                    } else {
+                        wall_b
+                    }
+                }
+                _ => unreachable!(),
             });
 
         // Return either the last or first wall found or none
-        if reversed { iter.last() } else { iter.next() }
+        if reversed {
+            iter.last()
+        } else {
+            iter.next()
+        }
     }
 
     // Would a unit with a particular sight range be able to see from one tile to another
     // Return the number of tiles away a point is, or none if visibility is blocked
-    pub fn line_of_sight(&self, a_x: usize, a_y: usize, b_x: usize, b_y: usize, sight: f32, facing: UnitFacing) -> Option<u8> {
+    pub fn line_of_sight(
+        &self,
+        a_x: usize,
+        a_y: usize,
+        b_x: usize,
+        b_y: usize,
+        sight: f32,
+        facing: UnitFacing,
+    ) -> Option<u8> {
         if facing.can_see(a_x, a_y, b_x, b_y, sight) {
             // Sort the points so that line-of-sight is symmetrical
             let (start, end, _) = sort(to_point(a_x, a_y), to_point(b_x, b_y));
@@ -133,11 +156,10 @@ impl Tiles {
     }
 }
 
-
 #[test]
 fn unit_visibility() {
-    use super::super::units::*;
     use super::super::paths::*;
+    use super::super::units::*;
 
     let mut tiles = Tiles::new(30, 30);
     let mut units = Units::new();
@@ -145,13 +167,22 @@ fn unit_visibility() {
     tiles.update_visibility(&units);
 
     // A tile a unit is standing on should be visible with a distance of 0
-    assert_eq!(tiles.visibility_at(0, 0, Side::PlayerA), Visibility::Visible(0));
+    assert_eq!(
+        tiles.visibility_at(0, 0, Side::PlayerA),
+        Visibility::Visible(0)
+    );
     // A far away tile should be invisible
-    assert_eq!(tiles.visibility_at(29, 29, Side::PlayerA), Visibility::Invisible);
+    assert_eq!(
+        tiles.visibility_at(29, 29, Side::PlayerA),
+        Visibility::Invisible
+    );
 
     // A tile that was visible but is no longer should be foggy
 
-    units.get_mut(0).unwrap().move_to(&PathPoint::new(29, 0, 0, UnitFacing::Top));
+    units
+        .get_mut(0)
+        .unwrap()
+        .move_to(&PathPoint::new(29, 0, 0, UnitFacing::Top));
     tiles.update_visibility(&units);
 
     assert_eq!(tiles.visibility_at(0, 0, Side::PlayerA), Visibility::Foggy);
@@ -204,5 +235,4 @@ fn line_of_fire() {
     assert!(diag_3 == left || diag_3 == bottom);
     let diag_4 = tiles.line_of_fire(1, 0, 0, 1);
     assert!(diag_4 == right || diag_4 == top);
-
 }

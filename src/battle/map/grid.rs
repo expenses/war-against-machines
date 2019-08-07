@@ -2,7 +2,7 @@
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct Grid<T> {
     width: usize,
-    inner: Vec<T>
+    inner: Vec<T>,
 }
 
 impl<T> Grid<T> {
@@ -11,13 +11,11 @@ impl<T> Grid<T> {
 
         let mut inner = Vec::with_capacity(len);
 
-        for _ in 0 .. len {
+        for _ in 0..len {
             inner.push(constuctor());
         }
 
-        Self {
-            width, inner
-        }
+        Self { width, inner }
     }
 
     pub fn width(&self) -> usize {
@@ -32,7 +30,12 @@ impl<T> Grid<T> {
 
     fn index(&self, x: usize, y: usize) -> usize {
         // Another assert to make sure we know why this panics
-        assert!(x < self.width() && y < self.height(), "Item at ({}, {}) is out of bounds", x, y);
+        assert!(
+            x < self.width() && y < self.height(),
+            "Item at ({}, {}) is out of bounds",
+            x,
+            y
+        );
         x * self.height() + y
     }
 

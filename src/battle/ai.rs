@@ -1,10 +1,10 @@
-use super::networking::*;
-use super::units::*;
 use super::map::*;
+use super::networking::*;
 use super::paths::*;
+use super::units::*;
 use error::*;
-use utils::*;
 use ord_subset::*;
+use utils::*;
 
 use std::collections::*;
 use std::thread::sleep;
@@ -14,7 +14,7 @@ use std::time::*;
 enum AIMove<'a> {
     Walk(Vec<PathPoint>),
     Fire(&'a Unit),
-    None
+    None,
 }
 
 impl<'a> AIMove<'a> {
@@ -29,14 +29,12 @@ impl<'a> AIMove<'a> {
 
 struct Walk {
     path: Vec<PathPoint>,
-    score: f32
+    score: f32,
 }
 
 impl Walk {
     fn new(path: Vec<PathPoint>, score: f32) -> Self {
-        Self {
-            path, score
-        }
+        Self { path, score }
     }
 
     fn update(&mut self, other: Walk) {
@@ -49,7 +47,7 @@ impl Walk {
 pub struct AIClient {
     client: Client,
     finished_units: HashSet<u8>,
-    waiting_for_response: Option<u8>
+    waiting_for_response: Option<u8>,
 }
 
 impl AIClient {
@@ -57,7 +55,7 @@ impl AIClient {
         Ok(Self {
             client: Client::new(connection)?,
             finished_units: HashSet::new(),
-            waiting_for_response: None
+            waiting_for_response: None,
         })
     }
 
@@ -67,7 +65,9 @@ impl AIClient {
 
     // Find the closest target unit to a unit on the map, if any
     fn closest_target(&self, unit: &Unit) -> Option<&Unit> {
-        self.map().units.iter()
+        self.map()
+            .units
+            .iter()
             // Filter to visible player units
             .filter(|target| target.side != self.client.side)
             // Minimize distance
@@ -75,11 +75,11 @@ impl AIClient {
     }
 
     // Iterate over tiles a unit could reach
-    fn reachable_tiles<'a>(&'a self, unit: &'a Unit) -> impl Iterator<Item=(usize, usize)> + 'a {
+    fn reachable_tiles<'a>(&'a self, unit: &'a Unit) -> impl Iterator<Item = (usize, usize)> + 'a {
         self.map().tiles.iter().filter(move |&(x, y)| {
-            !self.client.visibility_at(x, y).is_invisible() &&
-            (unit.x as i32 - x as i32).abs() as u16 * Unit::WALK_LATERAL_COST <= unit.moves &&
-            (unit.y as i32 - y as i32).abs() as u16 * Unit::WALK_LATERAL_COST <= unit.moves
+            !self.client.visibility_at(x, y).is_invisible()
+                && (unit.x as i32 - x as i32).abs() as u16 * Unit::WALK_LATERAL_COST <= unit.moves
+                && (unit.y as i32 - y as i32).abs() as u16 * Unit::WALK_LATERAL_COST <= unit.moves
         })
     }
 
@@ -108,12 +108,11 @@ impl AIClient {
             }
 
             if self.waiting_for_response.is_none() && self.client.our_turn() {
-                let next_unit = self.client.map.units.iter()
-                    .find(|unit| {
-                        unit.side == self.client.side &&
-                        unit.moves > 0 &&
-                        !self.finished_units.contains(&unit.id)
-                    });
+                let next_unit = self.client.map.units.iter().find(|unit| {
+                    unit.side == self.client.side
+                        && unit.moves > 0
+                        && !self.finished_units.contains(&unit.id)
+                });
 
                 if let Some(unit) = next_unit {
                     let sent_message = self.process_unit(unit);
@@ -149,8 +148,8 @@ impl AIClient {
                 } else {
                     AIMove::Fire(target)
                 }
-            },
-            None => self.maximize_tile_search(unit)
+            }
+            None => self.maximize_tile_search(unit),
         };
 
         debug!("Move: {:?}", ai_move);
@@ -160,19 +159,22 @@ impl AIClient {
             AIMove::Fire(target) => {
                 self.client.fire(unit.id, target.x, target.y);
                 true
-            },
+            }
             AIMove::Walk(path) => {
                 self.client.walk(unit.id, &path);
                 true
-            },
-            AIMove::None => false
+            }
+            AIMove::None => false,
         }
     }
 
     // Return an path where the chance_to_hit of the nearest unit is maximized
     fn maximise_damage(&self, unit: &Unit, target: &Unit) -> AIMove {
         // Create a new AIMove of the chance to hit the target
-        let mut walk = Walk::new(Vec::new(), self.damage_score(unit.x, unit.y, 0, unit, target));
+        let mut walk = Walk::new(
+            Vec::new(),
+            self.damage_score(unit.x, unit.y, 0, unit, target),
+        );
 
         // Loop through the reachable tiles
         for (x, y) in self.reachable_tiles(unit) {
@@ -207,7 +209,13 @@ impl AIClient {
         let moves = unit.moves - moves_used;
 
         // Return if the cost is too high or if line of fire is blocked
-        if moves < unit.weapon.tag.cost() || self.map().tiles.line_of_fire(x, y, target.x, target.y).is_some() {
+        if moves < unit.weapon.tag.cost()
+            || self
+                .map()
+                .tiles
+                .line_of_fire(x, y, target.x, target.y)
+                .is_some()
+        {
             return 0.0;
         }
 
@@ -215,7 +223,9 @@ impl AIClient {
         let chance_to_hit = chance_to_hit(x, y, target.x, target.y);
 
         // Return chance to hit * times the weapon can be fired * weapon damage
-        chance_to_hit * f32::from(unit.weapon.times_can_fire(moves)) * f32::from(unit.weapon.tag.damage())
+        chance_to_hit
+            * f32::from(unit.weapon.times_can_fire(moves))
+            * f32::from(unit.weapon.tag.damage())
     }
 
     // Calculate the search score for a tile.
@@ -226,15 +236,20 @@ impl AIClient {
         // Loop though the tiles
         for (tile_x, tile_y) in self.map().tiles.iter() {
             // If the tile would be visible, add the score
-            if self.map().tiles.line_of_sight(x, y, tile_x, tile_y, unit.tag.sight(), unit.facing).is_some() {    
+            if self
+                .map()
+                .tiles
+                .line_of_sight(x, y, tile_x, tile_y, unit.tag.sight(), unit.facing)
+                .is_some()
+            {
                 score += match self.client.visibility_at(tile_x, tile_y) {
                     Visibility::Invisible => 1.0,
                     Visibility::Foggy => 0.1,
-                    Visibility::Visible(_) => 0.0
+                    Visibility::Visible(_) => 0.0,
                 };
             }
         }
-        
+
         score
     }
 }
@@ -242,15 +257,18 @@ impl AIClient {
 #[test]
 // This will quit after the first action
 fn test_empty_ai_match() {
-    use super::units::*;
     use super::networking::*;
+    use super::units::*;
     use settings::*;
 
     let settings = Settings::default();
     let mut map = Map::new(20, 20, 0.0);
-    map.units.add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
-    map.units.add(UnitType::Squaddie, Side::PlayerA, 1, 0, UnitFacing::Bottom);
-    map.units.add(UnitType::Squaddie, Side::PlayerA, 2, 0, UnitFacing::Bottom);
+    map.units
+        .add(UnitType::Squaddie, Side::PlayerA, 0, 0, UnitFacing::Bottom);
+    map.units
+        .add(UnitType::Squaddie, Side::PlayerA, 1, 0, UnitFacing::Bottom);
+    map.units
+        .add(UnitType::Squaddie, Side::PlayerA, 2, 0, UnitFacing::Bottom);
 
     let (mut server, ai_1, ai_2) = ai_vs_ai(map, settings).unwrap();
 

@@ -39,7 +39,8 @@ image = "*"
 rodio = "*"
 
 # OpenGl!
-glium = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}
+#glium = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}
+glium = "*"
 
 # Logging
 log = "*"
@@ -50,5 +51,5 @@ env_logger = "*"
 version = "*"
 features = ["std-vec"]
 
-[replace]
-'glium:0.22.0' = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}
+#[replace]
+#'glium:0.22.0' = {git = "https://github.com/expenses/glium", branch = "glutin_bump"}

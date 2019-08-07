@@ -1,12 +1,12 @@
 // A drawer struct for drawing the map and battle items
 
-use super::Battle;
 use super::map::*;
 use super::responses::*;
+use super::Battle;
+use colours;
+use context::Context;
 use resources::Image;
 use utils::convert_rotation;
-use context::Context;
-use colours;
 
 const TILE_WIDTH: f32 = 48.0;
 const TILE_HEIGHT: f32 = 24.0;
@@ -26,7 +26,7 @@ pub fn to_map_coords(x: f32, y: f32) -> (f32, f32) {
 pub struct Camera {
     pub x: f32,
     pub y: f32,
-    zoom: f32
+    zoom: f32,
 }
 
 impl Camera {
@@ -36,12 +36,11 @@ impl Camera {
     const ZOOM_MAX: f32 = 10.0;
     const ZOOM_MIN: f32 = 1.0;
 
-
     pub fn new() -> Camera {
         Camera {
             x: 0.0,
             y: 0.0,
-            zoom: Self::DEFAULT_ZOOM
+            zoom: Self::DEFAULT_ZOOM,
         }
     }
 
@@ -49,7 +48,6 @@ impl Camera {
         let (x, y) = self.map_location();
         let width = map.tiles.width() as f32;
         let height = map.tiles.height() as f32;
-
 
         if step > 0.0 {
             if x < width && y > 0.0 {
@@ -64,7 +62,7 @@ impl Camera {
         let (x, y) = self.map_location();
         let width = map.tiles.width() as f32;
         let height = map.tiles.height() as f32;
-        
+
         if step > 0.0 {
             if x > 0.0 && y > 0.0 {
                 self.y += step * Self::SPEED;
@@ -78,8 +76,12 @@ impl Camera {
     pub fn zoom(&mut self, amount: f32) {
         self.zoom += amount * self.zoom * Self::ZOOM_SPEED;
 
-        if self.zoom > Self::ZOOM_MAX { self.zoom = Self::ZOOM_MAX; }
-        if self.zoom < Self::ZOOM_MIN { self.zoom = Self::ZOOM_MIN; }
+        if self.zoom > Self::ZOOM_MAX {
+            self.zoom = Self::ZOOM_MAX;
+        }
+        if self.zoom < Self::ZOOM_MIN {
+            self.zoom = Self::ZOOM_MIN;
+        }
     }
 
     pub fn set_to(&mut self, x: usize, y: usize) {
@@ -95,12 +97,18 @@ impl Camera {
         to_map_coords(x, y)
     }
 
-    pub fn tile_under_cursor(&self, mut mouse_x: f32, mut mouse_y: f32, width: f32, height: f32) -> (usize, usize) {
+    pub fn tile_under_cursor(
+        &self,
+        mut mouse_x: f32,
+        mut mouse_y: f32,
+        width: f32,
+        height: f32,
+    ) -> (usize, usize) {
         mouse_x -= width / 2.0;
         mouse_y -= height / 2.0;
 
         // Work out the position of the mouse on the screen relative to the camera
-        let x = mouse_x  / TILE_WIDTH  / self.zoom + self.x / 2.0;
+        let x = mouse_x / TILE_WIDTH / self.zoom + self.x / 2.0;
         let y = mouse_y / TILE_HEIGHT / self.zoom - self.y / 2.0;
 
         // Account for the images being square
@@ -119,7 +127,10 @@ fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32;
     // Get the maximum x and y values (given that (0, 0) is at the center)
     let (max_x, max_y) = (ctx.width, ctx.height);
     // The x and y difference of a tile compared to another tile on the same row/col
-    let (x_size, y_size) = (TILE_WIDTH / 2.0 * camera.zoom, TILE_HEIGHT / 2.0 * camera.zoom);
+    let (x_size, y_size) = (
+        TILE_WIDTH / 2.0 * camera.zoom,
+        TILE_HEIGHT / 2.0 * camera.zoom,
+    );
 
     // Convert the location from the map coords to the screen coords
     let (x, y) = from_map_coords(x, y);
@@ -129,8 +140,7 @@ fn draw_location(ctx: &Context, camera: &Camera, x: f32, y: f32) -> Option<[f32;
     let y = -(y - camera.y) * y_size + ctx.height / 2.0;
 
     // Check if the tile is onscreen
-    if x > -x_size && y > -y_size * 2.0 &&
-       x < max_x + x_size && y < max_y + y_size * 2.0 {    
+    if x > -x_size && y > -y_size * 2.0 && x < max_x + x_size && y < max_y + y_size * 2.0 {
         Some([x, y])
     } else {
         None
@@ -159,13 +169,23 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         // Draw the left wall
         if let Some(ref wall) = tile.walls.left {
             let visibility = tiles.left_wall_visibility(x, y, side);
-            ctx.render_with_overlay(wall.tag.left_image(), dest, camera.zoom, visibility.colour(light, debugging));
+            ctx.render_with_overlay(
+                wall.tag.left_image(),
+                dest,
+                camera.zoom,
+                visibility.colour(light, debugging),
+            );
         }
 
         // Draw the right wall
         if let Some(ref wall) = tile.walls.top {
             let visibility = tiles.top_wall_visibility(x, y, side);
-            ctx.render_with_overlay(wall.tag.top_image(), dest, camera.zoom, visibility.colour(light, debugging));
+            ctx.render_with_overlay(
+                wall.tag.top_image(),
+                dest,
+                camera.zoom,
+                visibility.colour(light, debugging),
+            );
         }
 
         if let Obstacle::Pit(image) = tile.obstacle {
@@ -221,7 +241,8 @@ fn draw_tile(x: usize, y: usize, ctx: &mut Context, battle: &Battle) {
         }
 
         // Draw explosions on the tile
-        responses.iter()
+        responses
+            .iter()
             .filter_map(Response::as_explosion)
             .filter(|explosion| explosion.x() == x && explosion.y() == y)
             .for_each(|explosion| ctx.render(explosion.image(), dest, camera.zoom));
@@ -244,19 +265,29 @@ pub fn draw_map(ctx: &mut Context, battle: &Battle) {
 
     // Draw the edge edges
 
-    for x in 0 .. width {
+    for x in 0..width {
         let visibility = map.tiles.visibility_at(x, height - 1, side);
 
         if let Some(dest) = draw_location(ctx, camera, (x + 1) as f32, height as f32) {
-            ctx.render_with_overlay(Image::LeftEdge, dest, camera.zoom, visibility.colour(light, debugging));
-        }        
+            ctx.render_with_overlay(
+                Image::LeftEdge,
+                dest,
+                camera.zoom,
+                visibility.colour(light, debugging),
+            );
+        }
     }
 
-    for y in 0 .. height {
+    for y in 0..height {
         let visibility = map.tiles.visibility_at(width - 1, y, side);
 
         if let Some(dest) = draw_location(ctx, camera, width as f32, (y + 1) as f32) {
-            ctx.render_with_overlay(Image::RightEdge, dest, camera.zoom, visibility.colour(light, debugging));
+            ctx.render_with_overlay(
+                Image::RightEdge,
+                dest,
+                camera.zoom,
+                visibility.colour(light, debugging),
+            );
         }
     }
 }
@@ -267,7 +298,7 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     let map = &battle.client.map;
     let responses = &battle.client.responses();
     let side = battle.client.side;
-    
+
     draw_map(ctx, battle);
 
     // Draw the path if there is one
@@ -332,8 +363,9 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
                     // Draw the chance-to-hit
                     ctx.render_text(
                         &format!("{:0.3}%", firing.chance_to_hit(x, y) * 100.0),
-                        dest[0], dest[1] + TILE_HEIGHT * camera.zoom,
-                        colour
+                        dest[0],
+                        dest[1] + TILE_HEIGHT * camera.zoom,
+                        colour,
                     );
                 }
             }
@@ -341,36 +373,44 @@ pub fn draw_battle(ctx: &mut Context, battle: &Battle) {
     }
 
     // Draw all the visible bullets in the response queue
-    responses.iter()
+    responses
+        .iter()
         .filter_map(Response::as_bullet)
         .for_each(|bullet| {
-        
-        // If the bullet is on screen, draw it with the right rotation      
-        if let Some(dest) = draw_location(ctx, camera, bullet.x(), bullet.y()) {
-            ctx.render_with_rotation(
-                bullet.image(), dest, camera.zoom, convert_rotation(bullet.direction())
-            );
-        }
-    });
+            // If the bullet is on screen, draw it with the right rotation
+            if let Some(dest) = draw_location(ctx, camera, bullet.x(), bullet.y()) {
+                ctx.render_with_rotation(
+                    bullet.image(),
+                    dest,
+                    camera.zoom,
+                    convert_rotation(bullet.direction()),
+                );
+            }
+        });
 
-    responses.iter()
+    responses
+        .iter()
         .filter_map(Response::as_thrown_item)
         .for_each(|thrown_item| {
-
-        if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
-            ctx.render(
-                thrown_item.image(),
-                [dest[0], dest[1] - thrown_item.height() * camera.zoom * TILE_HEIGHT],
-                camera.zoom
-            );
-        }
-    });
+            if let Some(dest) = draw_location(ctx, camera, thrown_item.x(), thrown_item.y()) {
+                ctx.render(
+                    thrown_item.image(),
+                    [
+                        dest[0],
+                        dest[1] - thrown_item.height() * camera.zoom * TILE_HEIGHT,
+                    ],
+                    camera.zoom,
+                );
+            }
+        });
 }
-
 
 #[test]
 fn default_camera_pos() {
     // If the cursor is in the center of the screen and the camera is
     // the default, the tile under the cursor should be at (0, 0)
-    assert_eq!(Camera::new().tile_under_cursor(501.0, 501.0, 1000.0, 1000.0), (0, 0));
+    assert_eq!(
+        Camera::new().tile_under_cursor(501.0, 501.0, 1000.0, 1000.0),
+        (0, 0)
+    );
 }

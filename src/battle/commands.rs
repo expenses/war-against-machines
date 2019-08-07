@@ -1,24 +1,24 @@
 use super::map::*;
-use super::units::*;
 use super::paths::*;
 use super::responses::*;
+use super::units::*;
 
-use utils::*;
-use resources::*;
 use rand::*;
+use resources::*;
+use utils::*;
 
 use std::collections::*;
 
 pub struct ServerResponses {
     player_a: Vec<Response>,
-    player_b: Vec<Response>
+    player_b: Vec<Response>,
 }
 
 impl ServerResponses {
     pub fn new() -> Self {
         Self {
             player_a: Vec::new(),
-            player_b: Vec::new()
+            player_b: Vec::new(),
         }
     }
 
@@ -35,7 +35,7 @@ impl ServerResponses {
     pub fn push(&mut self, side: Side, response: Response) {
         match side {
             Side::PlayerA => self.player_a.push(response),
-            Side::PlayerB => self.player_b.push(response)
+            Side::PlayerB => self.player_b.push(response),
         }
     }
 
@@ -58,7 +58,12 @@ impl ServerResponses {
     }
 }
 
-pub fn turn_command(map: &mut Map, id: u8, new_facing: UnitFacing, responses: &mut ServerResponses) {
+pub fn turn_command(
+    map: &mut Map,
+    id: u8,
+    new_facing: UnitFacing,
+    responses: &mut ServerResponses,
+) {
     let current_facing = map.units.get(id).unwrap().facing;
 
     // todo: animate turning
@@ -91,13 +96,15 @@ pub fn move_command(map: &mut Map, id: u8, path: Vec<UnitFacing>, responses: &mu
             (unit.moves, PathPoint::from(unit))
         };
 
-        let future_point = current_point.neighbours(map).into_iter()
+        let future_point = current_point
+            .neighbours(map)
+            .into_iter()
             .map(|(point, _)| point)
             .find(|point| point.facing == facing);
 
         let future_point = match future_point {
             Some(point) => point,
-            None => return
+            None => return,
         };
 
         if moves < future_point.cost {
@@ -122,16 +129,29 @@ pub fn use_item_command(map: &mut Map, id: u8, item: usize, responses: &mut Serv
 }
 
 pub fn pickup_item_command(map: &mut Map, id: u8, item: usize, responses: &mut ServerResponses) {
-    map.units.get_mut(id).unwrap().pickup_item(&mut map.tiles, item);
+    map.units
+        .get_mut(id)
+        .unwrap()
+        .pickup_item(&mut map.tiles, item);
     responses.push_and_update_state(map);
 }
 
 pub fn drop_item_command(map: &mut Map, id: u8, item: usize, responses: &mut ServerResponses) {
-    map.units.get_mut(id).unwrap().drop_item(&mut map.tiles, item);
+    map.units
+        .get_mut(id)
+        .unwrap()
+        .drop_item(&mut map.tiles, item);
     responses.push_and_update_state(map);
 }
 
-pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize, responses: &mut ServerResponses) {
+pub fn throw_item_command(
+    map: &mut Map,
+    id: u8,
+    item: usize,
+    x: usize,
+    y: usize,
+    responses: &mut ServerResponses,
+) {
     let item = {
         let (item, unit_x, unit_y) = {
             let unit = map.units.get_mut(id).unwrap();
@@ -149,9 +169,9 @@ pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize
         responses.push_if_predicate(
             Response::new_thrown_item(item.image(), unit_x, unit_y, x, y),
             |side| {
-                map.tiles.visibility_at(unit_x, unit_y, side).is_visible() ||
-                map.tiles.visibility_at(x, y, side).is_visible()
-            }
+                map.tiles.visibility_at(unit_x, unit_y, side).is_visible()
+                    || map.tiles.visibility_at(x, y, side).is_visible()
+            },
         );
 
         item
@@ -166,13 +186,24 @@ pub fn throw_item_command(map: &mut Map, id: u8, item: usize, x: usize, y: usize
     responses.push_and_update_state(map);
 }
 
-pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: usize, responses: &mut ServerResponses) {
+pub fn fire_command(
+    map: &mut Map,
+    id: u8,
+    mut target_x: usize,
+    mut target_y: usize,
+    responses: &mut ServerResponses,
+) {
     // Fire the unit's weapon and get if the bullet will hit and the damage it will do
     let (will_hit, damage, unit_x, unit_y) = {
         let unit = map.units.get_mut(id).unwrap();
-        
+
         if unit.fire_weapon() {
-            (unit.chance_to_hit(target_x, target_y) > random::<f32>(), unit.weapon.tag.damage(), unit.x, unit.y)
+            (
+                unit.chance_to_hit(target_x, target_y) > random::<f32>(),
+                unit.weapon.tag.damage(),
+                unit.x,
+                unit.y,
+            )
         } else {
             return;
         }
@@ -200,18 +231,31 @@ pub fn fire_command(map: &mut Map, id: u8, mut target_x: usize, mut target_y: us
         responses.push_if_predicate(
             Response::new_bullet(unit, target_x, target_y, will_hit, map),
             |side| {
-                map.tiles.visibility_at(unit.x, unit.y, side).is_visible() ||
-                map.tiles.visibility_at(target_x, target_y, side).is_visible()
-            }
+                map.tiles.visibility_at(unit.x, unit.y, side).is_visible()
+                    || map
+                        .tiles
+                        .visibility_at(target_x, target_y, side)
+                        .is_visible()
+            },
         );
     }
 
     responses.push_and_update_state(map);
 }
 
-fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, responses: &mut ServerResponses) {
-    let affected_tiles: HashSet<_> = map.tiles.iter()
-        .filter(|&(tile_x, tile_y)| distance_under(x, y, tile_x, tile_y, radius)).collect();
+fn explosion(
+    map: &mut Map,
+    x: usize,
+    y: usize,
+    damage: i16,
+    radius: f32,
+    responses: &mut ServerResponses,
+) {
+    let affected_tiles: HashSet<_> = map
+        .tiles
+        .iter()
+        .filter(|&(tile_x, tile_y)| distance_under(x, y, tile_x, tile_y, radius))
+        .collect();
 
     for (i, &(tile_x, tile_y)) in affected_tiles.iter().enumerate() {
         let is_last = i == affected_tiles.len() - 1;
@@ -219,8 +263,8 @@ fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, respon
         // push explosion to sides that can see it
         responses.push_if_predicate(
             Response::new_explosion(tile_x, tile_y, x, y, is_last),
-            |side| map.tiles.visibility_at(tile_x, tile_y, side).is_visible()
-        );     
+            |side| map.tiles.visibility_at(tile_x, tile_y, side).is_visible(),
+        );
     }
 
     for &(x, y) in &affected_tiles {
@@ -236,10 +280,13 @@ fn explosion(map: &mut Map, x: usize, y: usize, damage: i16, radius: f32, respon
     }
 }
 
-
 fn damage_tile(map: &mut Map, x: usize, y: usize, damage: i16) {
     // Deal damage to the unit and get whether it is lethal
-    if let Some((id, lethal)) = map.units.at_mut(x, y).map(|unit| (unit.id, unit.damage(damage))) {
+    if let Some((id, lethal)) = map
+        .units
+        .at_mut(x, y)
+        .map(|unit| (unit.id, unit.damage(damage)))
+    {
         // If the damage is lethal, kill the unit
         if lethal {
             map.units.kill(&mut map.tiles, id);
@@ -255,14 +302,15 @@ fn damage_wall(map: &mut Map, x: usize, y: usize, damage: i16, side: WallSide) {
 
     let destroyed = match side {
         WallSide::Left => walls.left.as_mut(),
-        WallSide::Top => walls.top.as_mut()
-    }.map(|wall| wall.damage(damage))
+        WallSide::Top => walls.top.as_mut(),
+    }
+    .map(|wall| wall.damage(damage))
     .unwrap_or(false);
 
     if destroyed {
         match side {
             WallSide::Left => walls.left = None,
-            WallSide::Top => walls.top = None
+            WallSide::Top => walls.top = None,
         }
     }
 }

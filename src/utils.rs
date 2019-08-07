@@ -11,12 +11,20 @@ pub fn vec_or_default<T, C: FnOnce() -> T>(vec: Vec<T>, constructor: C) -> Vec<T
 
 // Min using partialord
 pub fn min<T: PartialOrd>(a: T, b: T) -> T {
-    if a < b { a } else { b }
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 // Max using partialord
 pub fn max<T: PartialOrd>(a: T, b: T) -> T {
-    if a > b { a } else { b }
+    if a > b {
+        a
+    } else {
+        b
+    }
 }
 
 // Linearly-interpolate between two values
@@ -74,8 +82,11 @@ pub fn convert_rotation(mut rotation: f32) -> f32 {
 fn test_rotation() {
     // As the map is isometric, a shot fired from (0, 0) to (10, 10)
     // should be travelling directly down (90' clockwise)
-    assert_eq!(convert_rotation(direction(0.0, 0.0, 10.0, 10.0)).to_degrees(), 90.0);
- 
+    assert_eq!(
+        convert_rotation(direction(0.0, 0.0, 10.0, 10.0)).to_degrees(),
+        90.0
+    );
+
     // A shot fired from (0, 10) to (10, 0) should go going directly left
     assert_eq!(convert_rotation(direction(0.0, 10.0, 10.0, 0.0)), 0.0);
 }

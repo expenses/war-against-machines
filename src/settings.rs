@@ -1,19 +1,16 @@
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 
 use battle::units::UnitType;
-use utils::clamp;
 use networking::*;
+use utils::clamp;
 
 use toml;
 use toml::Value;
 
-use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
 use std::path::PathBuf;
 
-
-type Table = BTreeMap<String, Value>;
+type Table = toml::map::Map<String, Value>;
 
 // Extract the table out of a toml value
 fn to_table(value: Value) -> Option<Table> {
@@ -30,7 +27,7 @@ pub struct Settings {
     pub window_width: u32,
     pub window_height: u32,
     pub fullscreen: bool,
-    pub savegames: String
+    pub savegames: String,
 }
 
 // The default settings
@@ -41,7 +38,7 @@ impl Default for Settings {
             window_width: 960,
             window_height: 540,
             fullscreen: false,
-            savegames: "savegames".into()
+            savegames: "savegames".into(),
         }
     }
 }
@@ -56,20 +53,25 @@ impl Settings {
         let mut settings = Settings::default();
 
         // If the settings were able to be loaded and parsed into a toml table
-        if let Some(loaded) = File::open(Self::FILENAME).ok()
+        if let Some(loaded) = File::open(Self::FILENAME)
+            .ok()
             .and_then(|mut file| file.read_to_string(&mut buffer).ok())
             .and_then(|_| buffer.parse::<Value>().ok())
-            .and_then(to_table) {
-
+            .and_then(to_table)
+        {
             let mut settings_table = settings.to_table();
 
             // Change the default settings to the new keys
             for (key, value) in loaded {
                 match settings_table.entry(key) {
-                    Entry::Occupied(mut entry) => {
+                    toml::map::Entry::Occupied(mut entry) => {
                         entry.insert(value);
-                    },
-                    Entry::Vacant(entry) => error!("Warning: '{}' key '{}' does not exist.", Self::FILENAME, entry.key())
+                    }
+                    toml::map::Entry::Vacant(entry) => error!(
+                        "Warning: '{}' key '{}' does not exist.",
+                        Self::FILENAME,
+                        entry.key()
+                    ),
                 }
             }
 
@@ -84,11 +86,14 @@ impl Settings {
     }
 
     // Save the settings
+    #[cfg(test)]
     pub fn save(&self) {
+        use std::io::Write;
+
         if let Ok(mut file) = File::create(Self::FILENAME) {
             let default = Settings::default().to_table();
             let mut settings = self.to_table();
-    
+
             // Remove the settings that are the default
             for (key, value) in default {
                 if settings[&key] == value {
@@ -128,7 +133,7 @@ impl Settings {
 pub enum GameType {
     Local,
     Host,
-    Connect
+    Connect,
 }
 
 impl GameType {
@@ -136,7 +141,7 @@ impl GameType {
         match *self {
             GameType::Local => "Local",
             GameType::Host => "Host",
-            GameType::Connect => "Connect"
+            GameType::Connect => "Connect",
         }
     }
 
@@ -144,7 +149,7 @@ impl GameType {
         *self = match *self {
             GameType::Local => GameType::Host,
             GameType::Host => GameType::Connect,
-            GameType::Connect => GameType::Local
+            GameType::Connect => GameType::Local,
         }
     }
 
@@ -165,7 +170,7 @@ pub struct SkirmishSettings {
     pub light: u8,
     pub game_type: GameType,
     pub address: String,
-    pub save_game: Option<PathBuf>
+    pub save_game: Option<PathBuf>,
 }
 
 // The default skirmish settings
@@ -181,7 +186,7 @@ impl Default for SkirmishSettings {
             light: 10,
             game_type: GameType::Local,
             address: DEFAULT_ADDR.into(),
-            save_game: None
+            save_game: None,
         }
     }
 }
@@ -203,7 +208,7 @@ impl SkirmishSettings {
     pub fn change_player_a_unit_type(&mut self) {
         self.player_a_unit_type = match self.player_a_unit_type {
             UnitType::Squaddie => UnitType::Machine,
-            UnitType::Machine => UnitType::Squaddie
+            UnitType::Machine => UnitType::Squaddie,
         }
     }
 
@@ -211,7 +216,7 @@ impl SkirmishSettings {
     pub fn change_player_b_unit_type(&mut self) {
         self.player_b_unit_type = match self.player_b_unit_type {
             UnitType::Squaddie => UnitType::Machine,
-            UnitType::Machine => UnitType::Squaddie
+            UnitType::Machine => UnitType::Squaddie,
         }
     }
 

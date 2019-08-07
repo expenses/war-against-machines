@@ -1,30 +1,37 @@
 // A client to the server.
 // Contains its own map and response variables
 
-use super::*;
 use super::super::ui::*;
+use super::*;
 use context::*;
 
 pub struct Client {
     connection: ClientConn,
     pub map: Map,
     pub side: Side,
-    response_queue: Vec<Response>
+    response_queue: Vec<Response>,
 }
 
 impl Client {
     pub fn new(mut connection: ClientConn) -> Result<Self> {
         let initial_state = connection.recv_blocking()?;
         let (map, side) = match initial_state {
-            ServerMessage::InitialState {map, side} => (map, side),
+            ServerMessage::InitialState { map, side } => (map, side),
             ServerMessage::GameFull => return Err("Game full".into()),
-            message => return Err(format!("Wrong type of message recieved, expected initial state, got: {:?}", message).into())
+            message => {
+                return Err(format!(
+                    "Wrong type of message recieved, expected initial state, got: {:?}",
+                    message
+                )
+                .into())
+            }
         };
 
         Ok(Self {
             connection,
-            map, side,
-            response_queue: Vec::new()
+            map,
+            side,
+            response_queue: Vec::new(),
         })
     }
 
@@ -44,8 +51,10 @@ impl Client {
 
         while let Ok(message) = self.connection.recv() {
             match message {
-                ServerMessage::Responses(mut responses) => self.response_queue.append(&mut responses),
-                _ => unreachable!()
+                ServerMessage::Responses(mut responses) => {
+                    self.response_queue.append(&mut responses)
+                }
+                _ => unreachable!(),
             }
 
             recieved_message = true;
@@ -54,7 +63,13 @@ impl Client {
         recieved_message
     }
 
-    pub fn process_responses(&mut self, dt: f32, ctx: &mut Context, ui: &mut Interface, camera: &mut Camera) {
+    pub fn process_responses(
+        &mut self,
+        dt: f32,
+        ctx: &mut Context,
+        ui: &mut Interface,
+        camera: &mut Camera,
+    ) {
         let mut i = 0;
 
         while i < self.response_queue.len() {
@@ -96,7 +111,9 @@ impl Client {
     }
 
     fn send_command(&self, unit: u8, command: Command) {
-        self.connection.send(ClientMessage::Command {unit, command}).unwrap();
+        self.connection
+            .send(ClientMessage::Command { unit, command })
+            .unwrap();
     }
 
     pub fn walk(&self, unit: u8, path: &[PathPoint]) {
@@ -108,7 +125,7 @@ impl Client {
     }
 
     pub fn fire(&self, unit: u8, x: usize, y: usize) {
-        self.send_command(unit, Command::Fire {x, y});
+        self.send_command(unit, Command::Fire { x, y });
     }
 
     pub fn use_item(&self, unit: u8, item: usize) {
@@ -124,7 +141,7 @@ impl Client {
     }
 
     pub fn throw_item(&self, unit: u8, item: usize, x: usize, y: usize) {
-        self.send_command(unit, Command::ThrowItem {item, x, y});
+        self.send_command(unit, Command::ThrowItem { item, x, y });
     }
 
     pub fn end_turn(&self) {
@@ -132,6 +149,8 @@ impl Client {
     }
 
     pub fn save(&self, filename: &str) {
-        self.connection.send(ClientMessage::SaveGame(filename.into())).unwrap();
+        self.connection
+            .send(ClientMessage::SaveGame(filename.into()))
+            .unwrap();
     }
 }

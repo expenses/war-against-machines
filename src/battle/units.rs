@@ -1,19 +1,19 @@
 // The units in the game, and a struct to contain them
 
 use rand;
-use rand::{Rng, ThreadRng};
+use rand::{rngs::ThreadRng, Rng};
 
-use std::fmt;
 use std::collections::hash_map::*;
+use std::fmt;
 use std::iter::*;
 
-use super::paths::PathPoint;
 use super::map::*;
-use items::Item;
-use weapons::{Weapon, WeaponType};
-use utils::{chance_to_hit, distance_under};
-use resources::Image;
+use super::paths::PathPoint;
 use context::*;
+use items::Item;
+use resources::Image;
+use utils::{chance_to_hit, distance_under};
+use weapons::{Weapon, WeaponType};
 
 // The cost for a unit to pick up / drop / use / throw an item
 pub const ITEM_COST: u16 = 5;
@@ -37,33 +37,19 @@ const FIRST_NAMES: &[&str] = &[
     "Hawk",
     "Laura",
     "Bobby",
-    "Jane"
+    "Jane",
 ];
 
 // A list of last names to pick from
 const LAST_NAMES: &[&str] = &[
-    "Cooper",
-    "Yang",
-    "Smith",
-    "Denton",
-    "Simons",
-    "Rivers",
-    "Savage",
-    "Connor",
-    "Reese",
-    "Rhodes",
-    "Zhou",
-    "Jensen",
-    "Palmer",
-    "Mason",
-    "Johnson",
-    "Briggs"
+    "Cooper", "Yang", "Smith", "Denton", "Simons", "Rivers", "Savage", "Connor", "Reese", "Rhodes",
+    "Zhou", "Jensen", "Palmer", "Mason", "Johnson", "Briggs",
 ];
 
 // Generate a new random squaddie name
 fn generate_squaddie_name(rng: &mut ThreadRng) -> String {
-    let first = rng.choose(FIRST_NAMES).unwrap();
-    let last = rng.choose(LAST_NAMES).unwrap();
+    let first = FIRST_NAMES[rng.gen_range(0, FIRST_NAMES.len())];
+    let last = LAST_NAMES[rng.gen_range(0, LAST_NAMES.len())];
     format!("{} {}", first, last)
 }
 
@@ -75,28 +61,28 @@ fn generate_machine_name(rng: &mut ThreadRng) -> String {
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Side {
     PlayerA,
-    PlayerB
+    PlayerB,
 }
 
 impl Side {
     pub fn enemies(self) -> Side {
         match self {
             Side::PlayerA => Side::PlayerB,
-            Side::PlayerB => Side::PlayerA
+            Side::PlayerB => Side::PlayerA,
         }
     }
 
     pub fn vs_ai_string(self) -> &'static str {
         match self {
             Side::PlayerA => "Player",
-            Side::PlayerB => "AI"
+            Side::PlayerB => "AI",
         }
     }
 
     pub fn multiplayer_string(self) -> &'static str {
         match self {
             Side::PlayerA => "Player A",
-            Side::PlayerB => "Player B"
+            Side::PlayerB => "Player B",
         }
     }
 }
@@ -116,7 +102,7 @@ pub enum UnitFacing {
     Top,
     TopRight,
     Right,
-    BottomRight
+    BottomRight,
 }
 
 impl UnitFacing {
@@ -143,54 +129,54 @@ impl UnitFacing {
             UnitFacing::BottomRight
         }
     }
-    
+
     // Which tiles should be visible relative to the center depending on the facing
     // You can use
     // http://www.wolframalpha.com/input/?+-abs(y)+%3E=+x&i=graph+y+%3E%3D+0+%26%26+abs(x)+%3C%3D+y
     // to check that there are correct
     fn visible(self, x: isize, y: isize) -> bool {
         match self {
-            UnitFacing::Bottom      => x >= 0 && y >= 0,
-            UnitFacing::BottomLeft  => y >= 0 && x.abs() <= y,
-            UnitFacing::Left        => x <= 0 && y >= 0,
-            UnitFacing::TopLeft     => x <= 0 && -y.abs() >= x,
-            UnitFacing::Top         => x <= 0 && y <= 0,
-            UnitFacing::TopRight    => y <= 0 && -x.abs() >= y,
-            UnitFacing::Right       => x >= 0 && y <= 0,
-            UnitFacing::BottomRight => x >= 0 && y.abs() <= x
+            UnitFacing::Bottom => x >= 0 && y >= 0,
+            UnitFacing::BottomLeft => y >= 0 && x.abs() <= y,
+            UnitFacing::Left => x <= 0 && y >= 0,
+            UnitFacing::TopLeft => x <= 0 && -y.abs() >= x,
+            UnitFacing::Top => x <= 0 && y <= 0,
+            UnitFacing::TopRight => y <= 0 && -x.abs() >= y,
+            UnitFacing::Right => x >= 0 && y <= 0,
+            UnitFacing::BottomRight => x >= 0 && y.abs() <= x,
         }
     }
 
     pub fn can_see(self, x: usize, y: usize, target_x: usize, target_y: usize, sight: f32) -> bool {
         self.visible(
             target_x as isize - x as isize,
-            target_y as isize - y as isize
+            target_y as isize - y as isize,
         ) && distance_under(x, y, target_x, target_y, sight)
     }
 
     pub fn rotate_cw(self) -> Self {
         match self {
-            UnitFacing::Bottom      => UnitFacing::BottomLeft,
-            UnitFacing::BottomLeft  => UnitFacing::Left,
-            UnitFacing::Left        => UnitFacing::TopLeft,
-            UnitFacing::TopLeft     => UnitFacing::Top,
-            UnitFacing::Top         => UnitFacing::TopRight,
-            UnitFacing::TopRight    => UnitFacing::Right,
-            UnitFacing::Right       => UnitFacing::BottomRight,
+            UnitFacing::Bottom => UnitFacing::BottomLeft,
+            UnitFacing::BottomLeft => UnitFacing::Left,
+            UnitFacing::Left => UnitFacing::TopLeft,
+            UnitFacing::TopLeft => UnitFacing::Top,
+            UnitFacing::Top => UnitFacing::TopRight,
+            UnitFacing::TopRight => UnitFacing::Right,
+            UnitFacing::Right => UnitFacing::BottomRight,
             UnitFacing::BottomRight => UnitFacing::Bottom,
         }
     }
 
     pub fn rotate_ccw(self) -> Self {
         match self {
-            UnitFacing::Bottom      => UnitFacing::BottomRight,
+            UnitFacing::Bottom => UnitFacing::BottomRight,
             UnitFacing::BottomRight => UnitFacing::Right,
-            UnitFacing::Right       => UnitFacing::TopRight,
-            UnitFacing::TopRight    => UnitFacing::Top,
-            UnitFacing::Top         => UnitFacing::TopLeft,
-            UnitFacing::TopLeft     => UnitFacing::Left,
-            UnitFacing::Left        => UnitFacing::BottomLeft,
-            UnitFacing::BottomLeft  => UnitFacing::Bottom,
+            UnitFacing::Right => UnitFacing::TopRight,
+            UnitFacing::TopRight => UnitFacing::Top,
+            UnitFacing::Top => UnitFacing::TopLeft,
+            UnitFacing::TopLeft => UnitFacing::Left,
+            UnitFacing::Left => UnitFacing::BottomLeft,
+            UnitFacing::BottomLeft => UnitFacing::Bottom,
         }
     }
 
@@ -221,28 +207,28 @@ impl UnitFacing {
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum UnitType {
     Squaddie,
-    Machine
+    Machine,
 }
 
 impl UnitType {
     pub fn moves(self) -> u16 {
         match self {
             UnitType::Squaddie => 30,
-            UnitType::Machine => 25
+            UnitType::Machine => 25,
         }
     }
 
     pub fn health(self) -> i16 {
         match self {
             UnitType::Squaddie => 100,
-            UnitType::Machine => 150
+            UnitType::Machine => 150,
         }
     }
 
     pub fn capacity(self) -> f32 {
         match self {
             UnitType::Squaddie => 25.0,
-            UnitType::Machine => 75.0
+            UnitType::Machine => 75.0,
         }
     }
 
@@ -258,41 +244,44 @@ impl UnitType {
     fn front_image(self) -> Image {
         match self {
             UnitType::Squaddie => Image::SquaddieFront,
-            UnitType::Machine => Image::MachineFront
+            UnitType::Machine => Image::MachineFront,
         }
     }
 
     fn left_image(self) -> Image {
         match self {
             UnitType::Squaddie => Image::SquaddieLeft,
-            UnitType::Machine => Image::MachineFront
+            UnitType::Machine => Image::MachineFront,
         }
     }
 
     fn right_image(self) -> Image {
         match self {
             UnitType::Squaddie => Image::SquaddieRight,
-            UnitType::Machine => Image::MachineFront
+            UnitType::Machine => Image::MachineFront,
         }
     }
 
     fn back_image(self) -> Image {
         match self {
             UnitType::Squaddie => Image::SquaddieBack,
-            UnitType::Machine => Image::MachineBack
+            UnitType::Machine => Image::MachineBack,
         }
     }
 }
 
 impl fmt::Display for UnitType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match *self {
-            UnitType::Squaddie => "Squaddie",
-            UnitType::Machine => "Machine"
-        })
+        write!(
+            f,
+            "{}",
+            match *self {
+                UnitType::Squaddie => "Squaddie",
+                UnitType::Machine => "Machine",
+            }
+        )
     }
 }
-
 
 // A struct for a unit in the game
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -307,7 +296,7 @@ pub struct Unit {
     pub moves: u16,
     health: i16,
     name: String,
-    inventory: Vec<Item>
+    inventory: Vec<Item>,
 }
 
 impl Unit {
@@ -323,34 +312,56 @@ impl Unit {
         let mut rng = rand::thread_rng();
 
         match tag {
-            UnitType::Squaddie => {   
+            UnitType::Squaddie => {
                 // Randomly choose a weapon
-                let weapon_type = *rng.choose(&[WeaponType::Rifle, WeaponType::MachineGun]).unwrap();
+                let weapon_type = if rng.gen() {
+                    WeaponType::Rifle
+                } else {
+                    WeaponType::MachineGun
+                };
                 let capacity = weapon_type.capacity();
 
                 Unit {
-                    tag, side, x, y, facing, id,
+                    tag,
+                    side,
+                    x,
+                    y,
+                    facing,
+                    id,
                     weapon: Weapon::new(weapon_type, capacity),
                     name: generate_squaddie_name(&mut rng),
                     moves: tag.moves(),
                     health: tag.health(),
                     inventory: if let WeaponType::Rifle = weapon_type {
-                        vec![Item::RifleClip(capacity), Item::RifleClip(capacity), Item::Bandages, Item::Grenade(false)]
+                        vec![
+                            Item::RifleClip(capacity),
+                            Item::RifleClip(capacity),
+                            Item::Bandages,
+                            Item::Grenade(false),
+                        ]
                     } else {
-                        vec![Item::MachineGunClip(capacity), Item::MachineGunClip(capacity), Item::Bandages, Item::Grenade(false)]
-                    }
-                }
-            },
-            UnitType::Machine => {
-                Unit {
-                    tag, side, x, y, facing, id,
-                    weapon: Weapon::new(WeaponType::PlasmaRifle, WeaponType::PlasmaRifle.capacity()),
-                    name: generate_machine_name(&mut rng),
-                    moves: tag.moves(),
-                    health: tag.health(),
-                    inventory: Vec::new(),
+                        vec![
+                            Item::MachineGunClip(capacity),
+                            Item::MachineGunClip(capacity),
+                            Item::Bandages,
+                            Item::Grenade(false),
+                        ]
+                    },
                 }
             }
+            UnitType::Machine => Unit {
+                tag,
+                side,
+                x,
+                y,
+                facing,
+                id,
+                weapon: Weapon::new(WeaponType::PlasmaRifle, WeaponType::PlasmaRifle.capacity()),
+                name: generate_machine_name(&mut rng),
+                moves: tag.moves(),
+                health: tag.health(),
+                inventory: Vec::new(),
+            },
         }
     }
 
@@ -360,10 +371,11 @@ impl Unit {
 
     // The weight of the items that the units is carrying
     pub fn carrying(&self) -> f32 {
-        self.inventory.iter().fold(
-            self.weapon.tag.weight(),
-            |total, item| total + item.weight()
-        )
+        self.inventory
+            .iter()
+            .fold(self.weapon.tag.weight(), |total, item| {
+                total + item.weight()
+            })
     }
 
     pub fn damage(&mut self, damage: i16) -> bool {
@@ -418,11 +430,11 @@ impl Unit {
         let tile = tiles.at_mut(self.x, self.y);
 
         if let Some(item) = tile.items_remove(index) {
-            if self.carrying() + item.weight() <= self.tag.capacity() {                        
+            if self.carrying() + item.weight() <= self.tag.capacity() {
                 self.inventory.push(item);
                 self.moves -= ITEM_COST;
                 return;
-            } 
+            }
         }
     }
 
@@ -438,35 +450,35 @@ impl Unit {
         if let Some(item) = self.inventory.get(index) {
             item_consumed = match (*item, self.weapon.tag) {
                 // Reload the corresponding weapon
-                (Item::RifleClip(ammo), WeaponType::Rifle) |
-                (Item::MachineGunClip(ammo), WeaponType::MachineGun) |
-                (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => self.weapon.reload(ammo),
+                (Item::RifleClip(ammo), WeaponType::Rifle)
+                | (Item::MachineGunClip(ammo), WeaponType::MachineGun)
+                | (Item::PlasmaClip(ammo), WeaponType::PlasmaRifle) => self.weapon.reload(ammo),
                 // Switch weapons
                 (Item::Rifle(ammo), _) => {
                     new_item = Some(self.weapon.to_item());
                     self.weapon = Weapon::new(WeaponType::Rifle, ammo);
                     true
-                },
+                }
                 (Item::MachineGun(ammo), _) => {
                     new_item = Some(self.weapon.to_item());
                     self.weapon = Weapon::new(WeaponType::MachineGun, ammo);
                     true
-                },
+                }
                 (Item::PlasmaRifle(ammo), _) => {
                     new_item = Some(self.weapon.to_item());
                     self.weapon = Weapon::new(WeaponType::PlasmaRifle, ammo);
                     true
-                },
+                }
                 // Use other items
                 (Item::Bandages, _) if self.can_heal_from(*item) => {
                     self.health += item.heal(self.tag);
                     true
-                },
+                }
                 (Item::Grenade(primed), _) if !primed => {
                     new_item = Some(Item::Grenade(true));
                     true
                 }
-                _ => false
+                _ => false,
             }
         }
 
@@ -497,13 +509,20 @@ impl Unit {
     }
 
     pub fn info(&self) -> String {
-        format!("Name: {}, Moves: {}, Health: {}, Weapon: {}", self.name, self.moves, self.health, self.weapon)
+        format!(
+            "Name: {}, Moves: {}, Health: {}, Weapon: {}",
+            self.name, self.moves, self.health, self.weapon
+        )
     }
 
     pub fn carrying_info(&self) -> String {
         format!(
             "{}\n{} - {} kg\nCarry Capacity: {}/{} kg",
-            self.name, self.weapon, self.weapon.tag.weight(), self.carrying(), self.tag.capacity()
+            self.name,
+            self.weapon,
+            self.weapon.tag.weight(),
+            self.carrying(),
+            self.tag.capacity()
         )
     }
 
@@ -512,7 +531,7 @@ impl Unit {
             UnitFacing::Right | UnitFacing::BottomRight => self.tag.right_image(),
             UnitFacing::Bottom | UnitFacing::BottomLeft => self.tag.front_image(),
             UnitFacing::Left | UnitFacing::TopLeft => self.tag.left_image(),
-            _ => self.tag.back_image()
+            _ => self.tag.back_image(),
         };
 
         ctx.render_with_overlay(image, dest, zoom, overlay);
@@ -525,7 +544,7 @@ pub struct Units {
     pub max_player_a_units: u8,
     pub max_player_b_units: u8,
     index: u8,
-    units: HashMap<u8, Unit>
+    units: HashMap<u8, Unit>,
 }
 
 impl Units {
@@ -535,7 +554,7 @@ impl Units {
             index: 0,
             max_player_a_units: 0,
             max_player_b_units: 0,
-            units: HashMap::new()
+            units: HashMap::new(),
         }
     }
 
@@ -546,7 +565,8 @@ impl Units {
             Side::PlayerB => self.max_player_b_units += 1,
         }
 
-        self.units.insert(self.index, Unit::new(tag, side, x, y, facing, self.index));
+        self.units
+            .insert(self.index, Unit::new(tag, side, x, y, facing, self.index));
         self.index += 1;
     }
 
@@ -615,22 +635,24 @@ impl Units {
 }
 
 impl FromIterator<Unit> for Units {
-    fn from_iter<I: IntoIterator<Item=Unit>>(iterator: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Unit>>(iterator: I) -> Self {
         let mut max_player_a_units = 0;
         let mut max_player_b_units = 0;
 
-        let units = iterator.into_iter().inspect(|unit| {
-                match unit.side {
-                    Side::PlayerA => max_player_a_units += 1,
-                    Side::PlayerB => max_player_b_units += 1
-                }
+        let units = iterator
+            .into_iter()
+            .inspect(|unit| match unit.side {
+                Side::PlayerA => max_player_a_units += 1,
+                Side::PlayerB => max_player_b_units += 1,
             })
             .map(|unit| (unit.id, unit))
             .collect();
 
         Self {
-            max_player_a_units, max_player_b_units, units,
-            index: 0
+            max_player_a_units,
+            max_player_b_units,
+            units,
+            index: 0,
         }
     }
 }
@@ -645,7 +667,7 @@ fn unit_actions() {
 
     // After adding 10 units, there should be 10 ai units into total
 
-    for i in 0 .. 10 {
+    for i in 0..10 {
         units.add(UnitType::Machine, Side::PlayerB, i, i, UnitFacing::Bottom);
     }
 
@@ -679,7 +701,10 @@ fn unit_actions() {
 
         unit.use_item(0);
 
-        assert_eq!(unit.inventory[0], Item::PlasmaRifle(plasma_rifle.capacity()));
+        assert_eq!(
+            unit.inventory[0],
+            Item::PlasmaRifle(plasma_rifle.capacity())
+        );
 
         assert_eq!(unit.moves, unit.tag.moves() - ITEM_COST * 2);
 

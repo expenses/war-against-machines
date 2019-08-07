@@ -1,6 +1,6 @@
+use bincode;
 use std::io;
 use std::net;
-use bincode;
 
 error_chain! {
     foreign_links {

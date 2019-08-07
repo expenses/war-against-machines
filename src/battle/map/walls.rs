@@ -5,14 +5,14 @@ use resources::Image;
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum WallSide {
     Left,
-    Top
+    Top,
 }
 
 // The type of wall
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum WallType {
     Ruin1,
-    Ruin2
+    Ruin2,
 }
 
 impl WallType {
@@ -20,7 +20,7 @@ impl WallType {
     pub fn left_image(&self) -> Image {
         match *self {
             WallType::Ruin1 => Image::Ruin1Left,
-            WallType::Ruin2 => Image::Ruin2Left
+            WallType::Ruin2 => Image::Ruin2Left,
         }
     }
 
@@ -28,10 +28,10 @@ impl WallType {
     pub fn top_image(&self) -> Image {
         match *self {
             WallType::Ruin1 => Image::Ruin1Top,
-            WallType::Ruin2 => Image::Ruin2Top
+            WallType::Ruin2 => Image::Ruin2Top,
         }
     }
-    
+
     // How much damage the wall can take before it breaks
     pub fn health(&self) -> i16 {
         50
@@ -41,14 +41,14 @@ impl WallType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wall {
     pub tag: WallType,
-    health: i16
+    health: i16,
 }
 
 impl Wall {
     pub fn new(tag: WallType) -> Wall {
         Wall {
             health: tag.health(),
-            tag
+            tag,
         }
     }
 
@@ -61,14 +61,14 @@ impl Wall {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Walls {
     pub left: Option<Wall>,
-    pub top: Option<Wall>
+    pub top: Option<Wall>,
 }
 
 impl Walls {
     pub fn new() -> Walls {
         Walls {
             left: None,
-            top: None
+            top: None,
         }
     }
 
